@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Activity Panel | Automatización de Jornada y Reuniones para Windows 11</title>
+  <meta name="description" content="Aplicación nativa para Windows 11 que optimiza tu rutina laboral: inicia Slack a tiempo, sincroniza Google Calendar y abre Granola 5 minutos antes de cada reunión.">
+  <meta name="keywords" content="Windows 11, WinUI 3, Granola, Slack, Google Calendar, Automatización, Productividad, .NET 9, Fluent Design">
+  <link rel="icon" type="image/png" href="Assets/AppIcon.png">
+
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       DESIGN TOKENS & SYSTEM VARIABLES (Dark Fluent / Mica Theme)
+       ========================================================================== */
+    :root {
+      --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+
+      /* Primary Brand / Windows Accent */
+      --accent-hsl: 207, 100%, 50%;
+      --accent: hsl(var(--accent-hsl));
+      --accent-hover: hsl(207, 100%, 43%);
+      --accent-active: hsl(207, 100%, 36%);
+      --accent-subtle: hsla(var(--accent-hsl), 0.12);
+
+      /* Colors */
+      --color-green: #22c55e;
+      --color-yellow: #facc15;
+      --color-slack: #ec4899;
+      --color-granola: #10b981;
+
+      /* Dark Theme Surfaces */
+      --bg-canvas: #0f1115;
+      --bg-surface: #171b22;
+      --bg-surface-elevated: #202631;
+      --bg-card: rgba(28, 34, 46, 0.7);
+      --bg-card-hover: rgba(36, 44, 59, 0.85);
+      --bg-glass: rgba(15, 17, 21, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 255, 255, 0.18);
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+
+      /* Radii */
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+
+      /* Transitions */
+      --transition-fast: 0.15s ease;
+      --transition-base: 0.25s ease;
+
+      /* Shadows */
+      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.65);
+
+      /* Layout */
+      --container-max: 1160px;
+      --header-height: 68px;
+    }
+
+    /* ==========================================================================
+       RESET & BASE STYLES
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.025em;
+      color: var(--text-primary);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      outline: none;
+    }
+
+    img, svg {
+      display: block;
+      max-width: 100%;
+    }
+
+    .container {
+      width: 100%;
+      max-width: var(--container-max);
+      margin-inline: auto;
+      padding-inline: 1.5rem;
+    }
+
+    /* ==========================================================================
+       BUTTONS & BADGES
+       ========================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.4rem;
+      font-family: var(--font-display);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+      text-align: center;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0, 120, 212, 0.35);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 120, 212, 0.45);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-surface-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--bg-card-hover);
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary:active {
+      transform: translateY(0);
+    }
+
+    .btn-icon {
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-icon:hover {
+      color: var(--text-primary);
+      border-color: var(--border-focus);
+      background: var(--bg-surface-elevated);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-accent {
+      background-color: var(--accent-subtle);
+      color: var(--accent);
+      border: 1px solid hsla(var(--accent-hsl), 0.2);
+    }
+
+    /* ==========================================================================
+       HEADER & NAVIGATION
+       ========================================================================== */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--header-height);
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.125rem;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+      list-style: none;
+    }
+
+    .nav-link {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: color var(--transition-fast);
+    }
+
+    .nav-link:hover {
+      color: var(--text-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+
+    /* ==========================================================================
+       HERO SECTION
+       ========================================================================== */
+    .hero {
+      padding: 4rem 0 3.5rem;
+      position: relative;
+    }
+
+    .hero-content {
+      text-align: center;
+      max-width: 840px;
+      margin-inline: auto;
+      margin-bottom: 3rem;
+    }
+
+    .hero-title {
+      font-size: clamp(2.15rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-block: 1rem 1.25rem;
+      letter-spacing: -0.035em;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2vw, 1.1875rem);
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 680px;
+      margin-inline: auto;
+      margin-bottom: 2rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .tech-pills {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+      flex-wrap: wrap;
+    }
+
+    .tech-pill {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.85rem;
+      border-radius: var(--radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    /* ==========================================================================
+       EXACT WINDOWS 11 / WINUI 3 APP MOCKUP (PIXEL-PERFECT REPLICA)
+       ========================================================================== */
+    .real-mockup-window {
+      max-width: 900px;
+      margin-inline: auto;
+      background: #1c1a1a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+      color: #ffffff;
+      user-select: none;
+    }
+
+    /* Title Bar */
+    .real-mockup-titlebar {
+      height: 38px;
+      background: #151414;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-inline: 14px 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .real-titlebar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 400;
+      color: #e5e5e5;
+    }
+
+    .real-titlebar-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+
+    .real-window-controls {
+      display: flex;
+      align-items: center;
+    }
+
+    .real-win-btn {
+      width: 44px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #cccccc;
+      font-size: 11px;
+    }
+
+    /* Window Body */
+    .real-mockup-body {
+      padding: 28px 36px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background: #1c1a1a;
+    }
+
+    /* Header Section */
+    .real-header-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .real-time-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .real-clock {
+      font-size: 44px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: #ffffff;
+    }
+
+    .real-calendar-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(36, 75, 48, 0.45);
+      border: 1px solid rgba(74, 158, 98, 0.35);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #a7f3d0;
+    }
+
+    .real-calendar-badge svg {
+      width: 14px;
+      height: 14px;
+      color: #34d399;
+    }
+
+    .real-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .real-action-btn {
+      width: 38px;
+      height: 34px;
+      background: #2a2727;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #d1d5db;
+      transition: all var(--transition-fast);
+    }
+
+    .real-date-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-top: 6px;
+    }
+
+    .real-workstatus-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #e5e5e5;
+      margin-top: 6px;
+    }
+
+    .real-workstatus-row .moon-icon {
+      color: #a5b4fc;
+      width: 16px;
+      height: 16px;
+    }
+
+    .real-workstatus-title {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-workstatus-sep {
+      color: #9ca3af;
+    }
+
+    .real-workstatus-hours {
+      color: #9ca3af;
+    }
+
+    /* Vacation Card */
+    .real-vacation-card {
+      background: #282525;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .real-vacation-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .real-airplane-icon {
+      color: #fbbf24;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .real-vacation-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-vacation-sub {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .real-vacation-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .real-toggle-label {
+      font-size: 13px;
+      color: #d1d5db;
+      min-width: 76px;
+    }
+
+    /* Windows 11 WinUI Switch */
+    .win11-switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 22px;
+    }
+
+    .win11-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .win11-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #3b3737;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      transition: .2s;
+    }
+
+    .win11-slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 4px;
+      bottom: 4px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: .2s;
+    }
+
+    input:checked + .win11-slider {
+      background-color: #0078d4;
+      border-color: #0078d4;
+    }
+
+    input:checked + .win11-slider:before {
+      transform: translateX(20px);
+      background-color: #ffffff;
+    }
+
+    /* Section Headings */
+    .real-section-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    /* App Cards Grid */
+    .real-apps-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .real-app-card {
+      background: #282525;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .real-app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .real-app-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-app-brand svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .real-app-status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .real-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    }
+
+    .real-app-button {
+      width: 100%;
+      height: 34px;
+      background: #332f2f;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #e5e5e5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    /* Meetings Section */
+    .real-meetings-container {
+      background: #282525;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 4px 18px;
+    }
+
+    .real-meetings-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .real-meetings-source {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .real-meeting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .real-meeting-row:last-child {
+      border-bottom: none;
+    }
+
+    .real-meeting-time {
+      min-width: 110px;
+    }
+
+    .real-time-start {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-time-end {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .real-meeting-info {
+      flex: 1;
+      padding-inline: 16px;
+    }
+
+    .real-meeting-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-meeting-note {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .real-join-btn {
+      height: 32px;
+      padding-inline: 14px;
+      background: #332f2f;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #e5e5e5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .mockup-caption {
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-top: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    /* ==========================================================================
+       FEATURES SECTION
+       ========================================================================== */
+    .section {
+      padding: 5rem 0;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 680px;
+      margin-inline: auto;
+      margin-bottom: 3.25rem;
+    }
+
+    .section-tag {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      display: inline-block;
+    }
+
+    .section-title {
+      font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+      margin-bottom: 1rem;
+    }
+
+    .section-subtitle {
+      font-size: 1.0625rem;
+      color: var(--text-secondary);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      transition: all var(--transition-base);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-focus);
+      background: var(--bg-card-hover);
+      box-shadow: var(--shadow-md);
+    }
+
+    .feature-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .feature-icon-granola {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--color-granola);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .feature-icon-slack {
+      background: rgba(236, 72, 153, 0.12);
+      color: var(--color-slack);
+      border: 1px solid rgba(236, 72, 153, 0.2);
+    }
+
+    .feature-icon-calendar {
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .feature-icon-accent {
+      background: var(--accent-subtle);
+      color: var(--accent);
+      border: 1px solid hsla(var(--accent-hsl), 0.2);
+    }
+
+    .feature-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .feature-desc {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       HOW IT WORKS (3 STEPS)
+       ========================================================================== */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+    }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #ffffff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 120, 212, 0.4);
+    }
+
+    .step-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-desc {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       DOWNLOAD SECTION
+       ========================================================================== */
+    .download-card-container {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 2rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 2.75rem;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .download-options {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .download-btn-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: all var(--transition-fast);
+    }
+
+    .download-btn-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .download-card-title {
+      font-weight: 700;
+      font-size: 1.0625rem;
+      color: var(--text-primary);
+    }
+
+    .download-card-sub {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-top: 0.125rem;
+    }
+
+    .requirements-box {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .requirements-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .requirements-item {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .requirements-item svg {
+      width: 18px;
+      height: 18px;
+      color: var(--color-green);
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
+       FAQ ACCORDION
+       ========================================================================== */
+    .faq-list {
+      max-width: 800px;
+      margin-inline: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: border-color var(--transition-fast);
+    }
+
+    .faq-item[open] {
+      border-color: var(--border-focus);
+    }
+
+    .faq-summary {
+      padding: 1.25rem 1.5rem;
+      font-family: var(--font-display);
+      font-size: 1.0625rem;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .faq-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-summary::after {
+      content: '+';
+      font-size: 1.35rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .faq-item[open] .faq-summary::after {
+      content: '−';
+      color: var(--accent);
+    }
+
+    .faq-body {
+      padding: 0 1.5rem 1.25rem;
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       FOOTER
+       ========================================================================== */
+    .footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 3.5rem 0 2rem;
+      background: var(--bg-surface);
+    }
+
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .footer-bottom {
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--text-tertiary);
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1.5rem;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE ADJUSTMENTS
+       ========================================================================== */
+    @media (max-width: 868px) {
+      .nav-links {
+        display: none;
+      }
+
+      .download-card-container {
+        grid-template-columns: 1fr;
+        padding: 1.75rem;
+      }
+
+      .real-apps-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .real-mockup-body {
+        padding: 20px 18px;
+      }
+
+      .real-meeting-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .real-join-btn {
+        align-self: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       HEADER & NAVIGATION
+       ========================================================================== -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="#" class="brand">
+        <img src="Assets/AppIcon.png" alt="Work Activity Panel Logo" class="brand-logo">
+        <span>Work Activity Panel</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#features" class="nav-link" data-i18n="nav.features">Características</a></li>
+          <li><a href="#preview" class="nav-link" data-i18n="nav.preview">Vista Previa</a></li>
+          <li><a href="#guide" class="nav-link" data-i18n="nav.guide">Cómo Funciona</a></li>
+          <li><a href="#download" class="nav-link" data-i18n="nav.download">Descargar</a></li>
+          <li><a href="#faq" class="nav-link" data-i18n="nav.faq">Preguntas</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <!-- Language Switcher -->
+        <button id="langToggle" class="btn-icon" title="Cambiar idioma / Change language">
+          <span id="langLabel" style="font-size: 0.8125rem; font-weight: 700;">EN</span>
+        </button>
+
+        <a href="#download" class="btn btn-primary" data-i18n="nav.btnDownload">Descargar v1.0.0</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       HERO SECTION
+       ========================================================================== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <span class="badge badge-accent" data-i18n="hero.badge">⚡ Aplicación Nativa para Windows 11</span>
+        
+        <h1 class="hero-title" data-i18n="hero.title">
+          Tu jornada y reuniones organizadas sin esfuerzo
+        </h1>
+        
+        <p class="hero-subtitle" data-i18n="hero.subtitle">
+          Work Activity Panel gestiona tus herramientas de trabajo: abre Slack al iniciar tu horario laboral, sincroniza tu Google Calendar en tiempo real y lanza Granola 5 minutos antes de cada reunión.
+        </p>
+
+        <div class="hero-actions">
+          <a href="releases/WorkActivityPanel-Setup-v1.0.0.exe" class="btn btn-primary" download>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span data-i18n="hero.ctaDownload">Descargar Instalador (.exe)</span>
+          </a>
+          
+          <a href="https://github.com/AnaCataVC/work-activity-panel" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <span data-i18n="hero.ctaGithub">Ver en GitHub</span>
+          </a>
+        </div>
+
+        <div class="tech-pills">
+          <span class="tech-pill">🖥️ WinUI 3</span>
+          <span class="tech-pill">⚡ .NET 9</span>
+          <span class="tech-pill">✨ Windows 11 Fluent</span>
+          <span class="tech-pill">🛡️ Privacidad RFC 5545</span>
+          <span class="tech-pill">📜 MIT Open Source</span>
+        </div>
+      </div>
+
+      <!-- ==========================================================================
+           PIXEL-PERFECT WINUI 3 WINDOW MOCKUP
+           ========================================================================== -->
+      <div id="preview" class="real-mockup-window">
+        <!-- Titlebar -->
+        <div class="real-mockup-titlebar">
+          <div class="real-titlebar-left">
+            <img src="Assets/AppIcon.png" alt="App Icon" class="real-titlebar-icon">
+            <span>Work Activity Panel</span>
+          </div>
+          <div class="real-window-controls">
+            <div class="real-win-btn" title="Minimizar">&#x2014;</div>
+            <div class="real-win-btn" title="Maximizar">&#x25A2;</div>
+            <div class="real-win-btn" title="Cerrar">&#x2715;</div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="real-mockup-body">
+          <!-- Header Section -->
+          <div>
+            <div class="real-header-grid">
+              <!-- Left: Time + Connected Badge -->
+              <div class="real-time-row">
+                <div class="real-clock" id="mockupClock">18:54</div>
+                <div class="real-calendar-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span data-i18n="mockup.calConnected">Calendario conectado</span>
+                </div>
+              </div>
+
+              <!-- Right: Refresh & Settings Buttons -->
+              <div class="real-header-actions">
+                <div class="real-action-btn" id="mockupRefreshBtn" title="Actualizar estado">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                  </svg>
+                </div>
+                <div class="real-action-btn" title="Ajustes y Configuración">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Date -->
+            <div class="real-date-text" id="mockupDate">Viernes, 14 de agosto</div>
+
+            <!-- Work status row -->
+            <div class="real-workstatus-row">
+              <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+              </svg>
+              <span class="real-workstatus-title" id="mockupStatusTitle" data-i18n="mockup.offHours">Fuera de Horario Laboral</span>
+              <span class="real-workstatus-sep">•</span>
+              <span class="real-workstatus-hours" id="mockupStatusHours">09:00 - 06:00</span>
+            </div>
+          </div>
+
+          <!-- Vacation Mode Card -->
+          <div class="real-vacation-card">
+            <div class="real-vacation-left">
+              <!-- Airplane Icon -->
+              <svg class="real-airplane-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+              </svg>
+              <div>
+                <div class="real-vacation-title" data-i18n="mockup.vacationTitle">Modo Vacaciones</div>
+                <div class="real-vacation-sub" data-i18n="mockup.vacationDesc">Pausa la apertura automática de Slack y Granola</div>
+              </div>
+            </div>
+            <div class="real-vacation-right">
+              <label class="win11-switch" title="Probar interruptor de modo vacaciones">
+                <input type="checkbox" id="mockupVacationToggle">
+                <span class="win11-slider"></span>
+              </label>
+              <span class="real-toggle-label" id="mockupToggleLabel" data-i18n="mockup.disabled">Desactivado</span>
+            </div>
+          </div>
+
+          <!-- Section: Aplicaciones de Trabajo -->
+          <div>
+            <div class="real-section-label" data-i18n="mockup.appsSectionTitle">Aplicaciones de Trabajo</div>
+            <div class="real-apps-grid">
+              <!-- Slack Card -->
+              <div class="real-app-card">
+                <div class="real-app-header">
+                  <div class="real-app-brand">
+                    <!-- Slack Logo Glyph -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="4" width="4" height="16" rx="2"></rect>
+                      <rect x="10" y="4" width="4" height="16" rx="2"></rect>
+                      <rect x="16" y="4" width="4" height="16" rx="2"></rect>
+                    </svg>
+                    <span>Slack</span>
+                  </div>
+                  <div class="real-app-status-badge">
+                    <div class="real-status-dot" id="mockupSlackDot"></div>
+                    <span id="mockupSlackStatus" data-i18n="mockup.running">En ejecución</span>
+                  </div>
+                </div>
+                <div class="real-app-button">
+                  <span data-i18n="mockup.openSlack">Abrir Slack</span>
+                </div>
+              </div>
+
+              <!-- Granola Card -->
+              <div class="real-app-card">
+                <div class="real-app-header">
+                  <div class="real-app-brand">
+                    <!-- Granola / Note window glyph -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                      <path d="M3 9h18"></path>
+                      <circle cx="8" cy="14" r="1.5"></circle>
+                    </svg>
+                    <span>Granola</span>
+                  </div>
+                  <div class="real-app-status-badge">
+                    <div class="real-status-dot" id="mockupGranolaDot"></div>
+                    <span id="mockupGranolaStatus" data-i18n="mockup.running">En ejecución</span>
+                  </div>
+                </div>
+                <div class="real-app-button">
+                  <span data-i18n="mockup.openGranola">Abrir Granola</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Reuniones de Hoy -->
+          <div>
+            <div class="real-meetings-top">
+              <div class="real-section-label" style="margin-bottom: 0;" data-i18n="mockup.meetingsTitle">Reuniones de Hoy</div>
+              <span class="real-meetings-source">Google Calendar</span>
+            </div>
+
+            <div class="real-meetings-container">
+              <!-- Meeting 1: Daily Sync & Standup -->
+              <div class="real-meeting-row">
+                <div class="real-meeting-time">
+                  <div class="real-time-start">10:00 a. m.</div>
+                  <div class="real-time-end">10:30 a. m.</div>
+                </div>
+                <div class="real-meeting-info">
+                  <div class="real-meeting-title" data-i18n="mockup.m1Title">Daily Sync & Standup</div>
+                  <div class="real-meeting-note" data-i18n="mockup.meeting5Min">Granola se abrirá 5 min antes</div>
+                </div>
+                <div class="real-join-btn">
+                  <span data-i18n="mockup.joinMeeting">Unirme a la reunión</span>
+                </div>
+              </div>
+
+              <!-- Meeting 2: Sprint Planning & Arquitectura -->
+              <div class="real-meeting-row">
+                <div class="real-meeting-time">
+                  <div class="real-time-start">12:00 p. m.</div>
+                  <div class="real-time-end">1:30 p. m.</div>
+                </div>
+                <div class="real-meeting-info">
+                  <div class="real-meeting-title" data-i18n="mockup.m2Title">Sprint Planning & Arquitectura</div>
+                  <div class="real-meeting-note" data-i18n="mockup.meeting5Min">Granola se abrirá 5 min antes</div>
+                </div>
+                <div class="real-join-btn">
+                  <span data-i18n="mockup.joinMeeting">Unirme a la reunión</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup-caption">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span data-i18n="mockup.interactiveHint">Vista previa fiel de la interfaz de la aplicación en Windows 11.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       FEATURES SECTION
+       ========================================================================== -->
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag" data-i18n="features.tag">Potencia & Simplicidad</span>
+        <h2 class="section-title" data-i18n="features.title">Diseñado para la máxima productividad diaria</h2>
+        <p class="section-subtitle" data-i18n="features.subtitle">
+          Elimina la fricción manual en tu rutina de trabajo. La aplicación automatiza tus herramientas justo cuando las necesitas.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-granola">🥑</div>
+          <h3 class="feature-title" data-i18n="features.f1Title">Automatización de Granola</h3>
+          <p class="feature-desc" data-i18n="features.f1Desc">
+            Detecta automáticamente tus reuniones agendadas en Google Calendar y abre Granola 5 minutos antes de cada sesión para que tomes notas sin retrasos.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-slack">💬</div>
+          <h3 class="feature-title" data-i18n="features.f2Title">Gestión Inteligente de Slack</h3>
+          <p class="feature-desc" data-i18n="features.f2Desc">
+            Verifica y abre Slack al inicio exacto de tu horario laboral configurado, garantizando que estés disponible para tu equipo sin tener que recordarlo.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-calendar">📅</div>
+          <h3 class="feature-title" data-i18n="features.f3Title">Sincronización Privada iCal</h3>
+          <p class="feature-desc" data-i18n="features.f3Desc">
+            Conexión directa mediante enlace privado RFC 5545 sin almacenar tokens ni enviar datos a servidores externos. Detecta enlaces de Meet, Zoom, Teams y Webex.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-accent">✈️</div>
+          <h3 class="feature-title" data-i18n="features.f4Title">Modo Vacaciones & Horario</h3>
+          <p class="feature-desc" data-i18n="features.f4Desc">
+            Define libremente tus días y franjas de trabajo. Activa el Modo Vacaciones con un solo clic para pausar cualquier alerta y automatización durante tu descanso.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-accent">⚡</div>
+          <h3 class="feature-title" data-i18n="features.f5Title">Cero Polling y Bajo Consumo</h3>
+          <p class="feature-desc" data-i18n="features.f5Desc">
+            Arquitectura de temporizadores programados de alta precisión en C# / .NET 9. Cero consumo innecesario de batería o CPU en segundo plano.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-accent">💻</div>
+          <h3 class="feature-title" data-i18n="features.f6Title">Fluent Design & System Tray</h3>
+          <p class="feature-desc" data-i18n="features.f6Desc">
+            Construido con WinUI 3 y material Mica para Windows 11. Se minimiza silenciosamente en la bandeja del sistema (System Tray) para no estorbar en tu pantalla.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       HOW IT WORKS (3 STEPS)
+       ========================================================================== -->
+  <section id="guide" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag" data-i18n="guide.tag">Configuración Rápida</span>
+        <h2 class="section-title" data-i18n="guide.title">Listo en menos de 2 minutos</h2>
+        <p class="section-subtitle" data-i18n="guide.subtitle">
+          Sin registros complicados ni cuentas de terceros. Configura y empieza de inmediato.
+        </p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3 class="step-title" data-i18n="guide.step1Title">Descarga e Instala</h3>
+          <p class="step-desc" data-i18n="guide.step1Desc">
+            Descarga el instalador oficial de Windows (`WorkActivityPanel-Setup-v1.0.0.exe`) y sigue el asistente rápido de Inno Setup.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3 class="step-title" data-i18n="guide.step2Title">Conecta tu Calendario</h3>
+          <p class="step-desc" data-i18n="guide.step2Desc">
+            Copia la dirección secreta iCal (`.ics`) de los ajustes de tu Google Calendar y pégala en la pestaña de Configuración de la app.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3 class="step-title" data-i18n="guide.step3Title">Establece tu Horario</h3>
+          <p class="step-desc" data-i18n="guide.step3Desc">
+            Selecciona tus días laborales y tu rango de horas. La aplicación se encargará de todo lo demás en segundo plano.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       DOWNLOAD SECTION
+       ========================================================================== -->
+  <section id="download" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag" data-i18n="download.tag">Instalación & Descargas</span>
+        <h2 class="section-title" data-i18n="download.title">Descarga Work Activity Panel v1.0.0</h2>
+        <p class="section-subtitle" data-i18n="download.subtitle">
+          Versión nativa para sistemas Windows de 64 bits. Elige tu formato preferido:
+        </p>
+      </div>
+
+      <div class="download-card-container">
+        <div class="download-options">
+          <!-- Installer (.exe) -->
+          <a href="releases/WorkActivityPanel-Setup-v1.0.0.exe" class="download-btn-card" download>
+            <div>
+              <div class="download-card-title" data-i18n="download.installerTitle">Instalador para Windows (.exe)</div>
+              <div class="download-card-sub" data-i18n="download.installerSub">Recomendado • Asistente de instalación Inno Setup (85 MB)</div>
+            </div>
+            <div class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+              <span data-i18n="download.btnExe">Descargar .exe</span>
+            </div>
+          </a>
+
+          <!-- Portable (.zip) -->
+          <a href="releases/WorkActivityPanel-v1.0.0-win-x64.zip" class="download-btn-card" download>
+            <div>
+              <div class="download-card-title" data-i18n="download.portableTitle">Paquete Portable (.zip)</div>
+              <div class="download-card-sub" data-i18n="download.portableSub">Sin instalación • Ejecución directa descomprimiendo (106 MB)</div>
+            </div>
+            <div class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+              <span data-i18n="download.btnZip">Descargar .zip</span>
+            </div>
+          </a>
+        </div>
+
+        <!-- System Requirements -->
+        <div class="requirements-box">
+          <h3 style="font-size: 1.0625rem; font-weight: 700;" data-i18n="download.reqTitle">Requisitos del Sistema</h3>
+          <ul class="requirements-list">
+            <li class="requirements-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span data-i18n="download.reqWindows">Windows 11 o Windows 10 (versión 1809+)</span>
+            </li>
+            <li class="requirements-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span data-i18n="download.reqArch">Arquitectura x64 (64-bit)</span>
+            </li>
+            <li class="requirements-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span data-i18n="download.reqDotnet">.NET 9 Runtime</span>
+            </li>
+            <li class="requirements-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span data-i18n="download.reqApps">Slack & Granola instalados (opcional)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       FAQ SECTION
+       ========================================================================== -->
+  <section id="faq" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag" data-i18n="faq.tag">FAQ</span>
+        <h2 class="section-title" data-i18n="faq.title">Preguntas Frecuentes</h2>
+        <p class="section-subtitle" data-i18n="faq.subtitle">
+          Respuestas claras sobre la privacidad, funcionamiento y compatibilidad de la app.
+        </p>
+      </div>
+
+      <div class="faq-list">
+        <details class="faq-item" open>
+          <summary class="faq-summary" data-i18n="faq.q1">¿Cómo se conecta con Google Calendar?</summary>
+          <div class="faq-body" data-i18n="faq.a1">
+            Utiliza la dirección secreta en formato iCal (`.ics`) que provee Google Calendar. Esto permite consultar tus eventos de forma directa y privada sin necesidad de OAuth2 complejo ni servidores intermediarios que almacenen tus datos.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-summary" data-i18n="faq.q2">¿Cómo detecta cuándo debe abrir Granola?</summary>
+          <div class="faq-body" data-i18n="faq.a2">
+            El motor de calendario analiza la hora de inicio de cada reunión y programa un temporizador exacto para lanzar el ejecutable de Granola 5 minutos antes de la hora acordada.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-summary" data-i18n="faq.q3">¿Consume mucha batería o memoria RAM?</summary>
+          <div class="faq-body" data-i18n="faq.a3">
+            No. La aplicación está diseñada bajo el principio de cero sondeo (zero-polling). Usa temporizadores de precisión en C# que despiertan la aplicación solo cuando es estrictamente necesario, manteniéndose en modo suspensión el resto del tiempo.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-summary" data-i18n="faq.q4">¿Qué plataformas de videollamadas son compatibles?</summary>
+          <div class="faq-body" data-i18n="faq.a4">
+            El analizador detecta automáticamente enlaces de Google Meet, Zoom, Microsoft Teams, Webex y GoToMeeting presentes en la descripción o ubicación del evento, permitiendo unirte con un solo clic.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <img src="Assets/AppIcon.png" alt="Work Activity Panel Logo" style="width: 28px; height: 28px; border-radius: 4px;">
+          <span style="font-weight: 700; font-family: var(--font-display);">Work Activity Panel</span>
+        </div>
+
+        <ul class="footer-links">
+          <li><a href="#features" data-i18n="nav.features">Características</a></li>
+          <li><a href="#download" data-i18n="nav.download">Descargas</a></li>
+          <li><a href="https://github.com/AnaCataVC/work-activity-panel" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/AnaCataVC/work-activity-panel/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Licencia MIT</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-bottom">
+        <p data-i18n="footer.copyright">© 2026 Work Activity Panel. Desarrollado con WinUI 3 y .NET 9 para Windows 11.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       INTERACTIVE JAVASCRIPT & BILINGUAL TRANSLATIONS
+       ========================================================================== -->
+  <script>
+    // --- BILINGUAL TRANSLATION DICTIONARY ---
+    const translations = {
+      es: {
+        "nav.features": "Características",
+        "nav.preview": "Vista Previa",
+        "nav.guide": "Cómo Funciona",
+        "nav.download": "Descargar",
+        "nav.faq": "Preguntas",
+        "nav.btnDownload": "Descargar v1.0.0",
+
+        "hero.badge": "⚡ Aplicación Nativa para Windows 11",
+        "hero.title": "Tu jornada y reuniones organizadas sin esfuerzo",
+        "hero.subtitle": "Work Activity Panel gestiona tus herramientas de trabajo: abre Slack al iniciar tu horario laboral, sincroniza tu Google Calendar en tiempo real y lanza Granola 5 minutos antes de cada reunión.",
+        "hero.ctaDownload": "Descargar Instalador (.exe)",
+        "hero.ctaGithub": "Ver en GitHub",
+
+        "mockup.calConnected": "Calendario conectado",
+        "mockup.offHours": "Fuera de Horario Laboral",
+        "mockup.vacationTitle": "Modo Vacaciones",
+        "mockup.vacationDesc": "Pausa la apertura automática de Slack y Granola",
+        "mockup.disabled": "Desactivado",
+        "mockup.enabled": "Activado",
+        "mockup.appsSectionTitle": "Aplicaciones de Trabajo",
+        "mockup.running": "En ejecución",
+        "mockup.paused": "Pausado",
+        "mockup.openSlack": "Abrir Slack",
+        "mockup.openGranola": "Abrir Granola",
+        "mockup.meetingsTitle": "Reuniones de Hoy",
+        "mockup.m1Title": "Daily Sync & Standup",
+        "mockup.m2Title": "Sprint Planning & Arquitectura",
+        "mockup.meeting5Min": "Granola se abrirá 5 min antes",
+        "mockup.joinMeeting": "Unirme a la reunión",
+        "mockup.interactiveHint": "Vista previa fiel de la interfaz de la aplicación en Windows 11.",
+
+        "features.tag": "Potencia & Simplicidad",
+        "features.title": "Diseñado para la máxima productividad diaria",
+        "features.subtitle": "Elimina la fricción manual en tu rutina de trabajo. La aplicación automatiza tus herramientas justo cuando las necesitas.",
+        "features.f1Title": "Automatización de Granola",
+        "features.f1Desc": "Detecta automáticamente tus reuniones agendadas en Google Calendar y abre Granola 5 minutos antes de cada sesión para que tomes notas sin retrasos.",
+        "features.f2Title": "Gestión Inteligente de Slack",
+        "features.f2Desc": "Verifica y abre Slack al inicio exacto de tu horario laboral configurado, garantizando que estés disponible para tu equipo sin tener que recordarlo.",
+        "features.f3Title": "Sincronización Privada iCal",
+        "features.f3Desc": "Conexión directa mediante enlace privado RFC 5545 sin almacenar tokens ni enviar datos a servidores externos. Detecta enlaces de Meet, Zoom, Teams y Webex.",
+        "features.f4Title": "Modo Vacaciones & Horario",
+        "features.f4Desc": "Define libremente tus días y franjas de trabajo. Activa el Modo Vacaciones con un solo clic para pausar cualquier alerta y automatización durante tu descanso.",
+        "features.f5Title": "Cero Polling y Bajo Consumo",
+        "features.f5Desc": "Arquitectura de temporizadores programados de alta precisión en C# / .NET 9. Cero consumo innecesario de batería o CPU en segundo plano.",
+        "features.f6Title": "Fluent Design & System Tray",
+        "features.f6Desc": "Construido con WinUI 3 y material Mica para Windows 11. Se minimiza silenciosamente en la bandeja del sistema (System Tray) para no estorbar en tu pantalla.",
+
+        "guide.tag": "Configuración Rápida",
+        "guide.title": "Listo en menos de 2 minutos",
+        "guide.subtitle": "Sin registros complicados ni cuentas de terceros. Configura y empieza de inmediato.",
+        "guide.step1Title": "Descarga e Instala",
+        "guide.step1Desc": "Descarga el instalador oficial de Windows (`WorkActivityPanel-Setup-v1.0.0.exe`) y sigue el asistente rápido de Inno Setup.",
+        "guide.step2Title": "Conecta tu Calendario",
+        "guide.step2Desc": "Copia la dirección secreta iCal (`.ics`) de los ajustes de tu Google Calendar y pégala en la pestaña de Configuración de la app.",
+        "guide.step3Title": "Establece tu Horario",
+        "guide.step3Desc": "Selecciona tus días laborales y tu rango de horas. La aplicación se encargará de todo lo demás en segundo plano.",
+
+        "download.tag": "Instalación & Descargas",
+        "download.title": "Descarga Work Activity Panel v1.0.0",
+        "download.subtitle": "Versión nativa para sistemas Windows de 64 bits. Elige tu formato preferido:",
+        "download.installerTitle": "Instalador para Windows (.exe)",
+        "download.installerSub": "Recomendado • Asistente de instalación Inno Setup (85 MB)",
+        "download.btnExe": "Descargar .exe",
+        "download.portableTitle": "Paquete Portable (.zip)",
+        "download.portableSub": "Sin instalación • Ejecución directa descomprimiendo (106 MB)",
+        "download.btnZip": "Descargar .zip",
+        "download.reqTitle": "Requisitos del Sistema",
+        "download.reqWindows": "Windows 11 o Windows 10 (versión 1809+)",
+        "download.reqArch": "Arquitectura x64 (64-bit)",
+        "download.reqDotnet": ".NET 9 Runtime",
+        "download.reqApps": "Slack & Granola instalados (opcional)",
+
+        "faq.tag": "FAQ",
+        "faq.title": "Preguntas Frecuentes",
+        "faq.subtitle": "Respuestas claras sobre la privacidad, funcionamiento y compatibilidad de la app.",
+        "faq.q1": "¿Cómo se conecta con Google Calendar?",
+        "faq.a1": "Utiliza la dirección secreta en formato iCal (`.ics`) que provee Google Calendar. Esto permite consultar tus eventos de forma directa y privada sin necesidad de OAuth2 complejo ni servidores intermediarios que almacenen tus datos.",
+        "faq.q2": "¿Cómo detecta cuándo debe abrir Granola?",
+        "faq.a2": "El motor de calendario analiza la hora de inicio de cada reunión y programa un temporizador exacto para lanzar el ejecutable de Granola 5 minutos antes de la hora acordada.",
+        "faq.q3": "¿Consume mucha batería o memoria RAM?",
+        "faq.a3": "No. La aplicación está diseñada bajo el principio de cero sondeo (zero-polling). Usa temporizadores de precisión en C# que despiertan la aplicación solo cuando es estrictamente necesario, manteniéndose en modo suspensión el resto del tiempo.",
+        "faq.q4": "¿Qué plataformas de videollamadas son compatibles?",
+        "faq.a4": "El analizador detecta automáticamente enlaces de Google Meet, Zoom, Microsoft Teams, Webex y GoToMeeting presentes en la descripción o ubicación del evento, permitiendo unirte con un solo clic.",
+
+        "footer.copyright": "© 2026 Work Activity Panel. Desarrollado con WinUI 3 y .NET 9 para Windows 11."
+      },
+      en: {
+        "nav.features": "Features",
+        "nav.preview": "App Preview",
+        "nav.guide": "How It Works",
+        "nav.download": "Download",
+        "nav.faq": "FAQ",
+        "nav.btnDownload": "Download v1.0.0",
+
+        "hero.badge": "⚡ Native Windows 11 Desktop App",
+        "hero.title": "Effortless workday routines and meeting readiness",
+        "hero.subtitle": "Work Activity Panel automates your workflow: launches Slack right when your workday begins, syncs your Google Calendar in real time, and auto-opens Granola 5 minutes before every meeting.",
+        "hero.ctaDownload": "Download Installer (.exe)",
+        "hero.ctaGithub": "View on GitHub",
+
+        "mockup.calConnected": "Calendar connected",
+        "mockup.offHours": "Off Working Hours",
+        "mockup.vacationTitle": "Vacation Mode",
+        "mockup.vacationDesc": "Pauses automated Slack and Granola triggers",
+        "mockup.disabled": "Disabled",
+        "mockup.enabled": "Enabled",
+        "mockup.appsSectionTitle": "Work Applications",
+        "mockup.running": "Running",
+        "mockup.paused": "Paused",
+        "mockup.openSlack": "Open Slack",
+        "mockup.openGranola": "Open Granola",
+        "mockup.meetingsTitle": "Today's Meetings",
+        "mockup.m1Title": "Daily Sync & Standup",
+        "mockup.m2Title": "Sprint Planning & Architecture",
+        "mockup.meeting5Min": "Granola will open 5 min before",
+        "mockup.joinMeeting": "Join meeting",
+        "mockup.interactiveHint": "Authentic application interface preview on Windows 11.",
+
+        "features.tag": "Power & Simplicity",
+        "features.title": "Crafted for maximum daily productivity",
+        "features.subtitle": "Eliminate manual friction in your daily routine. The app automates your tools at the precise moment you need them.",
+        "features.f1Title": "Granola Pre-Meeting Automation",
+        "features.f1Desc": "Automatically detects Google Calendar events and launches Granola 5 minutes before each session for effortless meeting note-taking.",
+        "features.f2Title": "Smart Slack Integration",
+        "features.f2Desc": "Ensures Slack is running at the start of your work hours, so you're always ready and available for your team without manual checking.",
+        "features.f3Title": "Private RFC 5545 iCal Sync",
+        "features.f3Desc": "Direct connection via private iCal feed. Zero cloud tokens stored, zero third-party servers. Auto-detects Meet, Zoom, Teams and Webex join links.",
+        "features.f4Title": "Vacation Mode & Custom Hours",
+        "features.f4Desc": "Freely set your working days and schedule. Enable Vacation Mode with a single toggle to pause all app triggers during your time off.",
+        "features.f5Title": "Zero-Polling & Low Footprint",
+        "features.f5Desc": "High-precision scheduled timer architecture in C# / .NET 9. Zero continuous background polling or battery drain.",
+        "features.f6Title": "Fluent Design & System Tray",
+        "features.f6Desc": "Built with WinUI 3 and native Mica materials for Windows 11. Minimizes unobtrusively to the system tray.",
+
+        "guide.tag": "Quick Setup",
+        "guide.title": "Up and running in 2 minutes",
+        "guide.subtitle": "No complex signups or cloud accounts required. Configure and get started right away.",
+        "guide.step1Title": "Download & Install",
+        "guide.step1Desc": "Download the official Windows installer (`WorkActivityPanel-Setup-v1.0.0.exe`) and complete the lightweight Inno Setup wizard.",
+        "guide.step2Title": "Connect Your Calendar",
+        "guide.step2Desc": "Copy the secret iCal address (`.ics`) from your Google Calendar settings and paste it into the app's Settings page.",
+        "guide.step3Title": "Set Your Schedule",
+        "guide.step3Desc": "Configure your active work days and hours. The background engine takes care of the rest.",
+
+        "download.tag": "Installation & Downloads",
+        "download.title": "Download Work Activity Panel v1.0.0",
+        "download.subtitle": "Native 64-bit Windows release. Choose your preferred package:",
+        "download.installerTitle": "Windows Installer (.exe)",
+        "download.installerSub": "Recommended • Inno Setup Installation Wizard (85 MB)",
+        "download.btnExe": "Download .exe",
+        "download.portableTitle": "Portable Package (.zip)",
+        "download.portableSub": "No install needed • Extract and run (106 MB)",
+        "download.btnZip": "Download .zip",
+        "download.reqTitle": "System Requirements",
+        "download.reqWindows": "Windows 11 or Windows 10 (version 1809+)",
+        "download.reqArch": "x64 Architecture (64-bit)",
+        "download.reqDotnet": ".NET 9 Runtime",
+        "download.reqApps": "Slack & Granola installed (optional)",
+
+        "faq.tag": "FAQ",
+        "faq.title": "Frequently Asked Questions",
+        "faq.subtitle": "Clear answers regarding privacy, architecture, and compatibility.",
+        "faq.q1": "How does it connect to Google Calendar?",
+        "faq.a1": "It uses Google Calendar's private iCal (`.ics`) address. This enables lightweight, direct fetching without requiring OAuth authorization or intermediary servers.",
+        "faq.q2": "How does it know when to launch Granola?",
+        "faq.a2": "The calendar engine parses upcoming meeting start times and schedules a high-precision timer that opens Granola exactly 5 minutes prior to the event.",
+        "faq.q3": "Does it drain battery or memory in the background?",
+        "faq.a3": "No. The app operates on an event-driven model with zero continuous polling loops, sleeping silently in the system tray when idle.",
+        "faq.q4": "Which video meeting services are supported?",
+        "faq.a4": "The built-in parser automatically identifies meeting URLs for Google Meet, Zoom, Microsoft Teams, Webex, and GoToMeeting, providing instant 1-click join buttons.",
+
+        "footer.copyright": "© 2026 Work Activity Panel. Built with WinUI 3 and .NET 9 for Windows 11."
+      }
+    };
+
+    // --- LANGUAGE TOGGLE LOGIC ---
+    let currentLang = localStorage.getItem('wap_lang') || 'es';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('wap_lang', lang);
+      document.getElementById('langLabel').textContent = lang === 'es' ? 'EN' : 'ES';
+      document.documentElement.lang = lang;
+
+      document.querySelectorAll('[data-i18n]').forEach(elem => {
+        const key = elem.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+          elem.textContent = translations[lang][key];
+        }
+      });
+
+      // Update date format based on language
+      updateClock();
+    }
+
+    document.getElementById('langToggle').addEventListener('click', () => {
+      setLanguage(currentLang === 'es' ? 'en' : 'es');
+    });
+
+    // Initialize Lang
+    setLanguage(currentLang);
+
+    // --- MOCKUP CLOCK & SIMULATOR LOGIC ---
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const clockElem = document.getElementById('mockupClock');
+      if (clockElem) clockElem.textContent = `${hours}:${minutes}`;
+
+      const dateElem = document.getElementById('mockupDate');
+      if (dateElem) {
+        if (currentLang === 'es') {
+          const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+          const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+          dateElem.textContent = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+        } else {
+          const options = { weekday: 'long', month: 'long', day: 'numeric' };
+          dateElem.textContent = now.toLocaleDateString('en-US', options);
+        }
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Vacation Mode Visual Toggle
+    const vacationToggle = document.getElementById('mockupVacationToggle');
+    const toggleLabel = document.getElementById('mockupToggleLabel');
+    const statusTitle = document.getElementById('mockupStatusTitle');
+    const slackStatus = document.getElementById('mockupSlackStatus');
+    const granolaStatus = document.getElementById('mockupGranolaStatus');
+    const slackDot = document.getElementById('mockupSlackDot');
+    const granolaDot = document.getElementById('mockupGranolaDot');
+
+    vacationToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        toggleLabel.textContent = currentLang === 'es' ? 'Activado' : 'Enabled';
+        statusTitle.textContent = currentLang === 'es' ? 'Modo Vacaciones Activo' : 'Vacation Mode Active';
+        slackStatus.textContent = currentLang === 'es' ? 'Pausado' : 'Paused';
+        granolaStatus.textContent = currentLang === 'es' ? 'Pausado' : 'Paused';
+        slackDot.style.background = '#eab308';
+        slackDot.style.boxShadow = '0 0 6px rgba(234, 179, 8, 0.6)';
+        granolaDot.style.background = '#eab308';
+        granolaDot.style.boxShadow = '0 0 6px rgba(234, 179, 8, 0.6)';
+      } else {
+        toggleLabel.textContent = currentLang === 'es' ? 'Desactivado' : 'Disabled';
+        statusTitle.textContent = currentLang === 'es' ? 'Fuera de Horario Laboral' : 'Off Working Hours';
+        slackStatus.textContent = currentLang === 'es' ? 'En ejecución' : 'Running';
+        granolaStatus.textContent = currentLang === 'es' ? 'En ejecución' : 'Running';
+        slackDot.style.background = '#22c55e';
+        slackDot.style.boxShadow = '0 0 6px rgba(34, 197, 94, 0.6)';
+        granolaDot.style.background = '#22c55e';
+        granolaDot.style.boxShadow = '0 0 6px rgba(34, 197, 94, 0.6)';
+      }
+    });
+  </script>
+</body>
+</html>
