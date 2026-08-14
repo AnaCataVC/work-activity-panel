@@ -74,29 +74,65 @@ public class AppLauncherService : IAppLauncherService
     }
 
     /// <inheritdoc />
+    public string? GetGranolaExecutablePath()
+    {
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+
+        string[] candidatePaths =
+        [
+            Path.Combine(localAppData, "Programs", "@granolaelectron", "Granola.exe"),
+            Path.Combine(localAppData, "Programs", "Granola", "Granola.exe"),
+            Path.Combine(localAppData, "Granola", "Granola.exe"),
+            Path.Combine(programFiles, "Granola", "Granola.exe"),
+            Path.Combine(programFilesX86, "Granola", "Granola.exe")
+        ];
+
+        return candidatePaths.FirstOrDefault(File.Exists);
+    }
+
+    /// <inheritdoc />
     public void LaunchGranola()
     {
         try
         {
-            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string granolaPath = Path.Combine(localAppData, "Granola", "Granola.exe");
+            string? granolaPath = GetGranolaExecutablePath();
 
-            if (File.Exists(granolaPath))
+            if (!string.IsNullOrEmpty(granolaPath))
             {
+                _logger.LogInformation("Launching Granola from: {Path}", granolaPath);
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = granolaPath,
                     UseShellExecute = true
                 });
+                return;
             }
-            else
+
+            // Fallback 1: Windows URI protocol scheme
+            _logger.LogInformation("Granola binary not found in standard paths. Attempting to launch via URI scheme 'granola:'...");
+            try
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "Granola.exe",
+                    FileName = "granola:",
                     UseShellExecute = true
                 });
+                return;
             }
+            catch (Exception uriEx)
+            {
+                _logger.LogWarning(uriEx, "Failed to launch Granola via URI scheme.");
+            }
+
+            // Fallback 2: Direct executable name in PATH
+            _logger.LogInformation("Attempting fallback launch using executable name 'Granola.exe'...");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "Granola.exe",
+                UseShellExecute = true
+            });
         }
         catch (Exception ex)
         {

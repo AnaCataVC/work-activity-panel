@@ -34,4 +34,9 @@ public interface IAppLauncherService
     /// Launches Granola.
     /// </summary>
     void LaunchGranola();
+
+    /// <summary>
+    /// Resolves the absolute path to the Granola executable if installed on the system.
+    /// </summary>
+    string? GetGranolaExecutablePath();
 }
