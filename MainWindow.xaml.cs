@@ -8,6 +8,8 @@ namespace WorkActivityPanel;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+    private bool _isExplicitExit;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -21,11 +23,14 @@ public sealed partial class MainWindow : Window
             AppWindow.SetIcon(iconPath);
         }
 
-        // Hide to tray on window closing instead of quitting
+        // Hide to tray on window closing unless explicitly exiting
         AppWindow.Closing += (sender, args) =>
         {
-            args.Cancel = true;
-            AppWindow.Hide();
+            if (!_isExplicitExit)
+            {
+                args.Cancel = true;
+                AppWindow.Hide();
+            }
         };
 
         // Left click on tray icon toggles window visibility
@@ -61,7 +66,10 @@ public sealed partial class MainWindow : Window
 
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
+        _isExplicitExit = true;
         TrayIcon.Dispose();
         Application.Current.Exit();
+        System.Environment.Exit(0);
     }
 }
+
