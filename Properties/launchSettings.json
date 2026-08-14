@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "WorkActivityPanel (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "WorkActivityPanel (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

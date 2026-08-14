@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="WorkActivityPanel.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WorkActivityPanel"
+    xmlns:vm="using:WorkActivityPanel.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <Grid Padding="40">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16" Margin="0,0,0,24">
+            <Button Click="BackButton_Click" Style="{StaticResource NavigationBackButtonNormalStyle}" />
+            <TextBlock Text="Ajustes y Configuración" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="24" MaxWidth="640" HorizontalAlignment="Left">
+                
+                <!-- Save Confirmation InfoBar -->
+                <InfoBar Title="Configuración guardada"
+                         Message="{x:Bind ViewModel.SaveConfirmationMessage, Mode=OneWay}"
+                         IsOpen="{x:Bind ViewModel.ShowSaveConfirmation, Mode=TwoWay}"
+                         Severity="Success"
+                         IsClosable="True" />
+
+                <!-- Google Calendar iCal Integration -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Google Calendar" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Copia la 'Secret address in iCal format' de Google Calendar y pégala aquí para sincronizar tus reuniones." 
+                                       Style="{StaticResource CaptionTextBlockStyle}" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                            <TextBox Header="Dirección secreta iCal (.ics)"
+                                     Text="{x:Bind ViewModel.CalendarICalUrl, Mode=TwoWay}"
+                                     PlaceholderText="https://calendar.google.com/calendar/ical/.../basic.ics" />
+
+                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" VerticalAlignment="Center">
+                                <Button Content="Guardar y Sincronizar" Style="{StaticResource AccentButtonStyle}"
+                                        Command="{x:Bind ViewModel.SaveCalendarUrlCommand}" />
+
+                                <Button Content="Desconectar"
+                                        Command="{x:Bind ViewModel.ClearCalendarUrlCommand}"
+                                        Visibility="{x:Bind ViewModel.IsCalendarConnected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}"/>
+
+                                <TextBlock Text="{x:Bind ViewModel.CalendarConnectionStatus, Mode=OneWay}" 
+                                           VerticalAlignment="Center" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Schedule Settings -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Horario Laboral" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock Text="Hora de Inicio" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <TimePicker Time="{x:Bind ViewModel.WorkStartTime, Mode=TwoWay}" />
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock Text="Hora de Fin" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <TimePicker Time="{x:Bind ViewModel.WorkEndTime, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Días Laborales" Margin="0,16,0,8" Style="{StaticResource BodyTextBlockStyle}" />
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Row="0" Grid.Column="0" Content="Lunes" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="0" Grid.Column="1" Content="Martes" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="0" Grid.Column="2" Content="Miércoles" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="1" Grid.Column="0" Content="Jueves" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="1" Grid.Column="1" Content="Viernes" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="1" Grid.Column="2" Content="Sábado" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="2" Grid.Column="0" Content="Domingo" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- General Settings -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="General" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="24">
+                            <StackPanel>
+                                <ToggleSwitch Header="Modo Vacaciones" 
+                                              IsOn="{x:Bind ViewModel.IsVacationMode, Mode=TwoWay}" />
+                                <TextBlock Text="Pausa la apertura de aplicaciones y alertas mientras estés de vacaciones"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Margin="0,-8,0,0" />
+                            </StackPanel>
+                            
+                            <ToggleSwitch Header="Iniciar con Windows" 
+                                          IsOn="{x:Bind ViewModel.IsAutostartEnabled, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <Button Content="Guardar Horario y Preferencias" Style="{StaticResource AccentButtonStyle}"
+                        Command="{x:Bind ViewModel.SaveSettingsCommand}" HorizontalAlignment="Right" Margin="0,16,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>
