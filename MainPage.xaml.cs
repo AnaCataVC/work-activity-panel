@@ -15,6 +15,12 @@ public sealed partial class MainPage : Page
         InitializeComponent();
     }
     
+    protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        ViewModel.RefreshScheduleAndStatus();
+    }
+
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         Frame.Navigate(typeof(SettingsPage));
@@ -40,4 +46,10 @@ public sealed partial class MainPage : Page
     {
         ViewModel.ShowUpcomingMeetingBanner = false;
     }
+
+    private void UpdateInfoBar_CloseButtonClick(InfoBar sender, object args)
+    {
+        ViewModel.ShowUpdateBanner = false;
+    }
 }
+

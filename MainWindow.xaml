@@ -25,18 +25,18 @@
             ToolTipText="Work Activity Panel">
             <tb:TaskbarIcon.ContextFlyout>
                 <MenuFlyout>
-                    <MenuFlyoutItem Text="Mostrar Panel" Click="ShowPanel_Click">
+                    <MenuFlyoutItem Text="Mostrar Panel" Command="{x:Bind ShowPanelCommand}">
                         <MenuFlyoutItem.Icon>
                             <FontIcon Glyph="&#xE737;" />
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
-                    <MenuFlyoutItem Text="Minimizar a la bandeja" Click="HidePanel_Click">
+                    <MenuFlyoutItem Text="Minimizar a la bandeja" Command="{x:Bind HidePanelCommand}">
                         <MenuFlyoutItem.Icon>
                             <FontIcon Glyph="&#xE738;" />
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
                     <MenuFlyoutSeparator />
-                    <MenuFlyoutItem Text="Salir" Click="Exit_Click">
+                    <MenuFlyoutItem Text="Salir" Command="{x:Bind ExitCommand}">
                         <MenuFlyoutItem.Icon>
                             <FontIcon Glyph="&#xE7E8;" />
                         </MenuFlyoutItem.Icon>

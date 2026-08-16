@@ -23,7 +23,7 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="24" MaxWidth="640" HorizontalAlignment="Left">
+            <StackPanel Spacing="24" MaxWidth="680" HorizontalAlignment="Left">
                 
                 <!-- Save Confirmation InfoBar -->
                 <InfoBar Title="Configuración guardada"
@@ -31,6 +31,66 @@
                          IsOpen="{x:Bind ViewModel.ShowSaveConfirmation, Mode=TwoWay}"
                          Severity="Success"
                          IsClosable="True" />
+
+                <!-- Schedule Settings & Vacation Mode -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Horario Laboral" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock Text="Hora de Inicio" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <TimePicker Time="{x:Bind ViewModel.WorkStartTime, Mode=TwoWay}" />
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock Text="Hora de Fin" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <TimePicker Time="{x:Bind ViewModel.WorkEndTime, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Días Laborales" Margin="0,8,0,0" Style="{StaticResource BodyTextBlockStyle}" />
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Row="0" Grid.Column="0" Content="Lunes" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="0" Grid.Column="1" Content="Martes" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="0" Grid.Column="2" Content="Miércoles" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="1" Grid.Column="0" Content="Jueves" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="1" Grid.Column="1" Content="Viernes" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="1" Grid.Column="2" Content="Sábado" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                                <CheckBox Grid.Row="2" Grid.Column="0" Content="Domingo" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" Margin="0,0,16,8"/>
+                            </Grid>
+
+                            <!-- Vacation Mode under Work Schedule -->
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0" Margin="0,4,0,0">
+                                <StackPanel Spacing="4">
+                                    <ToggleSwitch Header="Modo Vacaciones" 
+                                                  IsOn="{x:Bind ViewModel.IsVacationMode, Mode=TwoWay}" />
+                                    <TextBlock Text="Pausa la apertura de aplicaciones y alertas mientras estés de vacaciones"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Margin="0,-8,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
                 <!-- Google Calendar iCal Integration -->
                 <StackPanel Spacing="16">
@@ -64,50 +124,77 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Schedule Settings -->
+                <!-- Google Drive Backup Integration -->
                 <StackPanel Spacing="16">
-                    <TextBlock Text="Horario Laboral" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock Text="Copia de Seguridad en Google Drive" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="20">
                         <StackPanel Spacing="16">
+                            <TextBlock Text="Sincroniza tus carpetas de trabajo hacia Google Drive mediante una Web App de Google Apps Script sin requerir clientes de terceros ni proyectos GCP." 
+                                       Style="{StaticResource CaptionTextBlockStyle}" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                            <TextBox Header="URL de la Web App de Google Apps Script (/exec)"
+                                     Text="{x:Bind ViewModel.DriveWebAppUrl, Mode=TwoWay}"
+                                     PlaceholderText="https://script.google.com/macros/s/.../exec" />
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" Spacing="8">
-                                    <TextBlock Text="Hora de Inicio" Style="{StaticResource BodyTextBlockStyle}" />
-                                    <TimePicker Time="{x:Bind ViewModel.WorkStartTime, Mode=TwoWay}" />
-                                </StackPanel>
-                                
-                                <StackPanel Grid.Column="1" Spacing="8">
-                                    <TextBlock Text="Hora de Fin" Style="{StaticResource BodyTextBlockStyle}" />
-                                    <TimePicker Time="{x:Bind ViewModel.WorkEndTime, Mode=TwoWay}" />
-                                </StackPanel>
+                                <TextBox Grid.Column="0" Header="Carpeta local de trabajo a respaldar"
+                                         Text="{x:Bind ViewModel.DriveLocalFolderPath, Mode=TwoWay}"
+                                         PlaceholderText="C:\Users\...\Documents\Trabajo" />
+                                <Button Grid.Column="1" Content="Examinar..." Margin="8,26,0,0"
+                                        Click="BrowseFolderButton_Click" />
                             </Grid>
 
-                            <TextBlock Text="Días Laborales" Margin="0,16,0,8" Style="{StaticResource BodyTextBlockStyle}" />
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <CheckBox Grid.Row="0" Grid.Column="0" Content="Lunes" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                                <CheckBox Grid.Row="0" Grid.Column="1" Content="Martes" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                                <CheckBox Grid.Row="0" Grid.Column="2" Content="Miércoles" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                                <CheckBox Grid.Row="1" Grid.Column="0" Content="Jueves" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                                <CheckBox Grid.Row="1" Grid.Column="1" Content="Viernes" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                                <CheckBox Grid.Row="1" Grid.Column="2" Content="Sábado" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                                <CheckBox Grid.Row="2" Grid.Column="0" Content="Domingo" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" Margin="0,0,16,8"/>
-                            </Grid>
+                            <!-- Test Connection & Status -->
+                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0" VerticalAlignment="Center">
+                                <Button Content="Probar Conexión"
+                                        Command="{x:Bind ViewModel.TestDriveConnectionCommand}"
+                                        IsEnabled="{x:Bind ViewModel.IsDriveTesting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}" />
+
+                                <ProgressRing IsActive="{x:Bind ViewModel.IsDriveTesting, Mode=OneWay}" Width="16" Height="16" />
+
+                                <TextBlock Text="{x:Bind ViewModel.DriveConnectionStatus, Mode=OneWay}" 
+                                           VerticalAlignment="Center" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+
+                            <!-- Filters & AutoSync Options -->
+                            <Expander Header="Filtros y opciones avanzadas de sincronización" HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                                <StackPanel Spacing="14" Padding="0,12,0,0">
+                                    <TextBox Header="Extensiones permitidas (Whitelist, opcional ej: .pdf, .docx, .xlsx)"
+                                             Text="{x:Bind ViewModel.DriveIncludedExtensions, Mode=TwoWay}"
+                                             PlaceholderText="Dejar vacío para incluir todos los tipos permitidos" />
+
+                                    <TextBox Header="Extensiones ignoradas (Blacklist)"
+                                             Text="{x:Bind ViewModel.DriveExcludedExtensions, Mode=TwoWay}"
+                                             PlaceholderText=".tmp, .log, .exe, .bak, .zip" />
+
+                                    <TextBox Header="Carpetas ignoradas"
+                                             Text="{x:Bind ViewModel.DriveExcludedFolders, Mode=TwoWay}"
+                                             PlaceholderText="node_modules, .git, bin, obj, .vs, temp" />
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ToggleSwitch Grid.Column="0" Header="Sincronización Incremental (SHA-256)" 
+                                                      IsOn="{x:Bind ViewModel.DriveOnlyModifiedOrNew, Mode=TwoWay}" />
+                                        <ToggleSwitch Grid.Column="1" Header="Auto-sync al terminar jornada" 
+                                                      IsOn="{x:Bind ViewModel.DriveAutoSyncOnWorkEnd, Mode=TwoWay}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Expander>
+
+                            <Button Content="Guardar Ajustes de Google Drive" Style="{StaticResource AccentButtonStyle}"
+                                    Command="{x:Bind ViewModel.SaveDriveSettingsCommand}" HorizontalAlignment="Right" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -118,25 +205,51 @@
                     <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="24">
-                            <StackPanel>
-                                <ToggleSwitch Header="Modo Vacaciones" 
-                                              IsOn="{x:Bind ViewModel.IsVacationMode, Mode=TwoWay}" />
-                                <TextBlock Text="Pausa la apertura de aplicaciones y alertas mientras estés de vacaciones"
-                                           Style="{StaticResource CaptionTextBlockStyle}"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           Margin="0,-8,0,0" />
-                            </StackPanel>
-                            
+                        <StackPanel Spacing="16">
                             <ToggleSwitch Header="Iniciar con Windows" 
                                           IsOn="{x:Bind ViewModel.IsAutostartEnabled, Mode=TwoWay}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
 
-                <Button Content="Guardar Horario y Preferencias" Style="{StaticResource AccentButtonStyle}"
+                <!-- About & Updates Section -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Acerca de y Actualizaciones" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Text="{x:Bind ViewModel.AppVersionText, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind ViewModel.UpdateStatusText, Mode=OneWay}" 
+                                               Style="{StaticResource CaptionTextBlockStyle}" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button Content="Buscar Actualizaciones"
+                                            Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                                            IsEnabled="{x:Bind ViewModel.IsCheckingUpdates, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}" />
+                                    <Button Content="Actualizar Ahora" Style="{StaticResource AccentButtonStyle}"
+                                            Command="{x:Bind ViewModel.DownloadAndInstallUpdateCommand}"
+                                            Visibility="{x:Bind ViewModel.IsUpdateAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            IsEnabled="{x:Bind ViewModel.IsDownloadingUpdate, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}" />
+                                </StackPanel>
+                            </Grid>
+                            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" Maximum="100" 
+                                         Visibility="{x:Bind ViewModel.IsDownloadingUpdate, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <Button Content="Guardar Todo" Style="{StaticResource AccentButtonStyle}"
                         Command="{x:Bind ViewModel.SaveSettingsCommand}" HorizontalAlignment="Right" Margin="0,16,0,0"/>
             </StackPanel>
         </ScrollViewer>
     </Grid>
 </Page>
+

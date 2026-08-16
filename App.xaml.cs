@@ -26,6 +26,9 @@ public partial class App : Application
                 services.AddSingleton<IScheduleService, ScheduleService>();
                 services.AddSingleton<IAppLauncherService, AppLauncherService>();
                 services.AddSingleton<IGoogleCalendarService, GoogleCalendarService>();
+                services.AddSingleton<IDriveSyncService, DriveSyncService>();
+                services.AddSingleton<IGitHubAuthService, GitHubAuthService>();
+                services.AddSingleton<IUpdateService, UpdateService>();
                 
                 // ViewModels
                 services.AddSingleton<DashboardViewModel>();

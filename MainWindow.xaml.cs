@@ -10,9 +10,17 @@ public sealed partial class MainWindow : Window
 {
     private bool _isExplicitExit;
 
+    public IRelayCommand ShowPanelCommand { get; }
+    public IRelayCommand HidePanelCommand { get; }
+    public IRelayCommand ExitCommand { get; }
+
     public MainWindow()
     {
         InitializeComponent();
+
+        ShowPanelCommand = new RelayCommand(ShowPanel);
+        HidePanelCommand = new RelayCommand(HidePanel);
+        ExitCommand = new RelayCommand(ExitApplication);
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -53,18 +61,18 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ShowPanel_Click(object sender, RoutedEventArgs e)
+    private void ShowPanel()
     {
         AppWindow.Show();
         AppWindow.MoveInZOrderAtTop();
     }
 
-    private void HidePanel_Click(object sender, RoutedEventArgs e)
+    private void HidePanel()
     {
         AppWindow.Hide();
     }
 
-    private void Exit_Click(object sender, RoutedEventArgs e)
+    private void ExitApplication()
     {
         _isExplicitExit = true;
         TrayIcon.Dispose();

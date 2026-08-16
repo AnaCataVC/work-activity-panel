@@ -11,14 +11,23 @@
   <ItemGroup>
     <Compile Include="..\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
     <Compile Include="..\Helpers\ICalParser.cs" Link="Helpers\ICalParser.cs" />
+    <Compile Include="..\Helpers\LocalSettingsHelper.cs" Link="Helpers\LocalSettingsHelper.cs" />
     <Compile Include="..\Services\AppLauncherService.cs" Link="Services\AppLauncherService.cs" />
     <Compile Include="..\Services\Interfaces\IAppLauncherService.cs" Link="Services\Interfaces\IAppLauncherService.cs" />
+    <Compile Include="..\Services\DriveSyncService.cs" Link="Services\DriveSyncService.cs" />
+    <Compile Include="..\Services\Interfaces\IDriveSyncService.cs" Link="Services\Interfaces\IDriveSyncService.cs" />
+    <Compile Include="..\Services\Interfaces\IScheduleService.cs" Link="Services\Interfaces\IScheduleService.cs" />
+    <Compile Include="..\Services\GitHubAuthService.cs" Link="Services\GitHubAuthService.cs" />
+    <Compile Include="..\Services\Interfaces\IGitHubAuthService.cs" Link="Services\Interfaces\IGitHubAuthService.cs" />
+    <Compile Include="..\Services\UpdateService.cs" Link="Services\UpdateService.cs" />
+    <Compile Include="..\Services\Interfaces\IUpdateService.cs" Link="Services\Interfaces\IUpdateService.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
   </ItemGroup>

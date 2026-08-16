@@ -18,7 +18,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header Section -->
-        <Grid Grid.Row="0" Margin="0,0,0,24">
+        <Grid Grid.Row="0" Margin="0,0,0,16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -30,15 +30,47 @@
                                Style="{StaticResource TitleLargeTextBlockStyle}" 
                                FontSize="44" FontWeight="SemiLight" VerticalAlignment="Center"/>
 
-                    <!-- Calendar Synced Badge -->
-                    <Border Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" 
-                            CornerRadius="12" Padding="10,4" VerticalAlignment="Center" Margin="8,0,0,0"
-                            Visibility="{x:Bind ViewModel.IsGoogleConnected, Mode=OneWay}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE787;" FontSize="14" Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
-                            <TextBlock Text="Calendario conectado" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                    </Border>
+                    <!-- Global Status Badges Row -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="4,0,0,0">
+                        <!-- Calendar Synced Badge -->
+                        <Border Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" 
+                                CornerRadius="12" Padding="8,4" VerticalAlignment="Center"
+                                ToolTipService.ToolTip="Google Calendar: Conectado y sincronizado"
+                                Visibility="{x:Bind ViewModel.IsGoogleConnected, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE787;" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+                                <TextBlock Text="Calendario" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- GitHub Active Account Badge -->
+                        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" 
+                                CornerRadius="12" Padding="8,4" VerticalAlignment="Center"
+                                ToolTipService.ToolTip="{x:Bind ViewModel.GitHubStatusText, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.IsGitHubAuthenticated, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE77B;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{x:Bind ViewModel.ActiveGitHubAccount, Mode=OneWay}" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           FontWeight="SemiBold"
+                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Drive Sync Status Badge -->
+                        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" 
+                                CornerRadius="12" Padding="8,4" VerticalAlignment="Center"
+                                ToolTipService.ToolTip="{x:Bind ViewModel.DriveSyncDetailText, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.IsDriveSyncConfigured, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE753;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <Ellipse Width="6" Height="6" Fill="{x:Bind ViewModel.DriveSyncStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{x:Bind ViewModel.DriveSyncStatusText, Mode=OneWay}" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
 
                 <TextBlock Text="{x:Bind ViewModel.CurrentDate, Mode=OneWay}" 
@@ -69,10 +101,38 @@
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="24">
 
+                <!-- New Version Update Available Banner -->
+                <InfoBar Title="¡Nueva versión disponible!"
+                         Message="{x:Bind ViewModel.UpdateBannerMessage, Mode=OneWay}"
+                         IsOpen="{x:Bind ViewModel.ShowUpdateBanner, Mode=OneWay}"
+                         Visibility="{x:Bind ViewModel.ShowUpdateBanner, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                         Severity="Informational"
+                         IsClosable="True"
+                         CloseButtonClick="UpdateInfoBar_CloseButtonClick">
+                    <InfoBar.ActionButton>
+                        <Button Content="Actualizar Ahora" 
+                                Command="{x:Bind ViewModel.DownloadAndInstallUpdateCommand}" 
+                                Style="{StaticResource AccentButtonStyle}"
+                                IsEnabled="{x:Bind ViewModel.IsDownloadingUpdate, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"/>
+                    </InfoBar.ActionButton>
+                    <InfoBar.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                            <HyperlinkButton Content="Ver notas de la versión en GitHub"
+                                             Command="{x:Bind ViewModel.OpenReleaseNotesCommand}" 
+                                             Padding="0" />
+                            <TextBlock Text="{x:Bind ViewModel.UpdateDownloadStatusText, Mode=OneWay}"
+                                       Visibility="{x:Bind ViewModel.IsDownloadingUpdate, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </InfoBar.Content>
+                </InfoBar>
+
                 <!-- Upcoming Meeting Banner (Fires 5 min prior to meetings) -->
                 <InfoBar Title="Próxima reunión en 5 minutos"
                          Message="{x:Bind ViewModel.UpcomingMeetingTitle, Mode=OneWay}"
                          IsOpen="{x:Bind ViewModel.ShowUpcomingMeetingBanner, Mode=OneWay}"
+                         Visibility="{x:Bind ViewModel.ShowUpcomingMeetingBanner, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                          Severity="Warning"
                          IsClosable="True"
                          CloseButtonClick="InfoBar_CloseButtonClick">
@@ -81,22 +141,17 @@
                     </InfoBar.ActionButton>
                 </InfoBar>
 
-                <!-- Quick Controls: Vacation Mode -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="8" Padding="16,14">
-                    <Grid>
-                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <FontIcon Glyph="&#xE709;" FontSize="20" Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
-                            <StackPanel>
-                                <TextBlock Text="Modo Vacaciones" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                <TextBlock Text="Pausa la apertura automática de Slack y Granola" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                        <ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Center" 
-                                      IsOn="{x:Bind ViewModel.IsVacationMode, Mode=TwoWay}" />
-                    </Grid>
-                </Border>
+                <!-- Vacation Mode Active Banner (Only visible when Vacation Mode is ON) -->
+                <InfoBar Title="Modo Vacaciones Activo"
+                         Message="La apertura automática de aplicaciones y las alertas de reuniones están pausadas."
+                         IsOpen="{x:Bind ViewModel.IsVacationMode, Mode=OneWay}"
+                         Visibility="{x:Bind ViewModel.IsVacationMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                         Severity="Warning"
+                         IsClosable="False">
+                    <InfoBar.ActionButton>
+                        <Button Content="Ajustes" Click="SettingsButton_Click" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
 
                 <!-- Application Status Section -->
                 <StackPanel Spacing="12">
@@ -168,8 +223,8 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Today's Schedule & Meetings (Google Calendar) -->
-                <StackPanel Spacing="12">
+                <!-- Today's Schedule & Meetings (Google Calendar) - Hidden when Vacation Mode is active -->
+                <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.IsVacationMode, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <Grid>
                         <TextBlock Text="Reuniones de Hoy" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center"/>
                         <TextBlock Text="Google Calendar" HorizontalAlignment="Right" VerticalAlignment="Center" 
@@ -221,6 +276,168 @@
                                 <FontIcon Glyph="&#xE787;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="No tienes reuniones programadas para hoy." Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- GitHub Account Switcher Section (Spacious Full Width Card) -->
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <TextBlock Text="Cuenta de GitHub" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center"/>
+                        <TextBlock Text="GitHub CLI" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                   Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="18">
+                        <StackPanel Spacing="14">
+                            <!-- Top Row: Avatar icon + Account info & Status Dot -->
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                    <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" Width="40" Height="40" CornerRadius="20">
+                                        <FontIcon Glyph="&#xE77B;" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind ViewModel.ActiveGitHubAccount, Mode=OneWay}" 
+                                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                       Visibility="{x:Bind ViewModel.IsGitHubAuthenticated, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            <TextBlock Text="No autenticado" 
+                                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                       Visibility="{x:Bind ViewModel.IsGitHubAuthenticated, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                            <Border Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" 
+                                                    CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                                                    Visibility="{x:Bind ViewModel.IsGitHubAuthenticated, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="Activa" Style="{StaticResource CaptionTextBlockStyle}" 
+                                                           Foreground="{ThemeResource SystemFillColorSuccessBrush}" FontSize="11"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{x:Bind ViewModel.GitHubStatusText, Mode=OneWay}" 
+                                                   Style="{StaticResource CaptionTextBlockStyle}" 
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" VerticalAlignment="Center">
+                                    <Ellipse Width="10" Height="10" Fill="{x:Bind ViewModel.GitHubStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="CLI Conectado" 
+                                               Style="{StaticResource CaptionTextBlockStyle}" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Visibility="{x:Bind ViewModel.IsGitHubInstalled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="CLI No encontrado" 
+                                               Style="{StaticResource CaptionTextBlockStyle}" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Visibility="{x:Bind ViewModel.IsGitHubInstalled, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Bottom Row: Switch action controls -->
+                            <Grid Margin="0,4,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <!-- 1-Click Quick Switch button when 2 accounts are available -->
+                                    <Button Command="{x:Bind ViewModel.QuickSwitchGitHubAccountCommand}"
+                                            IsEnabled="{x:Bind ViewModel.IsSwitchingGitHubAccount, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                            Visibility="{x:Bind ViewModel.AlternativeGitHubAccount, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"
+                                            Style="{StaticResource AccentButtonStyle}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE8AB;" FontSize="13"/>
+                                            <TextBlock Text="Cambiar a"/>
+                                            <TextBlock Text="{x:Bind ViewModel.AlternativeGitHubAccount, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Dropdown for selecting from all accounts -->
+                                    <ComboBox ItemsSource="{x:Bind ViewModel.AvailableGitHubAccounts, Mode=OneWay}"
+                                              SelectedItem="{x:Bind ViewModel.SelectedGitHubAccount, Mode=TwoWay}"
+                                              IsEnabled="{x:Bind ViewModel.IsSwitchingGitHubAccount, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                              MinWidth="150" VerticalAlignment="Center"
+                                              Visibility="{x:Bind ViewModel.HasMultipleGitHubAccounts, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                    <Button Content="Cambiar" Command="{x:Bind ViewModel.SwitchGitHubAccountCommand}"
+                                            IsEnabled="{x:Bind ViewModel.IsSwitchingGitHubAccount, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                            Visibility="{x:Bind ViewModel.HasMultipleGitHubAccounts, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                    <!-- Progress ring when switching -->
+                                    <ProgressRing Width="18" Height="18" IsActive="True"
+                                                  Visibility="{x:Bind ViewModel.IsSwitchingGitHubAccount, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  VerticalAlignment="Center" Margin="4,0"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                                    <Button Command="{x:Bind ViewModel.OpenGitHubProfileCommand}" ToolTipService.ToolTip="Abrir perfil en GitHub">
+                                        <FontIcon Glyph="&#xE8A7;" FontSize="14"/>
+                                    </Button>
+                                    <Button Command="{x:Bind ViewModel.RefreshGitHubStatusCommand}" ToolTipService.ToolTip="Actualizar estado de GitHub">
+                                        <FontIcon Glyph="&#xE72C;" FontSize="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Google Drive Backup Section (Full Width, Lo Último) -->
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <TextBlock Text="Copia de Seguridad de Archivos" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Google Drive" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                   Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="18">
+                        <StackPanel Spacing="14">
+                            <!-- Header Row -->
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE753;" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Respaldo en Google Drive" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                        <TextBlock Text="{x:Bind ViewModel.DriveSyncFolderDisplay, Mode=OneWay}" 
+                                                   Style="{StaticResource CaptionTextBlockStyle}" 
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="380"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" VerticalAlignment="Center">
+                                    <Ellipse Width="10" Height="10" Fill="{x:Bind ViewModel.DriveSyncStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{x:Bind ViewModel.DriveSyncStatusText, Mode=OneWay}" 
+                                               Style="{StaticResource CaptionTextBlockStyle}" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Progress Bar (Visible while syncing) -->
+                            <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <ProgressBar Value="{x:Bind ViewModel.DriveSyncProgress, Mode=OneWay}" Maximum="100" />
+                                <TextBlock Text="{x:Bind ViewModel.DriveSyncDetailText, Mode=OneWay}" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+
+                            <!-- Last sync info & Actions -->
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <TextBlock Text="Último respaldo:" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Text="{x:Bind ViewModel.DriveSyncLastSyncText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                                    <Button Content="Abrir Carpeta" Command="{x:Bind ViewModel.OpenDriveFolderCommand}"
+                                            Visibility="{x:Bind ViewModel.IsDriveSyncConfigured, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                    <Button Content="Cancelar" Command="{x:Bind ViewModel.CancelDriveSyncCommand}"
+                                            Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                    <Button Content="Sincronizar Ahora" Style="{StaticResource AccentButtonStyle}"
+                                            Command="{x:Bind ViewModel.SyncDriveNowCommand}"
+                                            Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
                 </StackPanel>
