@@ -115,6 +115,8 @@ iscc installer.iss
   ```csharp
   Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
   ```
+- **Unit Test Persistence Isolation:** Unit tests MUST NEVER write to or mutate the user's live `%LOCALAPPDATA%\WorkActivityPanel\Data\settings.json`. Static persistence helpers must support scoped temporary paths (`LocalSettingsHelper.SettingsFilePath`) and always clean up on completion.
+- **xUnit Static Helper Parallelization:** Disable parallel test execution in `WorkActivityPanel.Tests/TestAssemblyConfig.cs` (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`) to eliminate race conditions across shared static helpers.
 
 ---
 
@@ -145,4 +147,11 @@ Whenever a new release or version tag (e.g., `vX.Y.Z`) is planned and published,
    - Compile the Inno Setup installer via `iscc installer.iss` into `releases/`.
    - Compress the published output into `releases/WorkActivityPanel-vX.Y.Z-win-x64.zip`.
    - Publish the GitHub Release via `gh release create vX.Y.Z` attaching both binaries and bilingual release notes.
+4. **Release In-Place Update Protocol (Without Version Bump):**
+   - When updating an already published release (e.g. critical fixes in `vX.Y.Z`):
+     1. Stage and commit changes to `main` and push to `origin main`.
+     2. Move the existing git tag: `git tag -fa vX.Y.Z -m "Release vX.Y.Z: Updated build with fixes"` and `git push origin vX.Y.Z --force`.
+     3. Re-upload compiled binaries with `--clobber`: `gh release upload vX.Y.Z releases\WorkActivityPanel-Setup-vX.Y.Z.exe releases\WorkActivityPanel-vX.Y.Z-win-x64.zip --clobber`.
+     4. Verify that `index.html` download buttons and GitHub release notes stay synchronized.
+
 
