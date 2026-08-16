@@ -14,7 +14,7 @@ Welcome to the **Work Activity Panel** codebase! This document provides essentia
 - **MVVM Pattern:** `CommunityToolkit.Mvvm` (8.4.0) with source generators (`[ObservableProperty]`, `[RelayCommand]`)
 - **Dependency Injection & Hosting:** `Microsoft.Extensions.Hosting` & `Microsoft.Extensions.DependencyInjection` (9.0.2)
 - **System Tray Integration:** `H.NotifyIcon.WinUI` (2.1.4)
-- **Unit Testing:** `xUnit` (2.9.2) & `Moq` (4.20.72)
+- **Unit Testing:** `xUnit` (2.5.3) & `Moq` (4.20.72)
 - **Installer Packaging:** Inno Setup 6 (`installer.iss`)
 
 ---
@@ -27,24 +27,33 @@ work-activity-panel/
 ├── MainWindow.xaml / .cs           # Host window with Mica backdrop & System Tray integration
 ├── MainPage.xaml / .cs             # Dashboard view (schedule, upcoming meetings, quick actions, sync status)
 ├── SettingsPage.xaml / .cs         # Configuration view (work hours, vacation mode, iCal, paths, sync rules)
+├── ViewModels/
+│   ├── DashboardViewModel.cs       # Dashboard state, clock timer, update banner, account switcher, meeting reminders
+│   └── SettingsViewModel.cs        # Settings persistence, schedule configuration, iCal/Drive settings, autostart
 ├── Models/
 │   ├── CalendarEvent.cs            # Meeting model (summary, start/end, meeting URL, status)
-│   ├── WorkSchedule.cs             # Work hours, active days, lunch break, vacation state
 │   ├── DriveSyncSettings.cs        # Google Apps Script URL, auth token, local folder, filters
-│   └── SyncModels.cs               # File metadata, SHA-256 index, upload requests/responses
+│   ├── GitHubAccountInfo.cs        # GitHub CLI active/available accounts data model
+│   ├── SyncModels.cs               # File metadata, SHA-256 index, upload requests/responses
+│   ├── UpdateInfo.cs               # GitHub Releases update check & download metadata
+│   └── WorkSchedule.cs             # Work hours, active days, lunch break, vacation state
 ├── Services/
-│   ├── Interfaces/                 # Service contracts (IScheduleService, IAppLauncherService, etc.)
-│   ├── ScheduleService.cs          # Timer-based schedule evaluation & vacation mode handler
+│   ├── Interfaces/                 # Service contracts (IScheduleService, IAppLauncherService, IGitHubAuthService, etc.)
 │   ├── AppLauncherService.cs       # Process launcher (Slack, Granola, browser meeting URLs)
+│   ├── DriveSyncService.cs         # Streaming SHA-256 hashing, filtering, Google Apps Script HTTP client
+│   ├── GitHubAuthService.cs        # GitHub CLI integration (hosts.yml parsing, gh auth switch)
 │   ├── GoogleCalendarService.cs    # iCal feed fetcher, parser integration, caching, deduplication
-│   └── DriveSyncService.cs         # Streaming SHA-256 hashing, filtering, Google Apps Script HTTP client
+│   ├── ScheduleService.cs          # Timer-based schedule evaluation & vacation mode handler
+│   └── UpdateService.cs            # GitHub Releases API check, streaming download & Inno installer trigger
 ├── Helpers/
-│   ├── ICalParser.cs               # RFC 5545 parser (unfolding, timezone normalization, meeting links)
-│   ├── LocalSettingsHelper.cs      # JSON persistence in %LOCALAPPDATA%\WorkActivityPanel
 │   ├── AutostartHelper.cs          # Windows registry startup configuration
-│   └── Converters.cs               # XAML value converters (status colors, visibility, date formatting)
+│   ├── Converters.cs               # XAML value converters (status colors, visibility, date formatting)
+│   ├── ICalParser.cs               # RFC 5545 parser (unfolding, timezone normalization, meeting links)
+│   └── LocalSettingsHelper.cs      # JSON persistence in %LOCALAPPDATA%\WorkActivityPanel
 ├── WorkActivityPanel.Tests/        # xUnit unit test suite for services, models, and parsers
-├── docs/                           # Setup guides and architecture documentation
+├── docs/                           # Setup guides, architecture, and learning documentation
+│   ├── README.md                   # Documentation catalog and architectural index
+│   └── learning/                   # Engineering learnings & post-implementation case studies
 ├── Assets/                         # Icons, multi-resolution assets, AppIcon.ico
 ├── installer.iss                   # Inno Setup 6 standalone installer script
 └── releases/                       # Directory for compiled release installers (gitignored)
@@ -123,6 +132,16 @@ iscc installer.iss
 - **No Fake Working Set Trimming:** NEVER call `EmptyWorkingSet()` or `SetProcessWorkingSetSize(-1, -1)` when minimizing to the system tray. This forces physical memory to pagefile on disk, causing hard page faults and a 200–500 ms UI freeze upon reopening.
 - **No Forced GC on Tray Hide:** Do not call `GC.Collect()` upon window hide, as it fragments CLR heap segments for negligible memory gains (~2 MB) and triggers thread pauses.
 - **Event-Driven Timers:** Keep background services non-polling. Use coalesced `DispatcherTimer` intervals (>= 1 minute) for UI clocks and one-shot `System.Threading.Timer` for schedule/meeting transitions.
+
+### 4.7 GitHub CLI Multi-Account Management
+- `GitHubAuthService.cs` integrates directly with GitHub CLI (`gh`).
+- Parsing prioritizes local YAML configuration (`%APPDATA%\GitHub CLI\hosts.yml` or `~/.config/gh/hosts.yml`) for sub-millisecond status lookups, with fallback to CLI invocation (`gh auth status`).
+- Account switching (`gh auth switch -u <user>`) must always be executed asynchronously with hidden console windows (`CreateNoWindow = true`, `UseShellExecute = false`).
+
+### 4.8 In-App Auto-Updates via GitHub Releases
+- `UpdateService.cs` checks the public GitHub Releases API endpoint asynchronously on startup without delaying UI initialization.
+- Installer downloads use chunked HTTP streams (80 KB buffers) directly into `%TEMP%` accompanied by `IProgress<double>` progress updates.
+- In-place installer launches must spawn the downloaded `.exe` with appropriate arguments and exit cleanly.
 
 ---
 
