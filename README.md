@@ -67,6 +67,10 @@ dotnet test WorkActivityPanel.Tests\WorkActivityPanel.Tests.csproj
 dotnet run --project WorkActivityPanel.csproj
 ```
 
+> [!NOTE]
+> **Windows Defender SmartScreen Notice:**
+> Since this is an independent open-source project without an expensive commercial code-signing certificate, Microsoft Defender SmartScreen may show a *"Windows protected your PC"* alert when launching the installer (`.exe`). To proceed, simply click **"More info"** $\rightarrow$ **"Run anyway"**. The binary is completely safe, transparent, and built from this open-source repository.
+
 ---
 
 <a name="español"></a>
@@ -125,3 +129,8 @@ dotnet test WorkActivityPanel.Tests\WorkActivityPanel.Tests.csproj
 # Compilar e iniciar la aplicación
 dotnet run --project WorkActivityPanel.csproj
 ```
+
+> [!NOTE]
+> **Aviso de Microsoft Defender SmartScreen:**
+> Al tratarse de un proyecto de código abierto independiente sin un certificado comercial de firma de código de pago, es posible que Windows SmartScreen muestre la advertencia *"Windows protegió su PC"* al ejecutar el instalador (`.exe`). Para continuar, haz clic en **"Más información"** $\rightarrow$ **"Ejecutar de todas formas"**. El instalador es 100% seguro, transparente y generado a partir del código de este repositorio.
+

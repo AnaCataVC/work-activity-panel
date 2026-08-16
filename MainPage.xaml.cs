@@ -18,7 +18,7 @@ public sealed partial class MainPage : Page
     protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        ViewModel.RefreshScheduleAndStatus();
+        ViewModel.RefreshAllStatus();
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)

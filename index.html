@@ -343,10 +343,10 @@
     .real-mockup-window {
       max-width: 900px;
       margin-inline: auto;
-      background: #1c1a1a;
+      background: #191716;
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 10px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.2);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.15);
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
       color: #ffffff;
@@ -356,12 +356,12 @@
     /* Title Bar */
     .real-mockup-titlebar {
       height: 38px;
-      background: #151414;
+      background: #141212;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding-inline: 14px 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     }
 
     .real-titlebar-left {
@@ -400,7 +400,7 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
-      background: #1c1a1a;
+      background: #191716;
     }
 
     /* Header Section */
@@ -428,12 +428,12 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(36, 75, 48, 0.45);
+      background: rgba(36, 75, 48, 0.35);
       border: 1px solid rgba(74, 158, 98, 0.35);
       padding: 4px 10px;
       border-radius: 12px;
       font-size: 12px;
-      color: #a7f3d0;
+      color: #86efac;
     }
 
     .real-calendar-badge svg {
@@ -449,16 +449,22 @@
     }
 
     .real-action-btn {
-      width: 38px;
+      width: 36px;
       height: 34px;
-      background: #2a2727;
+      background: #262424;
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #d1d5db;
+      cursor: pointer;
       transition: all var(--transition-fast);
+    }
+
+    .real-action-btn:hover {
+      background: #332f2f;
+      color: #ffffff;
     }
 
     .real-date-text {
@@ -498,7 +504,7 @@
 
     /* Vacation Card */
     .real-vacation-card {
-      background: #282525;
+      background: #262424;
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 8px;
       padding: 14px 18px;
@@ -606,7 +612,7 @@
     }
 
     .real-app-card {
-      background: #282525;
+      background: #262424;
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 8px;
       padding: 16px;
@@ -664,11 +670,18 @@
       align-items: center;
       justify-content: center;
       user-select: none;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .real-app-button:hover {
+      background: #3d3838;
+      color: #ffffff;
     }
 
     /* Meetings Section */
     .real-meetings-container {
-      background: #282525;
+      background: #262424;
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 8px;
       padding: 4px 18px;
@@ -745,6 +758,320 @@
       justify-content: center;
       white-space: nowrap;
       user-select: none;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .real-join-btn:hover {
+      background: #3d3838;
+      color: #ffffff;
+    }
+
+    /* Header badges */
+    .real-header-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .real-badge-subtle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #e5e5e5;
+      font-weight: 500;
+    }
+
+    .real-badge-subtle svg {
+      width: 14px;
+      height: 14px;
+      color: #38bdf8;
+    }
+
+    .real-badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      display: inline-block;
+    }
+
+    .real-status-dot.dot-closed {
+      background: #ef4444;
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+    }
+
+    .real-empty-meetings {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 28px 0;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    .real-empty-meetings svg {
+      width: 28px;
+      height: 28px;
+      color: #6b7280;
+    }
+
+    /* GitHub Section */
+    .real-github-card {
+      background: #262424;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .real-github-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .real-github-user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .real-github-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #38bdf8;
+    }
+
+    .real-github-avatar svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .real-github-username-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .real-github-username {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-badge-active {
+      background: rgba(34, 197, 94, 0.18);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #4ade80;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .real-github-account-sub {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .real-github-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-top: 4px;
+    }
+
+    .real-github-actions-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .real-btn-quick-switch {
+      height: 32px;
+      padding: 0 12px;
+      background: #0078d4;
+      color: #ffffff;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: none;
+    }
+
+    .real-btn-quick-switch:hover {
+      background: #106ebe;
+    }
+
+    .real-select-account {
+      height: 32px;
+      background: #1e1c1c;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: #e5e5e5;
+      padding: 0 10px;
+      font-size: 12px;
+      outline: none;
+      min-width: 140px;
+    }
+
+    .real-btn-switch {
+      height: 32px;
+      padding: 0 14px;
+      background: #332f2f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      color: #e5e5e5;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .real-btn-switch:hover {
+      background: #3d3838;
+      color: #ffffff;
+    }
+
+    .real-github-actions-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Google Drive Cloud Backup Section */
+    .real-drive-card {
+      background: #262424;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .real-drive-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .real-drive-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .real-drive-icon {
+      color: #38bdf8;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .real-drive-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .real-drive-path {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .real-progress-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .real-progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .real-progress-fill {
+      width: 32%;
+      height: 100%;
+      background: #0078d4;
+      border-radius: 2px;
+    }
+
+    .real-progress-detail {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .real-drive-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .real-drive-last-sync {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .real-drive-last-sync strong {
+      color: #e5e5e5;
+    }
+
+    .real-drive-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .real-btn-secondary-sm {
+      height: 30px;
+      padding: 0 12px;
+      background: #332f2f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      color: #e5e5e5;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .real-btn-secondary-sm:hover {
+      background: #3d3838;
+      color: #ffffff;
     }
 
     .mockup-caption {
@@ -989,6 +1316,58 @@
       flex-shrink: 0;
     }
 
+    /* Microsoft Defender SmartScreen Notice Callout */
+    .smartscreen-callout {
+      margin-top: 1.75rem;
+      background: rgba(30, 41, 59, 0.45);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .smartscreen-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .smartscreen-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .smartscreen-content {
+      flex: 1;
+    }
+
+    .smartscreen-title {
+      font-family: var(--font-display);
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 0.25rem;
+    }
+
+    .smartscreen-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .smartscreen-text strong {
+      color: #f8fafc;
+    }
+
     /* ==========================================================================
        FAQ ACCORDION
        ========================================================================== */
@@ -1219,17 +1598,39 @@
           <!-- Header Section -->
           <div>
             <div class="real-header-grid">
-              <!-- Left: Time + Connected Badge -->
+              <!-- Left: Time + Connected Badges Row -->
               <div class="real-time-row">
-                <div class="real-clock" id="mockupClock">18:54</div>
-                <div class="real-calendar-badge">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <span data-i18n="mockup.calConnected">Calendario conectado</span>
+                <div class="real-clock" id="mockupClock">10:03</div>
+                
+                <div class="real-header-badges">
+                  <!-- Calendar Badge -->
+                  <div class="real-calendar-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span data-i18n="mockup.calBadge">Calendario</span>
+                  </div>
+
+                  <!-- GitHub Account Badge -->
+                  <div class="real-badge-subtle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span id="mockupHeaderGithubAccount">AnaCataVC</span>
+                  </div>
+
+                  <!-- Drive Sync Status Badge -->
+                  <div class="real-badge-subtle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    </svg>
+                    <span class="real-badge-dot"></span>
+                    <span data-i18n="mockup.driveBadge">Al día</span>
+                  </div>
                 </div>
               </div>
 
@@ -1250,7 +1651,7 @@
             </div>
 
             <!-- Date -->
-            <div class="real-date-text" id="mockupDate">Viernes, 14 de agosto</div>
+            <div class="real-date-text" id="mockupDate">Domingo, 16 de agosto</div>
 
             <!-- Work status row -->
             <div class="real-workstatus-row">
@@ -1263,27 +1664,6 @@
             </div>
           </div>
 
-          <!-- Vacation Mode Card -->
-          <div class="real-vacation-card">
-            <div class="real-vacation-left">
-              <!-- Airplane Icon -->
-              <svg class="real-airplane-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-              </svg>
-              <div>
-                <div class="real-vacation-title" data-i18n="mockup.vacationTitle">Modo Vacaciones</div>
-                <div class="real-vacation-sub" data-i18n="mockup.vacationDesc">Pausa la apertura automática de Slack y Granola</div>
-              </div>
-            </div>
-            <div class="real-vacation-right">
-              <label class="win11-switch" title="Probar interruptor de modo vacaciones">
-                <input type="checkbox" id="mockupVacationToggle">
-                <span class="win11-slider"></span>
-              </label>
-              <span class="real-toggle-label" id="mockupToggleLabel" data-i18n="mockup.disabled">Desactivado</span>
-            </div>
-          </div>
-
           <!-- Section: Aplicaciones de Trabajo -->
           <div>
             <div class="real-section-label" data-i18n="mockup.appsSectionTitle">Aplicaciones de Trabajo</div>
@@ -1292,7 +1672,7 @@
               <div class="real-app-card">
                 <div class="real-app-header">
                   <div class="real-app-brand">
-                    <!-- Slack Logo Glyph -->
+                    <!-- Slack Glyph -->
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="4" y="4" width="4" height="16" rx="2"></rect>
                       <rect x="10" y="4" width="4" height="16" rx="2"></rect>
@@ -1301,8 +1681,8 @@
                     <span>Slack</span>
                   </div>
                   <div class="real-app-status-badge">
-                    <div class="real-status-dot" id="mockupSlackDot"></div>
-                    <span id="mockupSlackStatus" data-i18n="mockup.running">En ejecución</span>
+                    <div class="real-status-dot dot-closed" id="mockupSlackDot"></div>
+                    <span id="mockupSlackStatus" data-i18n="mockup.closed">Cerrado</span>
                   </div>
                 </div>
                 <div class="real-app-button">
@@ -1314,7 +1694,7 @@
               <div class="real-app-card">
                 <div class="real-app-header">
                   <div class="real-app-brand">
-                    <!-- Granola / Note window glyph -->
+                    <!-- Granola Glyph -->
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="3" y="3" width="18" height="18" rx="3"></rect>
                       <path d="M3 9h18"></path>
@@ -1323,8 +1703,8 @@
                     <span>Granola</span>
                   </div>
                   <div class="real-app-status-badge">
-                    <div class="real-status-dot" id="mockupGranolaDot"></div>
-                    <span id="mockupGranolaStatus" data-i18n="mockup.running">En ejecución</span>
+                    <div class="real-status-dot dot-closed" id="mockupGranolaDot"></div>
+                    <span id="mockupGranolaStatus" data-i18n="mockup.closed">Cerrado</span>
                   </div>
                 </div>
                 <div class="real-app-button">
@@ -1342,33 +1722,136 @@
             </div>
 
             <div class="real-meetings-container">
-              <!-- Meeting 1: Daily Sync & Standup -->
-              <div class="real-meeting-row">
-                <div class="real-meeting-time">
-                  <div class="real-time-start">10:00 a. m.</div>
-                  <div class="real-time-end">10:30 a. m.</div>
+              <div class="real-empty-meetings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <circle cx="12" cy="15" r="1.5" fill="currentColor"></circle>
+                </svg>
+                <span data-i18n="mockup.noMeetings">No tienes reuniones programadas para hoy.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Cuenta de GitHub -->
+          <div>
+            <div class="real-meetings-top">
+              <div class="real-section-label" style="margin-bottom: 0;" data-i18n="mockup.githubTitle">Cuenta de GitHub</div>
+              <span class="real-meetings-source" data-i18n="mockup.githubCli">GitHub CLI</span>
+            </div>
+
+            <div class="real-github-card">
+              <!-- Top row: User info & status -->
+              <div class="real-github-top">
+                <div class="real-github-user-info">
+                  <div class="real-github-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="real-github-username-row">
+                      <span class="real-github-username" id="mockupActiveUser">AnaCataVC</span>
+                      <span class="real-badge-active" data-i18n="mockup.accountActive">Activa</span>
+                    </div>
+                    <div class="real-github-account-sub">
+                      <span data-i18n="mockup.activeAccountLabel">Cuenta activa:</span> <span id="mockupActiveUserSub">AnaCataVC</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="real-meeting-info">
-                  <div class="real-meeting-title" data-i18n="mockup.m1Title">Daily Sync & Standup</div>
-                  <div class="real-meeting-note" data-i18n="mockup.meeting5Min">Granola se abrirá 5 min antes</div>
-                </div>
-                <div class="real-join-btn">
-                  <span data-i18n="mockup.joinMeeting">Unirme a la reunión</span>
+
+                <div class="real-app-status-badge">
+                  <div class="real-status-dot"></div>
+                  <span data-i18n="mockup.cliConnected">CLI Conectado</span>
                 </div>
               </div>
 
-              <!-- Meeting 2: Sprint Planning & Arquitectura -->
-              <div class="real-meeting-row">
-                <div class="real-meeting-time">
-                  <div class="real-time-start">12:00 p. m.</div>
-                  <div class="real-time-end">1:30 p. m.</div>
+              <!-- Bottom row: Switch controls -->
+              <div class="real-github-bottom">
+                <div class="real-github-actions-left">
+                  <button class="real-btn-quick-switch" id="mockupQuickSwitchBtn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="17 1 21 5 17 9"></polyline>
+                      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                      <polyline points="7 23 3 19 7 15"></polyline>
+                      <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                    </svg>
+                    <span data-i18n="mockup.quickSwitchTo">Cambiar a</span>
+                    <strong id="mockupAltUser">CataVillalobosC</strong>
+                  </button>
+
+                  <select class="real-select-account" id="mockupAccountSelect">
+                    <option value="AnaCataVC">AnaCataVC</option>
+                    <option value="CataVillalobosC">CataVillalobosC</option>
+                  </select>
+
+                  <button class="real-btn-switch" id="mockupSwitchBtn" data-i18n="mockup.switchBtn">Cambiar</button>
                 </div>
-                <div class="real-meeting-info">
-                  <div class="real-meeting-title" data-i18n="mockup.m2Title">Sprint Planning & Arquitectura</div>
-                  <div class="real-meeting-note" data-i18n="mockup.meeting5Min">Granola se abrirá 5 min antes</div>
+
+                <div class="real-github-actions-right">
+                  <div class="real-action-btn" title="Abrir perfil en GitHub">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                  </div>
+                  <div class="real-action-btn" title="Actualizar estado de GitHub">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                  </div>
                 </div>
-                <div class="real-join-btn">
-                  <span data-i18n="mockup.joinMeeting">Unirme a la reunión</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Copia de Seguridad de Archivos -->
+          <div>
+            <div class="real-meetings-top">
+              <div class="real-section-label" style="margin-bottom: 0;" data-i18n="mockup.driveTitle">Copia de Seguridad de Archivos</div>
+              <span class="real-meetings-source" data-i18n="mockup.driveHeaderRight">Google Drive</span>
+            </div>
+
+            <div class="real-drive-card">
+              <!-- Top row -->
+              <div class="real-drive-top">
+                <div class="real-drive-info">
+                  <svg class="real-drive-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                  </svg>
+                  <div>
+                    <div class="real-drive-title" data-i18n="mockup.driveBackupTitle">Respaldo en Google Drive</div>
+                    <div class="real-drive-path">~/Archivos Trabajo/Investigaciones</div>
+                  </div>
+                </div>
+
+                <div class="real-app-status-badge">
+                  <div class="real-status-dot"></div>
+                  <span data-i18n="mockup.driveUpToDate">Al día</span>
+                </div>
+              </div>
+
+              <!-- Progress bar -->
+              <div class="real-progress-container">
+                <div class="real-progress-bar">
+                  <div class="real-progress-fill"></div>
+                </div>
+                <div class="real-progress-detail" data-i18n="mockup.driveUploading">Subiendo (33/408): bat_edits.csv...</div>
+              </div>
+
+              <!-- Bottom row -->
+              <div class="real-drive-bottom">
+                <div class="real-drive-last-sync">
+                  <span data-i18n="mockup.lastBackup">Último respaldo:</span> <strong data-i18n="mockup.never">Nunca</strong>
+                </div>
+
+                <div class="real-drive-actions">
+                  <button class="real-btn-secondary-sm" data-i18n="mockup.openFolder">Abrir Carpeta</button>
+                  <button class="real-btn-secondary-sm" data-i18n="mockup.cancel">Cancelar</button>
                 </div>
               </div>
             </div>
@@ -1598,6 +2081,23 @@
           </ul>
         </div>
       </div>
+
+      <!-- Windows SmartScreen Notice -->
+      <div class="smartscreen-callout">
+        <div class="smartscreen-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div class="smartscreen-content">
+          <div class="smartscreen-title" data-i18n="download.smartscreenTitle">¿Aviso de "Windows protegió su PC" (Microsoft Defender SmartScreen)?</div>
+          <p class="smartscreen-text" data-i18n="download.smartscreenDesc">
+            Al tratarse de una aplicación open source sin certificado comercial de pago, Windows muestra una alerta preventiva. Para continuar de forma 100% segura, pulsa en <strong>"Más información"</strong> y luego en <strong>"Ejecutar de todas formas"</strong>.
+          </p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1691,22 +2191,32 @@
         "hero.ctaDownload": "Descargar Instalador (.exe)",
         "hero.ctaGithub": "Ver en GitHub",
 
-        "mockup.calConnected": "Calendario conectado",
+        "mockup.calBadge": "Calendario",
+        "mockup.driveBadge": "Al día",
         "mockup.offHours": "Fuera de Horario Laboral",
-        "mockup.vacationTitle": "Modo Vacaciones",
-        "mockup.vacationDesc": "Pausa la apertura automática de Slack y Granola",
-        "mockup.disabled": "Desactivado",
-        "mockup.enabled": "Activado",
         "mockup.appsSectionTitle": "Aplicaciones de Trabajo",
         "mockup.running": "En ejecución",
-        "mockup.paused": "Pausado",
+        "mockup.closed": "Cerrado",
         "mockup.openSlack": "Abrir Slack",
         "mockup.openGranola": "Abrir Granola",
         "mockup.meetingsTitle": "Reuniones de Hoy",
-        "mockup.m1Title": "Daily Sync & Standup",
-        "mockup.m2Title": "Sprint Planning & Arquitectura",
-        "mockup.meeting5Min": "Granola se abrirá 5 min antes",
-        "mockup.joinMeeting": "Unirme a la reunión",
+        "mockup.noMeetings": "No tienes reuniones programadas para hoy.",
+        "mockup.githubTitle": "Cuenta de GitHub",
+        "mockup.githubCli": "GitHub CLI",
+        "mockup.accountActive": "Activa",
+        "mockup.activeAccountLabel": "Cuenta activa:",
+        "mockup.cliConnected": "CLI Conectado",
+        "mockup.quickSwitchTo": "Cambiar a",
+        "mockup.switchBtn": "Cambiar",
+        "mockup.driveTitle": "Copia de Seguridad de Archivos",
+        "mockup.driveHeaderRight": "Google Drive",
+        "mockup.driveBackupTitle": "Respaldo en Google Drive",
+        "mockup.driveUpToDate": "Al día",
+        "mockup.driveUploading": "Subiendo (33/408): bat_edits.csv...",
+        "mockup.lastBackup": "Último respaldo:",
+        "mockup.never": "Nunca",
+        "mockup.openFolder": "Abrir Carpeta",
+        "mockup.cancel": "Cancelar",
         "mockup.interactiveHint": "Vista previa fiel de la interfaz de la aplicación en Windows 11.",
 
         "features.tag": "Potencia & Simplicidad",
@@ -1758,6 +2268,8 @@
         "download.reqArch": "Arquitectura x64 (64-bit)",
         "download.reqDotnet": ".NET 9 Runtime",
         "download.reqApps": "Slack & Granola instalados (opcional)",
+        "download.smartscreenTitle": "¿Aviso de \"Windows protegió su PC\" (Microsoft Defender SmartScreen)?",
+        "download.smartscreenDesc": "Al tratarse de una aplicación open source sin certificado comercial de pago, Windows muestra una alerta preventiva. Para continuar de forma 100% segura, pulsa en \"Más información\" y luego en \"Ejecutar de todas formas\".",
 
         "faq.tag": "FAQ",
         "faq.title": "Preguntas Frecuentes",
@@ -1787,22 +2299,32 @@
         "hero.ctaDownload": "Download Installer (.exe)",
         "hero.ctaGithub": "View on GitHub",
 
-        "mockup.calConnected": "Calendar connected",
+        "mockup.calBadge": "Calendar",
+        "mockup.driveBadge": "Up to date",
         "mockup.offHours": "Off Working Hours",
-        "mockup.vacationTitle": "Vacation Mode",
-        "mockup.vacationDesc": "Pauses automated Slack and Granola triggers",
-        "mockup.disabled": "Disabled",
-        "mockup.enabled": "Enabled",
         "mockup.appsSectionTitle": "Work Applications",
         "mockup.running": "Running",
-        "mockup.paused": "Paused",
+        "mockup.closed": "Closed",
         "mockup.openSlack": "Open Slack",
         "mockup.openGranola": "Open Granola",
         "mockup.meetingsTitle": "Today's Meetings",
-        "mockup.m1Title": "Daily Sync & Standup",
-        "mockup.m2Title": "Sprint Planning & Architecture",
-        "mockup.meeting5Min": "Granola will open 5 min before",
-        "mockup.joinMeeting": "Join meeting",
+        "mockup.noMeetings": "No meetings scheduled for today.",
+        "mockup.githubTitle": "GitHub Account",
+        "mockup.githubCli": "GitHub CLI",
+        "mockup.accountActive": "Active",
+        "mockup.activeAccountLabel": "Active account:",
+        "mockup.cliConnected": "CLI Connected",
+        "mockup.quickSwitchTo": "Switch to",
+        "mockup.switchBtn": "Switch",
+        "mockup.driveTitle": "File Cloud Backup",
+        "mockup.driveHeaderRight": "Google Drive",
+        "mockup.driveBackupTitle": "Google Drive Backup",
+        "mockup.driveUpToDate": "Up to date",
+        "mockup.driveUploading": "Uploading (33/408): bat_edits.csv...",
+        "mockup.lastBackup": "Last backup:",
+        "mockup.never": "Never",
+        "mockup.openFolder": "Open Folder",
+        "mockup.cancel": "Cancel",
         "mockup.interactiveHint": "Authentic application interface preview on Windows 11.",
 
         "features.tag": "Power & Simplicity",
@@ -1854,6 +2376,8 @@
         "download.reqArch": "x64 Architecture (64-bit)",
         "download.reqDotnet": ".NET 9 Runtime",
         "download.reqApps": "Slack & Granola installed (optional)",
+        "download.smartscreenTitle": "\"Windows protected your PC\" (Microsoft Defender SmartScreen) prompt?",
+        "download.smartscreenDesc": "As an independent open-source app without an expensive commercial certificate, Windows displays a preventive prompt. To install safely, click \"More info\" and then \"Run anyway\".",
 
         "faq.tag": "FAQ",
         "faq.title": "Frequently Asked Questions",
@@ -1921,36 +2445,44 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Vacation Mode Visual Toggle
-    const vacationToggle = document.getElementById('mockupVacationToggle');
-    const toggleLabel = document.getElementById('mockupToggleLabel');
-    const statusTitle = document.getElementById('mockupStatusTitle');
-    const slackStatus = document.getElementById('mockupSlackStatus');
-    const granolaStatus = document.getElementById('mockupGranolaStatus');
-    const slackDot = document.getElementById('mockupSlackDot');
-    const granolaDot = document.getElementById('mockupGranolaDot');
+    // Interactive GitHub CLI Switcher Simulation
+    let activeUser = 'AnaCataVC';
+    const altUser = () => activeUser === 'AnaCataVC' ? 'CataVillalobosC' : 'AnaCataVC';
 
-    vacationToggle.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        toggleLabel.textContent = currentLang === 'es' ? 'Activado' : 'Enabled';
-        statusTitle.textContent = currentLang === 'es' ? 'Modo Vacaciones Activo' : 'Vacation Mode Active';
-        slackStatus.textContent = currentLang === 'es' ? 'Pausado' : 'Paused';
-        granolaStatus.textContent = currentLang === 'es' ? 'Pausado' : 'Paused';
-        slackDot.style.background = '#eab308';
-        slackDot.style.boxShadow = '0 0 6px rgba(234, 179, 8, 0.6)';
-        granolaDot.style.background = '#eab308';
-        granolaDot.style.boxShadow = '0 0 6px rgba(234, 179, 8, 0.6)';
-      } else {
-        toggleLabel.textContent = currentLang === 'es' ? 'Desactivado' : 'Disabled';
-        statusTitle.textContent = currentLang === 'es' ? 'Fuera de Horario Laboral' : 'Off Working Hours';
-        slackStatus.textContent = currentLang === 'es' ? 'En ejecución' : 'Running';
-        granolaStatus.textContent = currentLang === 'es' ? 'En ejecución' : 'Running';
-        slackDot.style.background = '#22c55e';
-        slackDot.style.boxShadow = '0 0 6px rgba(34, 197, 94, 0.6)';
-        granolaDot.style.background = '#22c55e';
-        granolaDot.style.boxShadow = '0 0 6px rgba(34, 197, 94, 0.6)';
-      }
-    });
+    function switchAccount(newUser) {
+      activeUser = newUser;
+      const alt = altUser();
+      
+      const activeUserElem = document.getElementById('mockupActiveUser');
+      const activeUserSub = document.getElementById('mockupActiveUserSub');
+      const headerUser = document.getElementById('mockupHeaderGithubAccount');
+      const altUserElem = document.getElementById('mockupAltUser');
+      const selectElem = document.getElementById('mockupAccountSelect');
+
+      if (activeUserElem) activeUserElem.textContent = activeUser;
+      if (activeUserSub) activeUserSub.textContent = activeUser;
+      if (headerUser) headerUser.textContent = activeUser;
+      if (altUserElem) altUserElem.textContent = alt;
+      if (selectElem) selectElem.value = activeUser;
+    }
+
+    const quickSwitchBtn = document.getElementById('mockupQuickSwitchBtn');
+    if (quickSwitchBtn) {
+      quickSwitchBtn.addEventListener('click', () => {
+        switchAccount(altUser());
+      });
+    }
+
+    const switchBtn = document.getElementById('mockupSwitchBtn');
+    const selectAccount = document.getElementById('mockupAccountSelect');
+    if (switchBtn && selectAccount) {
+      switchBtn.addEventListener('click', () => {
+        switchAccount(selectAccount.value);
+      });
+      selectAccount.addEventListener('change', (e) => {
+        switchAccount(e.target.value);
+      });
+    }
   </script>
 </body>
 </html>

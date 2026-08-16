@@ -39,6 +39,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                                 && !string.IsNullOrWhiteSpace(_settings.LocalFolderPath) 
                                 && Directory.Exists(_settings.LocalFolderPath);
 
+    public event EventHandler? SettingsChanged;
     public event EventHandler<SyncProgressReport>? SyncProgressChanged;
     public event EventHandler<SyncResultSummary>? SyncCompleted;
 
@@ -74,7 +75,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     {
         _settings = settings;
         SaveSettings();
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
+
 
     public void CancelSync()
     {

@@ -104,7 +104,7 @@
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
                             <TextBox Header="Dirección secreta iCal (.ics)"
-                                     Text="{x:Bind ViewModel.CalendarICalUrl, Mode=TwoWay}"
+                                     Text="{x:Bind ViewModel.CalendarICalUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="https://calendar.google.com/calendar/ical/.../basic.ics" />
 
                             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" VerticalAlignment="Center">
@@ -136,7 +136,7 @@
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
                             <TextBox Header="URL de la Web App de Google Apps Script (/exec)"
-                                     Text="{x:Bind ViewModel.DriveWebAppUrl, Mode=TwoWay}"
+                                     Text="{x:Bind ViewModel.DriveWebAppUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="https://script.google.com/macros/s/.../exec" />
 
                             <Grid>
@@ -145,10 +145,10 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Header="Carpeta local de trabajo a respaldar"
-                                         Text="{x:Bind ViewModel.DriveLocalFolderPath, Mode=TwoWay}"
+                                         Text="{x:Bind ViewModel.DriveLocalFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          PlaceholderText="C:\Users\...\Documents\Trabajo" />
                                 <Button Grid.Column="1" Content="Examinar..." Margin="8,26,0,0"
-                                        Click="BrowseFolderButton_Click" />
+                                         Click="BrowseFolderButton_Click" />
                             </Grid>
 
                             <!-- Test Connection & Status -->
@@ -169,15 +169,15 @@
                             <Expander Header="Filtros y opciones avanzadas de sincronización" HorizontalAlignment="Stretch" Margin="0,8,0,0">
                                 <StackPanel Spacing="14" Padding="0,12,0,0">
                                     <TextBox Header="Extensiones permitidas (Whitelist, opcional ej: .pdf, .docx, .xlsx)"
-                                             Text="{x:Bind ViewModel.DriveIncludedExtensions, Mode=TwoWay}"
+                                             Text="{x:Bind ViewModel.DriveIncludedExtensions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              PlaceholderText="Dejar vacío para incluir todos los tipos permitidos" />
 
                                     <TextBox Header="Extensiones ignoradas (Blacklist)"
-                                             Text="{x:Bind ViewModel.DriveExcludedExtensions, Mode=TwoWay}"
+                                             Text="{x:Bind ViewModel.DriveExcludedExtensions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              PlaceholderText=".tmp, .log, .exe, .bak, .zip" />
 
                                     <TextBox Header="Carpetas ignoradas"
-                                             Text="{x:Bind ViewModel.DriveExcludedFolders, Mode=TwoWay}"
+                                             Text="{x:Bind ViewModel.DriveExcludedFolders, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              PlaceholderText="node_modules, .git, bin, obj, .vs, temp" />
 
                                     <Grid>

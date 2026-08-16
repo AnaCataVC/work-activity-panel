@@ -178,6 +178,7 @@ public partial class DashboardViewModel : ObservableObject
 
         _driveSyncService.SyncProgressChanged += OnDriveSyncProgressChanged;
         _driveSyncService.SyncCompleted += OnDriveSyncCompleted;
+        _driveSyncService.SettingsChanged += OnDriveSettingsChanged;
 
         _gitHubAuthService.ActiveAccountChanged += OnGitHubActiveAccountChanged;
 
@@ -191,15 +192,23 @@ public partial class DashboardViewModel : ObservableObject
     private async void Initialize()
     {
         UpdateTime();
-        RefreshScheduleAndStatus();
-
+        RefreshAllStatus();
         await RefreshStatus();
-        await RefreshGoogleDataAsync();
-        RefreshDriveSyncStatus();
-        await RefreshGitHubStatusAsync();
         _ = CheckForUpdatesInBackgroundAsync();
     }
 
+    private void OnDriveSettingsChanged(object? sender, EventArgs e)
+    {
+        App.DispatcherQueue.TryEnqueue(RefreshDriveSyncStatus);
+    }
+
+    public void RefreshAllStatus()
+    {
+        RefreshScheduleAndStatus();
+        RefreshDriveSyncStatus();
+        _ = RefreshGoogleDataAsync();
+        _ = RefreshGitHubStatusAsync();
+    }
 
     public void RefreshScheduleAndStatus()
     {

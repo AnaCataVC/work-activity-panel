@@ -164,12 +164,12 @@ public partial class SettingsViewModel : ObservableObject
 
         // Load Drive Sync settings
         var driveSettings = _driveSyncService.Settings;
-        DriveWebAppUrl = driveSettings.WebAppUrl;
-        DriveLocalFolderPath = driveSettings.LocalFolderPath;
-        DriveIncludedExtensions = driveSettings.IncludedExtensions;
-        DriveExcludedExtensions = driveSettings.ExcludedExtensions;
-        DriveExcludedFolders = driveSettings.ExcludedFolders;
-        DriveMaxFileSizeMb = driveSettings.MaxFileSizeMb;
+        DriveWebAppUrl = driveSettings.WebAppUrl ?? string.Empty;
+        DriveLocalFolderPath = driveSettings.LocalFolderPath ?? string.Empty;
+        DriveIncludedExtensions = driveSettings.IncludedExtensions ?? string.Empty;
+        DriveExcludedExtensions = !string.IsNullOrEmpty(driveSettings.ExcludedExtensions) ? driveSettings.ExcludedExtensions : ".tmp, .log, .exe, .bak, .zip";
+        DriveExcludedFolders = !string.IsNullOrEmpty(driveSettings.ExcludedFolders) ? driveSettings.ExcludedFolders : "node_modules, .git, bin, obj, .vs, temp";
+        DriveMaxFileSizeMb = driveSettings.MaxFileSizeMb > 0 ? driveSettings.MaxFileSizeMb : 50;
         DriveOnlyModifiedOrNew = driveSettings.OnlyModifiedOrNew;
         DriveAutoSyncOnWorkEnd = driveSettings.AutoSyncOnWorkEnd;
         UpdateDriveStatus();
@@ -258,12 +258,12 @@ public partial class SettingsViewModel : ObservableObject
     private void SaveDriveSettings()
     {
         var settings = _driveSyncService.Settings;
-        settings.WebAppUrl = DriveWebAppUrl.Trim();
-        settings.LocalFolderPath = DriveLocalFolderPath.Trim();
-        settings.IncludedExtensions = DriveIncludedExtensions.Trim();
-        settings.ExcludedExtensions = DriveExcludedExtensions.Trim();
-        settings.ExcludedFolders = DriveExcludedFolders.Trim();
-        settings.MaxFileSizeMb = DriveMaxFileSizeMb;
+        settings.WebAppUrl = DriveWebAppUrl?.Trim() ?? string.Empty;
+        settings.LocalFolderPath = DriveLocalFolderPath?.Trim() ?? string.Empty;
+        settings.IncludedExtensions = DriveIncludedExtensions?.Trim() ?? string.Empty;
+        settings.ExcludedExtensions = DriveExcludedExtensions?.Trim() ?? ".tmp, .log, .exe, .bak, .zip";
+        settings.ExcludedFolders = DriveExcludedFolders?.Trim() ?? "node_modules, .git, bin, obj, .vs, temp";
+        settings.MaxFileSizeMb = DriveMaxFileSizeMb > 0 ? DriveMaxFileSizeMb : 50;
         settings.OnlyModifiedOrNew = DriveOnlyModifiedOrNew;
         settings.AutoSyncOnWorkEnd = DriveAutoSyncOnWorkEnd;
 

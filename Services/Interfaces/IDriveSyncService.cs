@@ -53,6 +53,11 @@ public interface IDriveSyncService
     Task<string?> UploadSingleFileAsync(string filePath, string webAppUrl, string? relativePath = null);
 
     /// <summary>
+    /// Event triggered when sync settings are updated.
+    /// </summary>
+    event EventHandler? SettingsChanged;
+
+    /// <summary>
     /// Event triggered when sync progress updates.
     /// </summary>
     event EventHandler<SyncProgressReport>? SyncProgressChanged;
@@ -62,3 +67,4 @@ public interface IDriveSyncService
     /// </summary>
     event EventHandler<SyncResultSummary>? SyncCompleted;
 }
+
