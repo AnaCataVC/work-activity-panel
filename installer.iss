@@ -1,6 +1,6 @@
 ; Inno Setup Script for Work Activity Panel
 #define MyAppName "Work Activity Panel"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "AnaCataVC"
 #define MyAppExeName "WorkActivityPanel.exe"
 
@@ -13,7 +13,7 @@ DefaultDirName={localappdata}\Programs\WorkActivityPanel
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=releases
-OutputBaseFilename=WorkActivityPanel-Setup-v1.0.0
+OutputBaseFilename=WorkActivityPanel-Setup-v1.1.0
 SetupIconFile=Assets\AppIcon.ico
 Compression=lzma2/fast
 SolidCompression=yes
@@ -44,6 +44,15 @@ Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Description: "{cm:Launch
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /IM {#MyAppExeName}"; Flags: runhidden; RunOnceId: "KillAppBeforeUninstall"
 
+[Registry]
+; Clean up Autostart entry from Current User registry upon uninstallation
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "{#MyAppName}"; Flags: uninsdeletevalue
+
+[UninstallDelete]
+; Clean up runtime user data, settings, and sync hashes upon full uninstallation
+Type: filesandordirs; Name: "{localappdata}\WorkActivityPanel\Data"
+Type: dirifempty; Name: "{localappdata}\WorkActivityPanel"
+
 [Code]
 // Terminate running instance during setup initialization
 function InitializeSetup(): Boolean;
@@ -61,5 +70,14 @@ var
 begin
   Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := True;
+end;
+
+// Clean up user data directory upon uninstall completion
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    DelTree(ExpandConstant('{localappdata}\WorkActivityPanel'), True, True, True);
+  end;
 end;
 
