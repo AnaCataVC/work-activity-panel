@@ -59,23 +59,23 @@ work-activity-panel/
 
 ### Building & Running
 ```powershell
-# Restore & build the main project
-dotnet build WorkActivityPanel.csproj
+# Restore & build the main project (use & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" if bare dotnet lacks SDK)
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build WorkActivityPanel.csproj
 
 # Run the application locally
-dotnet run --project WorkActivityPanel.csproj
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" run --project WorkActivityPanel.csproj
 ```
 
 ### Running Unit Tests
 ```powershell
 # Run the complete unit test suite
-dotnet test WorkActivityPanel.Tests\WorkActivityPanel.Tests.csproj
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test WorkActivityPanel.Tests\WorkActivityPanel.Tests.csproj
 ```
 
 ### Publishing Releases
 ```powershell
 # Publish self-contained single-file x64 release
-dotnet publish WorkActivityPanel.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o bin\Release\net9.0-windows10.0.26100.0\win-x64\publish
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish WorkActivityPanel.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o bin\Release\net9.0-windows10.0.26100.0\win-x64\publish
 
 # Compile Inno Setup installer (requires Inno Setup 6 installed; outputs to releases/)
 iscc installer.iss
@@ -118,13 +118,20 @@ iscc installer.iss
 - **Unit Test Persistence Isolation:** Unit tests MUST NEVER write to or mutate the user's live `%LOCALAPPDATA%\WorkActivityPanel\Data\settings.json`. Static persistence helpers must support scoped temporary paths (`LocalSettingsHelper.SettingsFilePath`) and always clean up on completion.
 - **xUnit Static Helper Parallelization:** Disable parallel test execution in `WorkActivityPanel.Tests/TestAssemblyConfig.cs` (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`) to eliminate race conditions across shared static helpers.
 
+### 4.6 Performance & Resource Profiling Guardrails
+- **Memory Baseline:** WinUI 3 + DirectComposition + CoreCLR .NET 9 operates with a baseline of ~160 MB Private Commit and ~280 MB Working Set (including ~115 MB of shared OS/GPU DLLs). This is normal, healthy, and expected.
+- **No Fake Working Set Trimming:** NEVER call `EmptyWorkingSet()` or `SetProcessWorkingSetSize(-1, -1)` when minimizing to the system tray. This forces physical memory to pagefile on disk, causing hard page faults and a 200–500 ms UI freeze upon reopening.
+- **No Forced GC on Tray Hide:** Do not call `GC.Collect()` upon window hide, as it fragments CLR heap segments for negligible memory gains (~2 MB) and triggers thread pauses.
+- **Event-Driven Timers:** Keep background services non-polling. Use coalesced `DispatcherTimer` intervals (>= 1 minute) for UI clocks and one-shot `System.Threading.Timer` for schedule/meeting transitions.
+
 ---
 
 ## 5. Agent Constraints & Guidelines
 
-### 🔒 Security & Privacy
-1. **No Path Leaks:** NEVER output or commit absolute user paths (e.g., user profiles or personal home directories). Use relative paths or generic placeholders (e.g., `/path/to/project` or `%LOCALAPPDATA%`).
+### 🔒 Security, Privacy & Documentation Hygiene
+1. **No Path Leaks:** NEVER output or commit absolute user paths (e.g., user profiles or personal home directories like `C:\Users\...`). Use relative paths or generic placeholders (e.g., `/path/to/project`, `%LOCALAPPDATA%`, or `~/Work`).
 2. **No Secret Leaks:** NEVER hardcode private iCal URLs, Google Apps Script tokens, credentials, or API keys in source code, documentation, or commit messages.
+3. **Documentation Deduplication & Canonical Links:** Keep `README.md` concise and high-level by linking to dedicated canonical guides in `docs/` (e.g., `docs/performance-and-resource-profiling.md`, `docs/google-setup-guide.md`) rather than duplicating large technical documentation blocks across multiple files.
 
 ### 🚀 Code Style & Conventions
 1. **Language:** All source code, identifiers, comments, documentation, and commit messages MUST be in **English**.
@@ -140,6 +147,8 @@ Whenever a new release or version tag (e.g., `vX.Y.Z`) is planned and published,
 2. **Landing Page Synchronization (`index.html`):**
    - Update all download links in `index.html` to point to the official GitHub Release assets: `https://github.com/AnaCataVC/work-activity-panel/releases/download/vX.Y.Z/WorkActivityPanel-Setup-vX.Y.Z.exe` and `WorkActivityPanel-vX.Y.Z-win-x64.zip`.
    - Update version badges and strings in the navigation and download sections to reflect the new release.
+   - **Full UI Mockup Parity:** Update the interactive mockup in `index.html` to reflect ALL new sections, cards, and header badges with live JS simulation and full bilingual dictionary entries (`es` and `en`).
+   - **Microsoft Defender SmartScreen Notice:** Ensure the download section contains the explanatory callout for the SmartScreen prompt ("Más información" -> "Ejecutar de todas formas").
    - Update the feature grid and `translations` object (`es` and `en`) with any new features, improvements, or architecture enhancements introduced in that release.
    - Add/update the direct link to the GitHub Release notes (`https://github.com/AnaCataVC/work-activity-panel/releases/tag/vX.Y.Z`).
 3. **Build & Release Packaging:**
