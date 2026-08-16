@@ -20,6 +20,12 @@ public class ScheduleService : IScheduleService, IDisposable
     /// <inheritdoc />
     public event EventHandler? WorkEnded;
 
+    /// <inheritdoc />
+    public event EventHandler<bool>? VacationModeChanged;
+
+    /// <inheritdoc />
+    public event EventHandler? ScheduleChanged;
+
     public ScheduleService()
     {
         _currentSchedule = LoadSchedule();
@@ -40,6 +46,7 @@ public class ScheduleService : IScheduleService, IDisposable
             _currentSchedule.StartTime = value;
             SaveSchedule(_currentSchedule);
             Start();
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -52,6 +59,7 @@ public class ScheduleService : IScheduleService, IDisposable
             _currentSchedule.EndTime = value;
             SaveSchedule(_currentSchedule);
             Start();
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -64,6 +72,7 @@ public class ScheduleService : IScheduleService, IDisposable
             _currentSchedule.WorkDays = value;
             SaveSchedule(_currentSchedule);
             Start();
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -73,14 +82,22 @@ public class ScheduleService : IScheduleService, IDisposable
     /// <inheritdoc />
     public void UpdateSchedule(WorkSchedule schedule)
     {
+        var vacationChanged = _currentSchedule.IsVacationMode != schedule.IsVacationMode;
         _currentSchedule = schedule;
         SaveSchedule(_currentSchedule);
         Start(); // Restart with new schedule
+        
+        if (vacationChanged)
+        {
+            VacationModeChanged?.Invoke(this, schedule.IsVacationMode);
+        }
+        ScheduleChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc />
     public void SetVacationMode(bool enabled)
     {
+        var vacationChanged = _currentSchedule.IsVacationMode != enabled;
         _currentSchedule.IsVacationMode = enabled;
         SaveSchedule(_currentSchedule);
         
@@ -92,6 +109,12 @@ public class ScheduleService : IScheduleService, IDisposable
         {
             Start();
         }
+
+        if (vacationChanged)
+        {
+            VacationModeChanged?.Invoke(this, enabled);
+        }
+        ScheduleChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc />

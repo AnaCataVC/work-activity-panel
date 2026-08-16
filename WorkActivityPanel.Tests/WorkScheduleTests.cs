@@ -167,4 +167,19 @@ public class WorkScheduleTests
         var delay = schedule.GetTimeUntilWorkStart();
         Assert.Equal(System.Threading.Timeout.InfiniteTimeSpan, delay);
     }
+
+    [Fact]
+    public void VacationMode_DisablesWorkTime_EvenDuringWorkingHours()
+    {
+        var schedule = new WorkSchedule
+        {
+            StartTime = new TimeSpan(9, 0, 0),
+            EndTime = new TimeSpan(18, 0, 0),
+            WorkDays = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday },
+            IsVacationMode = true
+        };
+
+        var workingHour = new DateTime(2026, 8, 17, 12, 0, 0); // Monday at noon
+        Assert.False(schedule.IsWorkTime(workingHour));
+    }
 }

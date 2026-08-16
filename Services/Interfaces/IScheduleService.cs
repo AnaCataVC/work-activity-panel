@@ -48,6 +48,16 @@ public interface IScheduleService
     event EventHandler? WorkEnded;
 
     /// <summary>
+    /// Occurs when vacation mode is toggled.
+    /// </summary>
+    event EventHandler<bool>? VacationModeChanged;
+
+    /// <summary>
+    /// Occurs when work schedule is updated.
+    /// </summary>
+    event EventHandler? ScheduleChanged;
+
+    /// <summary>
     /// Updates the current schedule and restarts timers.
     /// </summary>
     void UpdateSchedule(WorkSchedule schedule);
