@@ -1171,7 +1171,7 @@
         </p>
 
         <div class="hero-actions">
-          <a href="releases/WorkActivityPanel-Setup-v1.1.0.exe" class="btn btn-primary" download>
+          <a href="https://github.com/AnaCataVC/work-activity-panel/releases/download/v1.1.0/WorkActivityPanel-Setup-v1.1.0.exe" class="btn btn-primary" download>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -1454,6 +1454,33 @@
             Construido con WinUI 3 y material Mica para Windows 11. Se minimiza silenciosamente en la bandeja del sistema (System Tray) para no estorbar en tu pantalla.
           </p>
         </div>
+
+        <!-- Feature 7 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-accent">☁️</div>
+          <h3 class="feature-title" data-i18n="features.f7Title">Sincronización con Google Drive</h3>
+          <p class="feature-desc" data-i18n="features.f7Desc">
+            Respaldo automático de tus carpetas de trabajo con streaming SHA-256, filtros de exclusión por extensión y puente directo mediante Google Apps Script.
+          </p>
+        </div>
+
+        <!-- Feature 8 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-accent">🐙</div>
+          <h3 class="feature-title" data-i18n="features.f8Title">Selector Multi-cuenta de GitHub</h3>
+          <p class="feature-desc" data-i18n="features.f8Desc">
+            Alterna el perfil activo de GitHub CLI entre cuentas personales y laborales con un solo clic desde los ajustes de la aplicación.
+          </p>
+        </div>
+
+        <!-- Feature 9 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper feature-icon-accent">🔄</div>
+          <h3 class="feature-title" data-i18n="features.f9Title">Actualizaciones Automáticas</h3>
+          <p class="feature-desc" data-i18n="features.f9Desc">
+            Detección periódica de nuevos releases en GitHub con notificaciones integradas y descarga directa de instaladores sin salir de la app.
+          </p>
+        </div>
       </div>
     </div>
   </section>
@@ -1515,10 +1542,10 @@
       <div class="download-card-container">
         <div class="download-options">
           <!-- Installer (.exe) -->
-          <a href="releases/WorkActivityPanel-Setup-v1.1.0.exe" class="download-btn-card" download>
+          <a href="https://github.com/AnaCataVC/work-activity-panel/releases/download/v1.1.0/WorkActivityPanel-Setup-v1.1.0.exe" class="download-btn-card" target="_blank" rel="noopener noreferrer">
             <div>
               <div class="download-card-title" data-i18n="download.installerTitle">Instalador para Windows (.exe)</div>
-              <div class="download-card-sub" data-i18n="download.installerSub">Recomendado • Asistente de instalación Inno Setup (85 MB)</div>
+              <div class="download-card-sub" data-i18n="download.installerSub">Recomendado • Asistente de instalación Inno Setup (86 MB)</div>
             </div>
             <div class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
               <span data-i18n="download.btnExe">Descargar .exe</span>
@@ -1526,13 +1553,24 @@
           </a>
 
           <!-- Portable (.zip) -->
-          <a href="releases/WorkActivityPanel-v1.1.0-win-x64.zip" class="download-btn-card" download>
+          <a href="https://github.com/AnaCataVC/work-activity-panel/releases/download/v1.1.0/WorkActivityPanel-v1.1.0-win-x64.zip" class="download-btn-card" target="_blank" rel="noopener noreferrer">
             <div>
               <div class="download-card-title" data-i18n="download.portableTitle">Paquete Portable (.zip)</div>
-              <div class="download-card-sub" data-i18n="download.portableSub">Sin instalación • Ejecución directa descomprimiendo (106 MB)</div>
+              <div class="download-card-sub" data-i18n="download.portableSub">Sin instalación • Ejecución directa descomprimiendo (108 MB)</div>
             </div>
             <div class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
               <span data-i18n="download.btnZip">Descargar .zip</span>
+            </div>
+          </a>
+
+          <!-- Release Notes -->
+          <a href="https://github.com/AnaCataVC/work-activity-panel/releases/tag/v1.1.0" class="download-btn-card" target="_blank" rel="noopener noreferrer" style="border-style: dashed;">
+            <div>
+              <div class="download-card-title" data-i18n="download.releaseNotesTitle">Notas de la Versión v1.1.0</div>
+              <div class="download-card-sub" data-i18n="download.releaseNotesSub">Consulta las novedades y registro de cambios en GitHub</div>
+            </div>
+            <div class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+              <span data-i18n="download.btnReleaseNotes">Ver Release</span>
             </div>
           </a>
         </div>
@@ -1686,6 +1724,12 @@
         "features.f5Desc": "Arquitectura de temporizadores programados de alta precisión en C# / .NET 9. Cero consumo innecesario de batería o CPU en segundo plano.",
         "features.f6Title": "Fluent Design & System Tray",
         "features.f6Desc": "Construido con WinUI 3 y material Mica para Windows 11. Se minimiza silenciosamente en la bandeja del sistema (System Tray) para no estorbar en tu pantalla.",
+        "features.f7Title": "Sincronización con Google Drive",
+        "features.f7Desc": "Respaldo automático de tus carpetas de trabajo con streaming SHA-256, filtros de exclusión por extensión y puente directo mediante Google Apps Script.",
+        "features.f8Title": "Selector Multi-cuenta de GitHub",
+        "features.f8Desc": "Alterna el perfil activo de GitHub CLI entre cuentas personales y laborales con un solo clic desde los ajustes de la aplicación.",
+        "features.f9Title": "Actualizaciones Automáticas",
+        "features.f9Desc": "Detección periódica de nuevos releases en GitHub con notificaciones integradas y descarga directa de instaladores sin salir de la app.",
 
         "guide.tag": "Configuración Rápida",
         "guide.title": "Listo en menos de 2 minutos",
@@ -1701,11 +1745,14 @@
         "download.title": "Descarga Work Activity Panel v1.1.0",
         "download.subtitle": "Versión nativa para sistemas Windows de 64 bits. Elige tu formato preferido:",
         "download.installerTitle": "Instalador para Windows (.exe)",
-        "download.installerSub": "Recomendado • Asistente de instalación Inno Setup (85 MB)",
+        "download.installerSub": "Recomendado • Asistente de instalación Inno Setup (86 MB)",
         "download.btnExe": "Descargar .exe",
         "download.portableTitle": "Paquete Portable (.zip)",
-        "download.portableSub": "Sin instalación • Ejecución directa descomprimiendo (106 MB)",
+        "download.portableSub": "Sin instalación • Ejecución directa descomprimiendo (108 MB)",
         "download.btnZip": "Descargar .zip",
+        "download.releaseNotesTitle": "Notas de la Versión v1.1.0",
+        "download.releaseNotesSub": "Consulta las novedades y registro de cambios en GitHub",
+        "download.btnReleaseNotes": "Ver Release",
         "download.reqTitle": "Requisitos del Sistema",
         "download.reqWindows": "Windows 11 o Windows 10 (versión 1809+)",
         "download.reqArch": "Arquitectura x64 (64-bit)",
@@ -1773,6 +1820,12 @@
         "features.f5Desc": "High-precision scheduled timer architecture in C# / .NET 9. Zero continuous background polling or battery drain.",
         "features.f6Title": "Fluent Design & System Tray",
         "features.f6Desc": "Built with WinUI 3 and native Mica materials for Windows 11. Minimizes unobtrusively to the system tray.",
+        "features.f7Title": "Google Drive Sync Engine",
+        "features.f7Desc": "Seamless local file synchronization with Google Drive via Google Apps Script bridge with streaming SHA-256 and exclusion filters.",
+        "features.f8Title": "GitHub Multi-Account Switcher",
+        "features.f8Desc": "Switch active GitHub CLI contexts between personal and work accounts with a single click from settings.",
+        "features.f9Title": "In-App Auto-Updater",
+        "features.f9Desc": "Automatic GitHub Releases check with direct installer download and interactive update notification banners.",
 
         "guide.tag": "Quick Setup",
         "guide.title": "Up and running in 2 minutes",
@@ -1788,11 +1841,14 @@
         "download.title": "Download Work Activity Panel v1.1.0",
         "download.subtitle": "Native 64-bit Windows release. Choose your preferred package:",
         "download.installerTitle": "Windows Installer (.exe)",
-        "download.installerSub": "Recommended • Inno Setup Installation Wizard (85 MB)",
+        "download.installerSub": "Recommended • Inno Setup Installation Wizard (86 MB)",
         "download.btnExe": "Download .exe",
         "download.portableTitle": "Portable Package (.zip)",
-        "download.portableSub": "No install needed • Extract and run (106 MB)",
+        "download.portableSub": "No install needed • Extract and run (108 MB)",
         "download.btnZip": "Download .zip",
+        "download.releaseNotesTitle": "Release Notes v1.1.0",
+        "download.releaseNotesSub": "View full changelog and release details on GitHub",
+        "download.btnReleaseNotes": "View Release",
         "download.reqTitle": "System Requirements",
         "download.reqWindows": "Windows 11 or Windows 10 (version 1809+)",
         "download.reqArch": "x64 Architecture (64-bit)",

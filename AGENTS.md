@@ -130,3 +130,19 @@ iscc installer.iss
 3. **Clean Code & KISS:** Keep functions small, modular, and single-responsibility. Centralize reusable logic in `Helpers/`.
 4. **Artifact Cleanliness:** Binary deliverables and installer outputs MUST always be placed in the `releases/` directory, which is excluded from git tracking.
 5. **Testing Verification:** Whenever modifying business logic, parsers, or services, always add or update corresponding unit tests in `WorkActivityPanel.Tests/`.
+
+### 🌐 Release & Landing Page Synchronization Protocol
+Whenever a new release or version tag (e.g., `vX.Y.Z`) is planned and published, agents MUST execute the following mandatory synchronization steps:
+1. **Installer Configuration (`installer.iss`):**
+   - Update `#define MyAppVersion "X.Y.Z"` and `OutputBaseFilename=WorkActivityPanel-Setup-vX.Y.Z`.
+2. **Landing Page Synchronization (`index.html`):**
+   - Update all download links in `index.html` to point to the official GitHub Release assets: `https://github.com/AnaCataVC/work-activity-panel/releases/download/vX.Y.Z/WorkActivityPanel-Setup-vX.Y.Z.exe` and `WorkActivityPanel-vX.Y.Z-win-x64.zip`.
+   - Update version badges and strings in the navigation and download sections to reflect the new release.
+   - Update the feature grid and `translations` object (`es` and `en`) with any new features, improvements, or architecture enhancements introduced in that release.
+   - Add/update the direct link to the GitHub Release notes (`https://github.com/AnaCataVC/work-activity-panel/releases/tag/vX.Y.Z`).
+3. **Build & Release Packaging:**
+   - Execute `dotnet publish` for `win-x64` self-contained single-file.
+   - Compile the Inno Setup installer via `iscc installer.iss` into `releases/`.
+   - Compress the published output into `releases/WorkActivityPanel-vX.Y.Z-win-x64.zip`.
+   - Publish the GitHub Release via `gh release create vX.Y.Z` attaching both binaries and bilingual release notes.
+
