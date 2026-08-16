@@ -13,19 +13,33 @@ public class LocalSettingsAndPersistenceTests
     public void LocalSettingsHelper_SetAndGet_ReturnsPersistedValue()
     {
         // Arrange
-        const string testKey = "Test_Persistence_Key";
-        const string testValue = "Test_Value_12345";
+        var tempFile = Path.Combine(Path.GetTempPath(), "test_settings_" + Guid.NewGuid() + ".json");
+        LocalSettingsHelper.SettingsFilePath = tempFile;
 
-        // Act
-        LocalSettingsHelper.Set(testKey, testValue);
-        var retrieved = LocalSettingsHelper.Get(testKey);
+        try
+        {
+            const string testKey = "Test_Persistence_Key";
+            const string testValue = "Test_Value_12345";
 
-        // Assert
-        Assert.Equal(testValue, retrieved);
+            // Act
+            LocalSettingsHelper.Set(testKey, testValue);
+            var retrieved = LocalSettingsHelper.Get(testKey);
 
-        // Cleanup
-        LocalSettingsHelper.Remove(testKey);
-        Assert.Null(LocalSettingsHelper.Get(testKey));
+            // Assert
+            Assert.Equal(testValue, retrieved);
+
+            // Cleanup
+            LocalSettingsHelper.Remove(testKey);
+            Assert.Null(LocalSettingsHelper.Get(testKey));
+        }
+        finally
+        {
+            LocalSettingsHelper.ResetToDefaultPath();
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch { }
+            }
+        }
     }
 
     [Fact]

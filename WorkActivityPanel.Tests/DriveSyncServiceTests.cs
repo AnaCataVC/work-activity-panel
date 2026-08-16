@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Moq;
+using WorkActivityPanel.Helpers;
 using WorkActivityPanel.Models;
 using WorkActivityPanel.Services;
 using WorkActivityPanel.Services.Interfaces;
@@ -20,6 +21,8 @@ public class DriveSyncServiceTests : IDisposable
         _testDir = Path.Combine(Path.GetTempPath(), "WorkActivityPanel_SyncTests_" + Guid.NewGuid());
         Directory.CreateDirectory(_testDir);
 
+        LocalSettingsHelper.SettingsFilePath = Path.Combine(_testDir, "test_settings.json");
+
         _scheduleMock = new Mock<IScheduleService>();
         _scheduleMock.Setup(s => s.CurrentSchedule).Returns(new WorkSchedule());
         _scheduleMock.Setup(s => s.IsVacationMode).Returns(false);
@@ -30,6 +33,7 @@ public class DriveSyncServiceTests : IDisposable
     public void Dispose()
     {
         _service.Dispose();
+        LocalSettingsHelper.ResetToDefaultPath();
         if (Directory.Exists(_testDir))
         {
             try { Directory.Delete(_testDir, true); } catch { }

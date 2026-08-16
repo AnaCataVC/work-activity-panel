@@ -11,13 +11,37 @@ namespace WorkActivityPanel.Helpers;
 /// </summary>
 public static class LocalSettingsHelper
 {
-    private static readonly string SettingsDir = Path.Combine(
+    private static readonly string DefaultSettingsDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "WorkActivityPanel",
         "Data");
-    private static readonly string SettingsFilePath = Path.Combine(SettingsDir, "settings.json");
+    private static string? _customSettingsFilePath;
     private static readonly object LockObj = new();
     private static Dictionary<string, string> _cache = new();
+
+    public static string SettingsFilePath
+    {
+        get => _customSettingsFilePath ?? Path.Combine(DefaultSettingsDir, "settings.json");
+        set
+        {
+            lock (LockObj)
+            {
+                _customSettingsFilePath = value;
+                _cache.Clear();
+                Load();
+            }
+        }
+    }
+
+    public static void ResetToDefaultPath()
+    {
+        lock (LockObj)
+        {
+            _customSettingsFilePath = null;
+            _cache.Clear();
+            Load();
+        }
+    }
 
     static LocalSettingsHelper()
     {
@@ -30,9 +54,10 @@ public static class LocalSettingsHelper
         {
             try
             {
-                if (File.Exists(SettingsFilePath))
+                var path = SettingsFilePath;
+                if (File.Exists(path))
                 {
-                    string json = File.ReadAllText(SettingsFilePath);
+                    string json = File.ReadAllText(path);
                     _cache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
                 }
             }
@@ -75,9 +100,14 @@ public static class LocalSettingsHelper
     {
         try
         {
-            Directory.CreateDirectory(SettingsDir);
+            var filePath = SettingsFilePath;
+            var dir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
             string json = JsonSerializer.Serialize(_cache, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsFilePath, json);
+            File.WriteAllText(filePath, json);
         }
         catch
         {
