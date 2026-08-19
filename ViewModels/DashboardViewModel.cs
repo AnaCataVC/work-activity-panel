@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -93,12 +95,16 @@ public partial class DashboardViewModel : ObservableObject
     private bool _hasMeetings;
 
     [ObservableProperty]
+    private string _noMeetingsMessage = "No tienes reuniones programadas para hoy.";
+
+    [ObservableProperty]
     private bool _showUpcomingMeetingBanner;
 
     [ObservableProperty]
     private string _upcomingMeetingTitle = string.Empty;
 
     public ObservableCollection<CalendarEvent> TodayMeetings { get; } = new();
+    private readonly List<CalendarEvent> _allTodayEvents = new();
 
     // Google Drive Backup / Sync Properties
     [ObservableProperty]
@@ -223,6 +229,7 @@ public partial class DashboardViewModel : ObservableObject
         CurrentTime = DateTime.Now.ToString("HH:mm");
         var rawDate = DateTime.Now.ToString("dddd, d 'de' MMMM", SpanishCulture);
         CurrentDate = char.ToUpper(rawDate[0]) + rawDate[1..];
+        UpdateTodayMeetingsDisplay();
     }
 
     private void UpdateWorkScheduleDisplay()
@@ -445,6 +452,52 @@ public partial class DashboardViewModel : ObservableObject
         }
     }
 
+    private void UpdateTodayMeetingsDisplay()
+    {
+        if (!_googleCalendarService.IsConfigured)
+        {
+            TodayMeetings.Clear();
+            HasMeetings = false;
+            NoMeetingsMessage = "Google Calendar no está configurado en Ajustes.";
+            return;
+        }
+
+        var now = DateTime.Now;
+        // Filter out past events (keep active/in-progress and upcoming events)
+        var activeAndUpcoming = _allTodayEvents.Where(ev => ev.EndTime > now).ToList();
+
+        bool changed = TodayMeetings.Count != activeAndUpcoming.Count;
+        if (!changed)
+        {
+            for (int i = 0; i < activeAndUpcoming.Count; i++)
+            {
+                if (TodayMeetings[i].Id != activeAndUpcoming[i].Id)
+                {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            TodayMeetings.Clear();
+            foreach (var ev in activeAndUpcoming)
+            {
+                TodayMeetings.Add(ev);
+            }
+        }
+
+        HasMeetings = TodayMeetings.Count > 0;
+
+        if (!HasMeetings)
+        {
+            NoMeetingsMessage = _allTodayEvents.Count > 0
+                ? "No tienes más reuniones pendientes por hoy."
+                : "No tienes reuniones programadas para hoy.";
+        }
+    }
+
     private async Task RefreshGoogleDataAsync()
     {
         try
@@ -455,17 +508,14 @@ public partial class DashboardViewModel : ObservableObject
             {
                 // Fetch Calendar Events via iCal feed
                 var events = await _googleCalendarService.GetTodayEventsAsync();
-                TodayMeetings.Clear();
-                foreach (var ev in events)
-                {
-                    TodayMeetings.Add(ev);
-                }
-                HasMeetings = TodayMeetings.Count > 0;
+                _allTodayEvents.Clear();
+                _allTodayEvents.AddRange(events);
+                UpdateTodayMeetingsDisplay();
             }
             else
             {
-                TodayMeetings.Clear();
-                HasMeetings = false;
+                _allTodayEvents.Clear();
+                UpdateTodayMeetingsDisplay();
             }
         }
         catch

@@ -1,6 +1,6 @@
 ; Inno Setup Script for Work Activity Panel
 #define MyAppName "Work Activity Panel"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.1.1"
 #define MyAppPublisher "AnaCataVC"
 #define MyAppExeName "WorkActivityPanel.exe"
 
@@ -13,7 +13,7 @@ DefaultDirName={localappdata}\Programs\WorkActivityPanel
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=releases
-OutputBaseFilename=WorkActivityPanel-Setup-v1.1.0
+OutputBaseFilename=WorkActivityPanel-Setup-v1.1.1
 SetupIconFile=Assets\AppIcon.ico
 Compression=lzma2/fast
 SolidCompression=yes

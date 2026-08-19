@@ -30,6 +30,16 @@ public interface IGoogleCalendarService
     event EventHandler<CalendarEvent>? UpcomingMeetingDetected;
 
     /// <summary>
+    /// Gets the current filter settings for Granola triggers.
+    /// </summary>
+    CalendarFilterSettings FilterSettings { get; }
+
+    /// <summary>
+    /// Updates the calendar filter settings and persists them.
+    /// </summary>
+    void UpdateFilterSettings(CalendarFilterSettings settings);
+
+    /// <summary>
     /// Configures and saves the iCal feed URL and optional key.
     /// </summary>
     Task<bool> SetICalCredentialsAsync(string url, string? key = null);

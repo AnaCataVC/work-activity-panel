@@ -99,4 +99,30 @@ END:VCALENDAR";
         Assert.Equal("https://us02web.zoom.us/j/123456789", zoomLink);
         Assert.Equal("https://teams.microsoft.com/l/meetup-join/abc", teamsLink);
     }
+
+    [Fact]
+    public void ParseEventsForDate_ShouldRecognizeAllDayEvents()
+    {
+        var today = DateTime.Today;
+        string todayStr = today.ToString("yyyyMMdd");
+        string tomorrowStr = today.AddDays(1).ToString("yyyyMMdd");
+
+        string ics = $@"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:allday-ooo-1@google.com
+DTSTART;VALUE=DATE:{todayStr}
+DTEND;VALUE=DATE:{tomorrowStr}
+SUMMARY:Out of office
+END:VEVENT
+END:VCALENDAR";
+
+        var events = ICalParser.ParseEventsForDate(ics, today);
+
+        Assert.Single(events);
+        Assert.Equal("allday-ooo-1@google.com", events[0].Id);
+        Assert.Equal("Out of office", events[0].Title);
+        Assert.True(events[0].IsAllDay);
+        Assert.Equal("Todo el día", events[0].FormattedStartTime);
+    }
 }

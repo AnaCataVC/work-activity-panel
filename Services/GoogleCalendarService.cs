@@ -21,6 +21,9 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 {
     private const string ICalUrlSettingKey = "CalendarICalUrl";
     private const string ICalKeySettingKey = "CalendarICalKey";
+    private const string CalendarExcludedKeywordsKey = "CalendarExcludedKeywords";
+    private const string CalendarIgnoreAllDayEventsKey = "CalendarIgnoreAllDayEvents";
+    private const string CalendarRequireMeetingLinkKey = "CalendarRequireMeetingLink";
 
     private readonly IAppLauncherService _appLauncherService;
     private readonly ILogger<GoogleCalendarService> _logger;
@@ -28,6 +31,7 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
     private string? _iCalUrl;
     private string? _iCalKey;
+    private CalendarFilterSettings _filterSettings = new();
 
     /// <inheritdoc />
     public string? ICalUrl => _iCalUrl;
@@ -39,6 +43,9 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_iCalUrl);
 
     /// <inheritdoc />
+    public CalendarFilterSettings FilterSettings => _filterSettings;
+
+    /// <inheritdoc />
     public event EventHandler<CalendarEvent>? UpcomingMeetingDetected;
 
     public GoogleCalendarService(
@@ -48,20 +55,48 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
         _appLauncherService = appLauncherService;
         _logger = logger;
 
-        LoadSavedCredentials();
+        LoadSavedSettings();
     }
 
-    private void LoadSavedCredentials()
+    private void LoadSavedSettings()
     {
         try
         {
             _iCalUrl = LocalSettingsHelper.Get(ICalUrlSettingKey);
             _iCalKey = LocalSettingsHelper.Get(ICalKeySettingKey);
+
+            var excludedKeywords = LocalSettingsHelper.Get(CalendarExcludedKeywordsKey);
+            if (excludedKeywords != null)
+            {
+                _filterSettings.ExcludedKeywords = excludedKeywords;
+            }
+
+            var ignoreAllDayStr = LocalSettingsHelper.Get(CalendarIgnoreAllDayEventsKey);
+            if (bool.TryParse(ignoreAllDayStr, out var ignoreAllDay))
+            {
+                _filterSettings.IgnoreAllDayEvents = ignoreAllDay;
+            }
+
+            var requireLinkStr = LocalSettingsHelper.Get(CalendarRequireMeetingLinkKey);
+            if (bool.TryParse(requireLinkStr, out var requireLink))
+            {
+                _filterSettings.RequireMeetingLink = requireLink;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to load saved iCal credentials.");
+            _logger.LogWarning(ex, "Failed to load saved calendar settings.");
         }
+    }
+
+    /// <inheritdoc />
+    public void UpdateFilterSettings(CalendarFilterSettings settings)
+    {
+        _filterSettings = settings ?? new CalendarFilterSettings();
+        LocalSettingsHelper.Set(CalendarExcludedKeywordsKey, _filterSettings.ExcludedKeywords);
+        LocalSettingsHelper.Set(CalendarIgnoreAllDayEventsKey, _filterSettings.IgnoreAllDayEvents.ToString());
+        LocalSettingsHelper.Set(CalendarRequireMeetingLinkKey, _filterSettings.RequireMeetingLink.ToString());
+        _logger.LogInformation("Calendar filter settings updated.");
     }
 
     private HttpClient CreateConfiguredHttpClient()
@@ -159,7 +194,14 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
             using var client = CreateConfiguredHttpClient();
             var icsContent = await client.GetStringAsync(_iCalUrl);
             result = ICalParser.ParseEventsForDate(icsContent, DateTime.Today);
-            _logger.LogInformation("Parsed {Count} calendar events for today.", result.Count);
+
+            foreach (var ev in result)
+            {
+                ev.OpensGranola = _filterSettings.ShouldOpenGranola(ev);
+            }
+
+            _logger.LogInformation("Parsed {Count} calendar events for today ({GranolaCount} eligible for Granola).", 
+                result.Count, result.FindAll(e => e.OpensGranola).Count);
 
             ScheduleMeetingAlerts(result);
         }
@@ -180,6 +222,13 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
         foreach (var meeting in events)
         {
+            // Only schedule alerts if meeting qualifies for Granola auto-open
+            if (!meeting.OpensGranola)
+            {
+                _logger.LogInformation("Skipping Granola auto-launch alert for excluded event: '{Title}'.", meeting.Title);
+                continue;
+            }
+
             // Trigger 5 minutes before the meeting start
             var alertTime = meeting.StartTime.AddMinutes(-5);
             var delay = alertTime - now;

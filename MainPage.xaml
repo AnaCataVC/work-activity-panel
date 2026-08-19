@@ -257,7 +257,7 @@
                                                 <!-- Title -->
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0">
                                                     <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="Granola se abrirá 5 min antes" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                    <TextBlock Text="{x:Bind StatusText}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                                 </StackPanel>
 
                                                 <!-- Join Link Button -->
@@ -274,7 +274,7 @@
                             <StackPanel HorizontalAlignment="Center" Spacing="8" Margin="0,16"
                                         Visibility="{x:Bind ViewModel.HasMeetings, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}, FallbackValue=Visible}">
                                 <FontIcon Glyph="&#xE787;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="No tienes reuniones programadas para hoy." Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="{x:Bind ViewModel.NoMeetingsMessage, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>

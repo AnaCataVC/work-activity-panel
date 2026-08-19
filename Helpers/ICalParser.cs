@@ -63,6 +63,7 @@ public static partial class ICalParser
         var lines = UnfoldLines(icsContent);
 
         bool inEvent = false;
+        bool isAllDay = false;
         string id = "";
         string summary = "";
         string location = "";
@@ -78,6 +79,7 @@ public static partial class ICalParser
             if (trimmed.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
             {
                 inEvent = true;
+                isAllDay = false;
                 id = "";
                 summary = "Reunión";
                 location = "";
@@ -100,10 +102,15 @@ public static partial class ICalParser
                     }
 
                     var start = dtStart.Value;
-                    var end = dtEnd ?? start.AddHours(1);
+                    var end = dtEnd ?? (isAllDay ? start.AddDays(1) : start.AddHours(1));
 
-                    // Check if event is on targetDate
-                    if (start.Date == targetDate.Date)
+                    if (!isAllDay && start.TimeOfDay == TimeSpan.Zero && (end - start).TotalHours >= 23)
+                    {
+                        isAllDay = true;
+                    }
+
+                    // Check if event is on targetDate (or spans across targetDate if all-day)
+                    if (start.Date == targetDate.Date || (isAllDay && start.Date <= targetDate.Date && end.Date > targetDate.Date))
                     {
                         var meetingLink = ExtractMeetingLink(location, description);
                         
@@ -118,7 +125,8 @@ public static partial class ICalParser
                             Title = summary,
                             StartTime = start,
                             EndTime = end,
-                            MeetingLink = meetingLink
+                            MeetingLink = meetingLink,
+                            IsAllDay = isAllDay
                         };
                     }
                 }
@@ -156,10 +164,18 @@ public static partial class ICalParser
             }
             else if (keyPart.StartsWith("DTSTART", StringComparison.OrdinalIgnoreCase))
             {
+                if (keyPart.Contains("VALUE=DATE", StringComparison.OrdinalIgnoreCase) || valPart.Length == 8)
+                {
+                    isAllDay = true;
+                }
                 dtStart = ParseDateTime(valPart);
             }
             else if (keyPart.StartsWith("DTEND", StringComparison.OrdinalIgnoreCase))
             {
+                if (keyPart.Contains("VALUE=DATE", StringComparison.OrdinalIgnoreCase) || valPart.Length == 8)
+                {
+                    isAllDay = true;
+                }
                 dtEnd = ParseDateTime(valPart);
             }
         }

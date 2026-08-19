@@ -107,6 +107,26 @@
                                      Text="{x:Bind ViewModel.CalendarICalUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="https://calendar.google.com/calendar/ical/.../basic.ics" />
 
+                            <!-- Filters & Granola Automation Rules -->
+                            <Expander Header="Filtros y reglas de apertura de Granola" HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                                <StackPanel Spacing="14" Padding="0,12,0,0">
+                                    <TextBlock Text="Configura qué eventos deben abrir Granola 5 minutos antes. Los eventos excluidos permanecerán visibles en tu itinerario pero sin activar la automatización de Granola ni mostrar avisos emergentes."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap" />
+
+                                    <TextBox Header="Palabras clave o prefijos a ignorar (separados por coma)"
+                                             Text="{x:Bind ViewModel.CalendarExcludedKeywords, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             PlaceholderText="[Personal], [Privado], Out of office, Fuera de la oficina, OOO, Vacaciones, Focus time" />
+
+                                    <ToggleSwitch Header="Ignorar eventos de día completo (vacaciones/OOO)" 
+                                                  IsOn="{x:Bind ViewModel.CalendarIgnoreAllDayEvents, Mode=TwoWay}" />
+
+                                    <ToggleSwitch Header="Solo abrir si tiene enlace de videollamada (Meet, Teams, Zoom, Webex)" 
+                                                  IsOn="{x:Bind ViewModel.CalendarRequireMeetingLink, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Expander>
+
                             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" VerticalAlignment="Center">
                                 <Button Content="Guardar y Sincronizar" Style="{StaticResource AccentButtonStyle}"
                                         Command="{x:Bind ViewModel.SaveCalendarUrlCommand}" />

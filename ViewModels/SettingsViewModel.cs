@@ -80,6 +80,15 @@ public partial class SettingsViewModel : ObservableObject
     private string _calendarICalUrl = string.Empty;
 
     [ObservableProperty]
+    private string _calendarExcludedKeywords = CalendarFilterSettings.DefaultExcludedKeywords;
+
+    [ObservableProperty]
+    private bool _calendarIgnoreAllDayEvents = true;
+
+    [ObservableProperty]
+    private bool _calendarRequireMeetingLink;
+
+    [ObservableProperty]
     private bool _isCalendarConnected;
 
     [ObservableProperty]
@@ -158,8 +167,12 @@ public partial class SettingsViewModel : ObservableObject
 
         IsAutostartEnabled = AutostartHelper.IsAutostartEnabled();
 
-        // Load saved iCal URL
+        // Load saved iCal URL & Filter settings
         CalendarICalUrl = _calendarService.ICalUrl ?? string.Empty;
+        var filterSettings = _calendarService.FilterSettings;
+        CalendarExcludedKeywords = filterSettings.ExcludedKeywords;
+        CalendarIgnoreAllDayEvents = filterSettings.IgnoreAllDayEvents;
+        CalendarRequireMeetingLink = filterSettings.RequireMeetingLink;
         UpdateCalendarStatus();
 
         // Load Drive Sync settings
@@ -194,9 +207,18 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveCalendarUrl()
     {
+        // Update and save calendar filter settings
+        var filter = new CalendarFilterSettings
+        {
+            ExcludedKeywords = CalendarExcludedKeywords?.Trim() ?? CalendarFilterSettings.DefaultExcludedKeywords,
+            IgnoreAllDayEvents = CalendarIgnoreAllDayEvents,
+            RequireMeetingLink = CalendarRequireMeetingLink
+        };
+        _calendarService.UpdateFilterSettings(filter);
+
         if (string.IsNullOrWhiteSpace(CalendarICalUrl))
         {
-            CalendarConnectionStatus = "Por favor ingresa la URL iCal secreta.";
+            CalendarConnectionStatus = "Filtros guardados. Ingresa la URL iCal secreta para sincronizar.";
             return;
         }
 
@@ -300,14 +322,27 @@ public partial class SettingsViewModel : ObservableObject
         // Also save drive settings
         SaveDriveSettings();
 
+        // Also save calendar filter settings
+        var filter = new CalendarFilterSettings
+        {
+            ExcludedKeywords = CalendarExcludedKeywords?.Trim() ?? CalendarFilterSettings.DefaultExcludedKeywords,
+            IgnoreAllDayEvents = CalendarIgnoreAllDayEvents,
+            RequireMeetingLink = CalendarRequireMeetingLink
+        };
+        _calendarService.UpdateFilterSettings(filter);
+
         // Also persist Google Calendar settings
         if (!string.IsNullOrWhiteSpace(CalendarICalUrl))
         {
             if (!string.Equals(_calendarService.ICalUrl, CalendarICalUrl.Trim(), StringComparison.OrdinalIgnoreCase))
             {
                 await _calendarService.SetICalCredentialsAsync(CalendarICalUrl.Trim());
-                UpdateCalendarStatus();
             }
+            else if (_calendarService.IsConfigured)
+            {
+                await _calendarService.GetTodayEventsAsync();
+            }
+            UpdateCalendarStatus();
         }
         else if (_calendarService.IsConfigured && string.IsNullOrWhiteSpace(CalendarICalUrl))
         {
