@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -26,6 +27,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly IScheduleService _scheduleService;
+    private readonly ClaudeConfigDiscovery _claudeConfigDiscovery = new();
     private readonly object _hashLock = new();
     private Dictionary<string, string> _hashIndex = new(StringComparer.OrdinalIgnoreCase);
 
@@ -35,9 +37,8 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     public DriveSyncSettings Settings => _settings;
     public bool IsSyncing => _isSyncing;
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_settings.WebAppUrl) 
-                                && !string.IsNullOrWhiteSpace(_settings.LocalFolderPath) 
-                                && Directory.Exists(_settings.LocalFolderPath);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_settings.WebAppUrl)
+                                && (EnumerateSources().Any() || _settings.SyncUnversionedClaudeMarkdown);
 
     public event EventHandler? SettingsChanged;
     public event EventHandler<SyncProgressReport>? SyncProgressChanged;
@@ -112,19 +113,12 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         try
         {
-            var filters = SyncFilterOptions.Create(
-                _settings.IncludedExtensions,
-                _settings.ExcludedExtensions,
-                _settings.ExcludedFolders,
-                _settings.MaxFileSizeMb
-            );
-
             ReportProgress(progress, new SyncProgressReport
             {
                 StatusMessage = "Escaneando archivos locales..."
             });
 
-            var localFiles = ScanFolder(_settings.LocalFolderPath, filters);
+            var localFiles = await CollectFilesAsync(progress, token);
             summary.TotalScanned = localFiles.Count;
 
             int processed = 0;
@@ -142,7 +136,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                 // 1. Check SHA-256 hash if incremental sync is enabled
                 if (_settings.OnlyModifiedOrNew)
                 {
-                    string? previousHash = GetKnownHash(file.FilePath);
+                    string? previousHash = GetKnownHash(file.HashKey);
                     if (!string.IsNullOrEmpty(previousHash) && string.Equals(previousHash, file.Hash, StringComparison.OrdinalIgnoreCase))
                     {
                         summary.Skipped++;
@@ -175,7 +169,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                     });
 
                     await UploadSingleFileAsync(file.FilePath, _settings.WebAppUrl, file.RelativePath);
-                    SaveKnownHash(file.FilePath, file.Hash);
+                    SaveKnownHash(file.HashKey, file.Hash);
                     summary.Uploaded++;
                 }
                 catch (Exception ex)
@@ -346,6 +340,133 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// The folder-to-destination mappings to synchronize: the main folder always comes
+    /// first, followed by every additional source. The main folder is not replaced by the
+    /// list — adding sources adds mappings, it never removes the one already configured.
+    ///
+    /// A source repeating the main folder with the same destination is dropped so it is not
+    /// uploaded twice.
+    /// </summary>
+    private IEnumerable<SyncSource> EnumerateSources()
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(_settings.LocalFolderPath))
+        {
+            seen.Add($"|{_settings.LocalFolderPath}");
+            yield return new SyncSource
+            {
+                Name = "Carpeta principal",
+                LocalFolderPath = _settings.LocalFolderPath,
+                DestinationPrefix = string.Empty
+            };
+        }
+
+        foreach (var source in _settings.Sources)
+        {
+            if (!source.IsEnabled || string.IsNullOrWhiteSpace(source.LocalFolderPath))
+                continue;
+
+            if (seen.Add($"{source.DestinationPrefix}|{source.LocalFolderPath}"))
+                yield return source;
+        }
+    }
+
+    /// <summary>
+    /// Scans every source plus, when enabled, the unversioned instruction-file sweep, and
+    /// returns the files to upload with their destination paths already resolved.
+    /// </summary>
+    private async Task<List<LocalFileMetadata>> CollectFilesAsync(
+        IProgress<SyncProgressReport>? progress,
+        CancellationToken token)
+    {
+        var collected = new List<LocalFileMetadata>();
+
+        foreach (var source in EnumerateSources())
+        {
+            token.ThrowIfCancellationRequested();
+
+            ReportProgress(progress, new SyncProgressReport
+            {
+                StatusMessage = $"Escaneando {(string.IsNullOrWhiteSpace(source.Name) ? source.LocalFolderPath : source.Name)}..."
+            });
+
+            var filters = SyncFilterOptions.Create(
+                source.IncludedExtensions ?? _settings.IncludedExtensions,
+                source.ExcludedExtensions ?? _settings.ExcludedExtensions,
+                source.ExcludedFolders ?? _settings.ExcludedFolders,
+                source.MaxFileSizeMb ?? _settings.MaxFileSizeMb);
+
+            foreach (var file in ScanFolder(source.LocalFolderPath, filters))
+            {
+                file.RelativePath = CombineDestination(source.DestinationPrefix, file.RelativePath);
+                file.HashKey = $"{source.DestinationPrefix}|{file.FilePath}";
+                collected.Add(file);
+            }
+        }
+
+        if (_settings.SyncUnversionedClaudeMarkdown)
+        {
+            ReportProgress(progress, new SyncProgressReport
+            {
+                StatusMessage = "Buscando CLAUDE.md sin versionar..."
+            });
+
+            var profileRoot = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var unversioned = await _claudeConfigDiscovery.FindUnversionedAsync(
+                profileRoot,
+                _settings.ClaudeMarkdownScanDepth,
+                token);
+
+            foreach (var path in unversioned)
+            {
+                try
+                {
+                    if (!File.Exists(path))
+                        continue;
+
+                    var fileInfo = new FileInfo(path);
+                    // The whole relative path becomes the file name: a tree of files all called
+                    // CLAUDE.md would otherwise collapse into one at the destination.
+                    var flattenedName = Path.GetRelativePath(profileRoot, path)
+                        .Replace(Path.DirectorySeparatorChar, '_')
+                        .Replace(Path.AltDirectorySeparatorChar, '_');
+
+                    collected.Add(new LocalFileMetadata
+                    {
+                        FilePath = path,
+                        FileName = fileInfo.Name,
+                        RelativePath = CombineDestination(_settings.ClaudeMarkdownDestinationPrefix, flattenedName),
+                        FileSize = fileInfo.Length,
+                        LastModified = fileInfo.LastWriteTimeUtc,
+                        Hash = ComputeSha256(path),
+                        HashKey = $"{_settings.ClaudeMarkdownDestinationPrefix}|{path}"
+                    });
+                }
+                catch
+                {
+                    // Skip files that cannot be read or are locked
+                }
+            }
+        }
+
+        return collected;
+    }
+
+    /// <summary>
+    /// Joins a destination prefix and a relative path into the forward-slash path the
+    /// Apps Script bridge expects. An empty prefix leaves the path untouched.
+    /// </summary>
+    public static string CombineDestination(string? prefix, string relativePath)
+    {
+        var normalized = (relativePath ?? string.Empty).Replace('\\', '/').TrimStart('/');
+        if (string.IsNullOrWhiteSpace(prefix))
+            return normalized;
+
+        return $"{prefix.Replace('\\', '/').Trim('/')}/{normalized}";
     }
 
     public string ComputeSha256(string filePath)

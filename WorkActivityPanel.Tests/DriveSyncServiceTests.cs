@@ -40,6 +40,29 @@ public class DriveSyncServiceTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData("", "notes.md", "notes.md")]
+    [InlineData(null, "sub\\notes.md", "sub/notes.md")]
+    [InlineData("claude-md", "notes.md", "claude-md/notes.md")]
+    [InlineData("/claude-md/", "sub\\notes.md", "claude-md/sub/notes.md")]
+    public void CombineDestination_ShouldProduceForwardSlashPaths(string? prefix, string relativePath, string expected)
+    {
+        Assert.Equal(expected, DriveSyncService.CombineDestination(prefix, relativePath));
+    }
+
+    [Fact]
+    public void HashKey_ShouldFallBackToTheAbsolutePath()
+    {
+        // Existing sync_hashes.json indexes are keyed by absolute path; the fallback is what
+        // keeps them valid instead of re-uploading everything.
+        var file = new LocalFileMetadata { FilePath = @"C:\folder\file.md" };
+
+        Assert.Equal(@"C:\folder\file.md", file.HashKey);
+
+        file.HashKey = "prefix|C:\\folder\\file.md";
+        Assert.Equal("prefix|C:\\folder\\file.md", file.HashKey);
+    }
+
     [Fact]
     public void ScanFolder_ShouldExcludeBlacklistedExtensions()
     {

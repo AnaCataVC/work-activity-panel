@@ -39,4 +39,32 @@ public sealed partial class SettingsPage : Page
             // Ignore picker cancellation or exception
         }
     }
+
+    private async void AddSourceFolderButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        try
+        {
+            var folderPicker = new FolderPicker();
+            folderPicker.FileTypeFilter.Add("*");
+            var hwnd = App.WindowHandle;
+            WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder != null)
+            {
+                ViewModel.AddDriveSyncSource(folder.Path);
+            }
+        }
+        catch
+        {
+            // Ignore picker cancellation or exception
+        }
+    }
+
+    private void DeleteSourceButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: Models.SyncSource source })
+        {
+            ViewModel.RemoveDriveSyncSource(source);
+        }
+    }
 }

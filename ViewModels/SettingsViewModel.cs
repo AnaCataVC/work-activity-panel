@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -120,6 +121,17 @@ public partial class SettingsViewModel : ObservableObject
     private bool _driveAutoSyncOnWorkEnd = true;
 
     [ObservableProperty]
+    private bool _driveSyncUnversionedClaudeMarkdown;
+
+    [ObservableProperty]
+    private string _driveClaudeMarkdownDestinationPrefix = "claude-md-unversioned";
+
+    [ObservableProperty]
+    private int _driveClaudeMarkdownScanDepth = 6;
+
+    public ObservableCollection<SyncSource> DriveSyncSources { get; } = new();
+
+    [ObservableProperty]
     private bool _isDriveConnected;
 
     [ObservableProperty]
@@ -185,6 +197,23 @@ public partial class SettingsViewModel : ObservableObject
         DriveMaxFileSizeMb = driveSettings.MaxFileSizeMb > 0 ? driveSettings.MaxFileSizeMb : 50;
         DriveOnlyModifiedOrNew = driveSettings.OnlyModifiedOrNew;
         DriveAutoSyncOnWorkEnd = driveSettings.AutoSyncOnWorkEnd;
+        DriveSyncUnversionedClaudeMarkdown = driveSettings.SyncUnversionedClaudeMarkdown;
+        DriveClaudeMarkdownDestinationPrefix = !string.IsNullOrWhiteSpace(driveSettings.ClaudeMarkdownDestinationPrefix)
+            ? driveSettings.ClaudeMarkdownDestinationPrefix
+            : "claude-md-unversioned";
+        DriveClaudeMarkdownScanDepth = driveSettings.ClaudeMarkdownScanDepth > 0
+            ? driveSettings.ClaudeMarkdownScanDepth
+            : 6;
+
+        DriveSyncSources.Clear();
+        if (driveSettings.Sources != null)
+        {
+            foreach (var s in driveSettings.Sources)
+            {
+                DriveSyncSources.Add(s);
+            }
+        }
+
         UpdateDriveStatus();
     }
 
@@ -202,6 +231,29 @@ public partial class SettingsViewModel : ObservableObject
         DriveConnectionStatus = IsDriveConnected
             ? "Configurado y listo"
             : "Falta configurar URL o carpeta local";
+    }
+
+    [RelayCommand]
+    public void AddDriveSyncSource(string? folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath)) return;
+        var folderName = new DirectoryInfo(folderPath).Name;
+        DriveSyncSources.Add(new SyncSource
+        {
+            Name = folderName,
+            LocalFolderPath = folderPath,
+            DestinationPrefix = folderName,
+            IsEnabled = true
+        });
+    }
+
+    [RelayCommand]
+    public void RemoveDriveSyncSource(SyncSource? source)
+    {
+        if (source != null && DriveSyncSources.Contains(source))
+        {
+            DriveSyncSources.Remove(source);
+        }
     }
 
     [RelayCommand]
@@ -288,6 +340,10 @@ public partial class SettingsViewModel : ObservableObject
         settings.MaxFileSizeMb = DriveMaxFileSizeMb > 0 ? DriveMaxFileSizeMb : 50;
         settings.OnlyModifiedOrNew = DriveOnlyModifiedOrNew;
         settings.AutoSyncOnWorkEnd = DriveAutoSyncOnWorkEnd;
+        settings.SyncUnversionedClaudeMarkdown = DriveSyncUnversionedClaudeMarkdown;
+        settings.ClaudeMarkdownDestinationPrefix = DriveClaudeMarkdownDestinationPrefix?.Trim() ?? "claude-md-unversioned";
+        settings.ClaudeMarkdownScanDepth = DriveClaudeMarkdownScanDepth > 0 ? DriveClaudeMarkdownScanDepth : 6;
+        settings.Sources = DriveSyncSources.ToList();
 
         _driveSyncService.UpdateSettings(settings);
         UpdateDriveStatus();
