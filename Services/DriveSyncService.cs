@@ -423,23 +423,33 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
             foreach (var path in unversioned)
             {
-                var fileInfo = new FileInfo(path);
-                // The whole relative path becomes the file name: a tree of files all called
-                // CLAUDE.md would otherwise collapse into one at the destination.
-                var flattenedName = Path.GetRelativePath(profileRoot, path)
-                    .Replace(Path.DirectorySeparatorChar, '_')
-                    .Replace(Path.AltDirectorySeparatorChar, '_');
-
-                collected.Add(new LocalFileMetadata
+                try
                 {
-                    FilePath = path,
-                    FileName = fileInfo.Name,
-                    RelativePath = CombineDestination(_settings.ClaudeMarkdownDestinationPrefix, flattenedName),
-                    FileSize = fileInfo.Length,
-                    LastModified = fileInfo.LastWriteTimeUtc,
-                    Hash = ComputeSha256(path),
-                    HashKey = $"{_settings.ClaudeMarkdownDestinationPrefix}|{path}"
-                });
+                    if (!File.Exists(path))
+                        continue;
+
+                    var fileInfo = new FileInfo(path);
+                    // The whole relative path becomes the file name: a tree of files all called
+                    // CLAUDE.md would otherwise collapse into one at the destination.
+                    var flattenedName = Path.GetRelativePath(profileRoot, path)
+                        .Replace(Path.DirectorySeparatorChar, '_')
+                        .Replace(Path.AltDirectorySeparatorChar, '_');
+
+                    collected.Add(new LocalFileMetadata
+                    {
+                        FilePath = path,
+                        FileName = fileInfo.Name,
+                        RelativePath = CombineDestination(_settings.ClaudeMarkdownDestinationPrefix, flattenedName),
+                        FileSize = fileInfo.Length,
+                        LastModified = fileInfo.LastWriteTimeUtc,
+                        Hash = ComputeSha256(path),
+                        HashKey = $"{_settings.ClaudeMarkdownDestinationPrefix}|{path}"
+                    });
+                }
+                catch
+                {
+                    // Skip files that cannot be read or are locked
+                }
             }
         }
 

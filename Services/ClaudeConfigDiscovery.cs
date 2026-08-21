@@ -100,7 +100,11 @@ public sealed class ClaudeConfigDiscovery
 
             foreach (var subDirectory in subDirectories)
             {
-                var name = new DirectoryInfo(subDirectory).Name;
+                var dirInfo = new DirectoryInfo(subDirectory);
+                if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    continue;
+
+                var name = dirInfo.Name;
                 if (!SkippedDirectories.Contains(name))
                     queue.Enqueue((subDirectory, depth + 1));
             }
@@ -124,14 +128,16 @@ public sealed class ClaudeConfigDiscovery
         var startInfo = new ProcessStartInfo
         {
             FileName = _gitExecutable,
-            // The path is passed absolute on purpose: git resolves a relative one against
-            // the directory given to -C, which silently reports every file as untracked.
-            Arguments = $"-C \"{directory}\" ls-files --error-unmatch \"{filePath}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        startInfo.ArgumentList.Add("-C");
+        startInfo.ArgumentList.Add(directory);
+        startInfo.ArgumentList.Add("ls-files");
+        startInfo.ArgumentList.Add("--error-unmatch");
+        startInfo.ArgumentList.Add(filePath);
 
         try
         {
