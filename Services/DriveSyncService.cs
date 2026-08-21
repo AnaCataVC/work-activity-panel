@@ -343,33 +343,36 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     }
 
     /// <summary>
-    /// The folders to synchronize. Settings written before multiple sources existed have an
-    /// empty list, so the single legacy folder is yielded with no destination prefix — that
-    /// is byte-for-byte the behaviour those settings already had.
+    /// The folder-to-destination mappings to synchronize: the main folder always comes
+    /// first, followed by every additional source. The main folder is not replaced by the
+    /// list — adding sources adds mappings, it never removes the one already configured.
+    ///
+    /// A source repeating the main folder with the same destination is dropped so it is not
+    /// uploaded twice.
     /// </summary>
     private IEnumerable<SyncSource> EnumerateSources()
     {
-        var configured = _settings.Sources
-            .Where(source => source.IsEnabled && !string.IsNullOrWhiteSpace(source.LocalFolderPath))
-            .ToList();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (configured.Count == 0)
+        if (!string.IsNullOrWhiteSpace(_settings.LocalFolderPath))
         {
-            if (!string.IsNullOrWhiteSpace(_settings.LocalFolderPath))
+            seen.Add($"|{_settings.LocalFolderPath}");
+            yield return new SyncSource
             {
-                yield return new SyncSource
-                {
-                    Name = "Carpeta principal",
-                    LocalFolderPath = _settings.LocalFolderPath,
-                    DestinationPrefix = string.Empty
-                };
-            }
-
-            yield break;
+                Name = "Carpeta principal",
+                LocalFolderPath = _settings.LocalFolderPath,
+                DestinationPrefix = string.Empty
+            };
         }
 
-        foreach (var source in configured)
-            yield return source;
+        foreach (var source in _settings.Sources)
+        {
+            if (!source.IsEnabled || string.IsNullOrWhiteSpace(source.LocalFolderPath))
+                continue;
+
+            if (seen.Add($"{source.DestinationPrefix}|{source.LocalFolderPath}"))
+                yield return source;
+        }
     }
 
     /// <summary>

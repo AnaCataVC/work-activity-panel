@@ -56,9 +56,9 @@ public class DriveSyncSettings
     public string LastSyncStatus { get; set; } = "Nunca sincronizado";
 
     /// <summary>
-    /// Additional folders to synchronize. When empty, <see cref="LocalFolderPath"/> is
-    /// used as the single source, so settings written before this field existed keep
-    /// working unchanged.
+    /// Additional folder-to-destination mappings, synchronized alongside
+    /// <see cref="LocalFolderPath"/> rather than instead of it: the main folder keeps its
+    /// own mapping whether this list is empty or not.
     /// </summary>
     public List<SyncSource> Sources { get; set; } = new();
 
