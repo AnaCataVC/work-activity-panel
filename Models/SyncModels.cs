@@ -9,12 +9,27 @@ namespace WorkActivityPanel.Models;
 /// </summary>
 public class LocalFileMetadata
 {
+    private string? _hashKey;
+
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public string RelativePath { get; set; } = string.Empty;
     public string Hash { get; set; } = string.Empty;
     public long FileSize { get; set; }
     public DateTime LastModified { get; set; }
+
+    /// <summary>
+    /// Key identifying this file in the incremental-sync hash index. Falls back to the
+    /// absolute path, which is what single-source syncs have always used, so existing
+    /// indexes stay valid. Sources that write under a destination prefix qualify the key
+    /// with it, so one local file synced to two destinations is tracked once per
+    /// destination instead of the second one being skipped as unchanged.
+    /// </summary>
+    public string HashKey
+    {
+        get => string.IsNullOrEmpty(_hashKey) ? FilePath : _hashKey;
+        set => _hashKey = value;
+    }
 }
 
 /// <summary>
