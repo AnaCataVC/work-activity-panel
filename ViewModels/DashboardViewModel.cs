@@ -148,10 +148,25 @@ public partial class DashboardViewModel : ObservableObject
     private string _alternativeGitHubAccount = string.Empty;
 
     [ObservableProperty]
+    private string _quickSwitchTargetRole = string.Empty;
+
+    [ObservableProperty]
     private bool _hasMultipleGitHubAccounts;
 
     [ObservableProperty]
     private bool _isSwitchingGitHubAccount;
+
+    [ObservableProperty]
+    private bool _isActiveAccountWorkAccount;
+
+    [ObservableProperty]
+    private bool _isActiveAccountPersonalAccount;
+
+    [ObservableProperty]
+    private bool _isWorkAccountConfigured;
+
+    [ObservableProperty]
+    private string _gitHubAccountRoleBadge = "Activa";
 
     [ObservableProperty]
     private string _gitHubStatusText = "Consultando...";
@@ -187,6 +202,7 @@ public partial class DashboardViewModel : ObservableObject
         _driveSyncService.SettingsChanged += OnDriveSettingsChanged;
 
         _gitHubAuthService.ActiveAccountChanged += OnGitHubActiveAccountChanged;
+        _gitHubAuthService.SettingsChanged += OnGitHubSettingsChanged;
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _timer.Tick += (s, e) => UpdateTime();
@@ -199,8 +215,20 @@ public partial class DashboardViewModel : ObservableObject
     {
         UpdateTime();
         RefreshAllStatus();
+        if (IsWorkTime && !IsVacationMode)
+        {
+            await EnsureGitHubAccountForScheduleAsync(isWorkStart: true);
+        }
         await RefreshStatus();
         _ = CheckForUpdatesInBackgroundAsync();
+    }
+
+    private void OnGitHubSettingsChanged(object? sender, EventArgs e)
+    {
+        App.DispatcherQueue.TryEnqueue(async () =>
+        {
+            await RefreshGitHubStatusAsync();
+        });
     }
 
     private void OnDriveSettingsChanged(object? sender, EventArgs e)
@@ -291,6 +319,7 @@ public partial class DashboardViewModel : ObservableObject
             IsWorkTime = true;
             UpdateStatusDisplay();
             _appLauncherService.EnsureSlackRunning();
+            await EnsureGitHubAccountForScheduleAsync(isWorkStart: true);
             await RefreshStatus();
             await RefreshGoogleDataAsync();
         });
@@ -298,10 +327,12 @@ public partial class DashboardViewModel : ObservableObject
 
     private void OnWorkEnded(object? sender, EventArgs e)
     {
-        App.DispatcherQueue.TryEnqueue(() =>
+        App.DispatcherQueue.TryEnqueue(async () =>
         {
             IsWorkTime = false;
             UpdateStatusDisplay();
+            await EnsureGitHubAccountForScheduleAsync(isWorkStart: false);
+            await RefreshStatus();
         });
     }
 
@@ -567,6 +598,23 @@ public partial class DashboardViewModel : ObservableObject
             ActiveGitHubAccount = info.ActiveAccount ?? string.Empty;
             HasMultipleGitHubAccounts = info.HasMultipleAccounts;
 
+            IsActiveAccountWorkAccount = info.IsActiveAccountWorkAccount;
+            IsActiveAccountPersonalAccount = info.IsActiveAccountPersonalAccount;
+            IsWorkAccountConfigured = !string.IsNullOrEmpty(info.WorkAccount);
+
+            if (IsActiveAccountWorkAccount)
+            {
+                GitHubAccountRoleBadge = "Cuenta Laboral";
+            }
+            else if (IsActiveAccountPersonalAccount)
+            {
+                GitHubAccountRoleBadge = "Cuenta Personal";
+            }
+            else
+            {
+                GitHubAccountRoleBadge = "Activa";
+            }
+
             AvailableGitHubAccounts.Clear();
             foreach (var account in info.AvailableAccounts)
             {
@@ -586,10 +634,26 @@ public partial class DashboardViewModel : ObservableObject
             if (AvailableGitHubAccounts.Count == 2 && !string.IsNullOrEmpty(ActiveGitHubAccount))
             {
                 AlternativeGitHubAccount = AvailableGitHubAccounts.FirstOrDefault(a => !string.Equals(a, ActiveGitHubAccount, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+                if (!string.IsNullOrEmpty(AlternativeGitHubAccount))
+                {
+                    if (string.Equals(AlternativeGitHubAccount, info.WorkAccount, StringComparison.OrdinalIgnoreCase))
+                    {
+                        QuickSwitchTargetRole = " (Laboral)";
+                    }
+                    else if (string.Equals(AlternativeGitHubAccount, info.PersonalAccount, StringComparison.OrdinalIgnoreCase))
+                    {
+                        QuickSwitchTargetRole = " (Personal)";
+                    }
+                    else
+                    {
+                        QuickSwitchTargetRole = string.Empty;
+                    }
+                }
             }
             else
             {
                 AlternativeGitHubAccount = string.Empty;
+                QuickSwitchTargetRole = string.Empty;
             }
 
             if (!IsGitHubInstalled)
@@ -604,7 +668,8 @@ public partial class DashboardViewModel : ObservableObject
             }
             else
             {
-                GitHubStatusText = $"Cuenta activa: {ActiveGitHubAccount}";
+                string roleSuffix = IsActiveAccountWorkAccount ? " (Laboral)" : (IsActiveAccountPersonalAccount ? " (Personal)" : string.Empty);
+                GitHubStatusText = $"Cuenta activa: {ActiveGitHubAccount}{roleSuffix}";
                 GitHubStatusColor = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen);
             }
         }
@@ -612,6 +677,29 @@ public partial class DashboardViewModel : ObservableObject
         {
             GitHubStatusText = $"Error: {ex.Message}";
             GitHubStatusColor = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
+        }
+    }
+
+    private async Task EnsureGitHubAccountForScheduleAsync(bool isWorkStart)
+    {
+        if (IsVacationMode) return;
+
+        var settings = _gitHubAuthService.Settings;
+        if (isWorkStart && settings.AutoSwitchOnWorkStart && !string.IsNullOrWhiteSpace(settings.WorkAccount))
+        {
+            var info = await _gitHubAuthService.GetAccountsStatusAsync();
+            if (info.IsGhInstalled && !string.Equals(info.ActiveAccount, settings.WorkAccount.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                await SwitchGitHubAccount(settings.WorkAccount.Trim());
+            }
+        }
+        else if (!isWorkStart && settings.AutoSwitchOnWorkEnd && !string.IsNullOrWhiteSpace(settings.PersonalAccount))
+        {
+            var info = await _gitHubAuthService.GetAccountsStatusAsync();
+            if (info.IsGhInstalled && !string.Equals(info.ActiveAccount, settings.PersonalAccount.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                await SwitchGitHubAccount(settings.PersonalAccount.Trim());
+            }
         }
     }
 

@@ -15,6 +15,21 @@ public interface IGitHubAuthService
     event EventHandler<string?>? ActiveAccountChanged;
 
     /// <summary>
+    /// Event triggered when GitHub settings have changed.
+    /// </summary>
+    event EventHandler? SettingsChanged;
+
+    /// <summary>
+    /// Gets the current GitHub configuration settings.
+    /// </summary>
+    GitHubSettings Settings { get; }
+
+    /// <summary>
+    /// Updates and persists the GitHub configuration settings.
+    /// </summary>
+    void UpdateSettings(GitHubSettings settings);
+
+    /// <summary>
     /// Retrieves current GitHub authentication status, active account, and available accounts.
     /// </summary>
     Task<GitHubAccountInfo> GetAccountsStatusAsync();

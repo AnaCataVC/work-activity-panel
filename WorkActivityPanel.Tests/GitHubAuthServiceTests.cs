@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using WorkActivityPanel.Helpers;
 using WorkActivityPanel.Models;
 using WorkActivityPanel.Services;
 using Xunit;
@@ -131,6 +132,81 @@ public class GitHubAuthServiceTests
         };
         Assert.True(multiple.IsAuthenticated);
         Assert.True(multiple.HasMultipleAccounts);
+    }
+
+    [Fact]
+    public void GitHubAccountInfo_WorkAndPersonalAccount_CorrectlyEvaluated()
+    {
+        var info = new GitHubAccountInfo
+        {
+            IsGhInstalled = true,
+            ActiveAccount = "CataVillalobosC",
+            WorkAccount = "CataVillalobosC",
+            PersonalAccount = "AnaCataVC",
+            AvailableAccounts = { "AnaCataVC", "CataVillalobosC" }
+        };
+
+        Assert.True(info.IsActiveAccountWorkAccount);
+        Assert.False(info.IsActiveAccountPersonalAccount);
+
+        // Switch active to personal
+        info.ActiveAccount = "AnaCataVC";
+        Assert.False(info.IsActiveAccountWorkAccount);
+        Assert.True(info.IsActiveAccountPersonalAccount);
+
+        // Case insensitivity
+        info.ActiveAccount = "catavillalobosc";
+        Assert.True(info.IsActiveAccountWorkAccount);
+    }
+
+    [Fact]
+    public void GitHubSettings_DefaultValues_AreCorrect()
+    {
+        var settings = new GitHubSettings();
+        Assert.Null(settings.WorkAccount);
+        Assert.Null(settings.PersonalAccount);
+        Assert.True(settings.AutoSwitchOnWorkStart);
+        Assert.True(settings.AutoSwitchOnWorkEnd);
+    }
+
+    [Fact]
+    public void UpdateSettings_PersistsAndTriggersEvent()
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), $"test_gh_settings_{Guid.NewGuid():N}.json");
+        LocalSettingsHelper.SettingsFilePath = tempFile;
+
+        try
+        {
+            bool eventTriggered = false;
+            _service.SettingsChanged += (s, e) => eventTriggered = true;
+
+            var newSettings = new GitHubSettings
+            {
+                WorkAccount = "CataVillalobosC",
+                PersonalAccount = "AnaCataVC",
+                AutoSwitchOnWorkStart = true,
+                AutoSwitchOnWorkEnd = false
+            };
+
+            // Act
+            _service.UpdateSettings(newSettings);
+
+            // Assert
+            Assert.True(eventTriggered);
+            Assert.Equal("CataVillalobosC", _service.Settings.WorkAccount);
+            Assert.Equal("AnaCataVC", _service.Settings.PersonalAccount);
+            Assert.True(_service.Settings.AutoSwitchOnWorkStart);
+            Assert.False(_service.Settings.AutoSwitchOnWorkEnd);
+        }
+        finally
+        {
+            LocalSettingsHelper.ResetToDefaultPath();
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch { }
+            }
+        }
     }
 
     [Fact]

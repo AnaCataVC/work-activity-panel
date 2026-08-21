@@ -21,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IScheduleService _scheduleService;
     private readonly IGoogleCalendarService _calendarService;
     private readonly IDriveSyncService _driveSyncService;
+    private readonly IGitHubAuthService _gitHubAuthService;
     private readonly IUpdateService _updateService;
 
     // About & Update Configuration
@@ -75,6 +76,27 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isVacationMode;
+
+    // GitHub CLI & Accounts Configuration
+    [ObservableProperty]
+    private string _gitHubWorkAccount = string.Empty;
+
+    [ObservableProperty]
+    private string _gitHubPersonalAccount = string.Empty;
+
+    [ObservableProperty]
+    private bool _gitHubAutoSwitchOnWorkStart = true;
+
+    [ObservableProperty]
+    private bool _gitHubAutoSwitchOnWorkEnd = true;
+
+    [ObservableProperty]
+    private bool _isGitHubInstalled;
+
+    [ObservableProperty]
+    private string _gitHubSettingsStatus = string.Empty;
+
+    public ObservableCollection<string> AvailableGitHubAccounts { get; } = new();
 
     // Calendar iCal Configuration
     [ObservableProperty]
@@ -151,11 +173,13 @@ public partial class SettingsViewModel : ObservableObject
         IScheduleService scheduleService,
         IGoogleCalendarService calendarService,
         IDriveSyncService driveSyncService,
+        IGitHubAuthService gitHubAuthService,
         IUpdateService updateService)
     {
         _scheduleService = scheduleService;
         _calendarService = calendarService;
         _driveSyncService = driveSyncService;
+        _gitHubAuthService = gitHubAuthService;
         _updateService = updateService;
 
         LoadSettings();
@@ -178,6 +202,14 @@ public partial class SettingsViewModel : ObservableObject
         IsSunday = workDays.Contains(DayOfWeek.Sunday);
 
         IsAutostartEnabled = AutostartHelper.IsAutostartEnabled();
+
+        // Load GitHub Account Settings
+        var ghSettings = _gitHubAuthService.Settings;
+        GitHubWorkAccount = ghSettings.WorkAccount ?? string.Empty;
+        GitHubPersonalAccount = ghSettings.PersonalAccount ?? string.Empty;
+        GitHubAutoSwitchOnWorkStart = ghSettings.AutoSwitchOnWorkStart;
+        GitHubAutoSwitchOnWorkEnd = ghSettings.AutoSwitchOnWorkEnd;
+        _ = LoadGitHubAccountsAsync();
 
         // Load saved iCal URL & Filter settings
         CalendarICalUrl = _calendarService.ICalUrl ?? string.Empty;
@@ -328,6 +360,52 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    private async Task LoadGitHubAccountsAsync()
+    {
+        try
+        {
+            var info = await _gitHubAuthService.GetAccountsStatusAsync();
+            IsGitHubInstalled = info.IsGhInstalled;
+            AvailableGitHubAccounts.Clear();
+            foreach (var account in info.AvailableAccounts)
+            {
+                AvailableGitHubAccounts.Add(account);
+            }
+
+            if (string.IsNullOrEmpty(GitHubWorkAccount) && !string.IsNullOrEmpty(info.WorkAccount))
+            {
+                GitHubWorkAccount = info.WorkAccount;
+            }
+            if (string.IsNullOrEmpty(GitHubPersonalAccount) && !string.IsNullOrEmpty(info.PersonalAccount))
+            {
+                GitHubPersonalAccount = info.PersonalAccount;
+            }
+
+            GitHubSettingsStatus = info.IsGhInstalled
+                ? $"{info.AvailableAccounts.Count} cuentas detectadas en GitHub CLI"
+                : "GitHub CLI no detectado en el sistema";
+        }
+        catch (Exception ex)
+        {
+            GitHubSettingsStatus = $"Error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void SaveGitHubSettings()
+    {
+        var settings = _gitHubAuthService.Settings;
+        settings.WorkAccount = !string.IsNullOrWhiteSpace(GitHubWorkAccount) ? GitHubWorkAccount.Trim() : null;
+        settings.PersonalAccount = !string.IsNullOrWhiteSpace(GitHubPersonalAccount) ? GitHubPersonalAccount.Trim() : null;
+        settings.AutoSwitchOnWorkStart = GitHubAutoSwitchOnWorkStart;
+        settings.AutoSwitchOnWorkEnd = GitHubAutoSwitchOnWorkEnd;
+
+        _gitHubAuthService.UpdateSettings(settings);
+
+        SaveConfirmationMessage = "¡Ajustes de cuenta laboral de GitHub guardados!";
+        ShowSaveConfirmation = true;
+    }
+
     [RelayCommand]
     private void SaveDriveSettings()
     {
@@ -374,6 +452,9 @@ public partial class SettingsViewModel : ObservableObject
         _scheduleService.SetVacationMode(IsVacationMode);
 
         AutostartHelper.SetAutostart(IsAutostartEnabled);
+
+        // Also save GitHub settings
+        SaveGitHubSettings();
 
         // Also save drive settings
         SaveDriveSettings();

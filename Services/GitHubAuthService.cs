@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WorkActivityPanel.Helpers;
 using WorkActivityPanel.Models;
 using WorkActivityPanel.Services.Interfaces;
 
@@ -16,13 +18,26 @@ namespace WorkActivityPanel.Services;
 /// </summary>
 public class GitHubAuthService : IGitHubAuthService
 {
+    private const string SettingsKey = "GitHubAccountSettings";
     private readonly ILogger<GitHubAuthService> _logger;
+    private GitHubSettings _settings;
 
     public event EventHandler<string?>? ActiveAccountChanged;
+    public event EventHandler? SettingsChanged;
+
+    public GitHubSettings Settings => _settings;
 
     public GitHubAuthService(ILogger<GitHubAuthService> logger)
     {
         _logger = logger;
+        _settings = LoadSettings();
+    }
+
+    public void UpdateSettings(GitHubSettings settings)
+    {
+        _settings = settings ?? new GitHubSettings();
+        SaveSettings();
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc />
@@ -30,7 +45,11 @@ public class GitHubAuthService : IGitHubAuthService
     {
         return await Task.Run(() =>
         {
-            var info = new GitHubAccountInfo();
+            var info = new GitHubAccountInfo
+            {
+                WorkAccount = _settings.WorkAccount,
+                PersonalAccount = _settings.PersonalAccount
+            };
 
             string? ghPath = FindGhExecutable();
             info.IsGhInstalled = !string.IsNullOrEmpty(ghPath);
@@ -324,5 +343,31 @@ public class GitHubAuthService : IGitHubAuthService
 
         // Test if "gh" is in PATH by attempting a silent resolve
         return "gh";
+    }
+
+    private GitHubSettings LoadSettings()
+    {
+        try
+        {
+            var json = LocalSettingsHelper.Get(SettingsKey);
+            if (!string.IsNullOrEmpty(json))
+            {
+                var settings = JsonSerializer.Deserialize<GitHubSettings>(json);
+                if (settings != null) return settings;
+            }
+        }
+        catch { }
+
+        return new GitHubSettings();
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_settings);
+            LocalSettingsHelper.Set(SettingsKey, json);
+        }
+        catch { }
     }
 }

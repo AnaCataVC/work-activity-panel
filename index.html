@@ -1621,6 +1621,7 @@
                       <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                     <span id="mockupHeaderGithubAccount">AnaCataVC</span>
+                    <span id="mockupHeaderGithubRole" style="display:none; font-size: 10px; background: var(--accent); color: white; border-radius: 4px; padding: 1px 5px; margin-left: 4px; font-weight: 600;" data-i18n="mockup.roleWorkPill">Laboral</span>
                   </div>
 
                   <!-- Drive Sync Status Badge -->
@@ -1755,10 +1756,10 @@
                   <div>
                     <div class="real-github-username-row">
                       <span class="real-github-username" id="mockupActiveUser">AnaCataVC</span>
-                      <span class="real-badge-active" data-i18n="mockup.accountActive">Activa</span>
+                      <span class="real-badge-active" id="mockupAccountRoleBadge" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.08);" data-i18n="mockup.accountPersonal">Cuenta Personal</span>
                     </div>
                     <div class="real-github-account-sub">
-                      <span data-i18n="mockup.activeAccountLabel">Cuenta activa:</span> <span id="mockupActiveUserSub">AnaCataVC</span>
+                      <span data-i18n="mockup.activeAccountLabel">Cuenta activa:</span> <span id="mockupActiveUserSub">AnaCataVC (Personal)</span>
                     </div>
                   </div>
                 </div>
@@ -1780,12 +1781,12 @@
                       <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
                     </svg>
                     <span data-i18n="mockup.quickSwitchTo">Cambiar a</span>
-                    <strong id="mockupAltUser">CataVillalobosC</strong>
+                    <strong id="mockupAltUser">CataVillalobosC (Laboral)</strong>
                   </button>
 
                   <select class="real-select-account" id="mockupAccountSelect">
-                    <option value="AnaCataVC">AnaCataVC</option>
-                    <option value="CataVillalobosC">CataVillalobosC</option>
+                    <option value="AnaCataVC">AnaCataVC (Personal)</option>
+                    <option value="CataVillalobosC">CataVillalobosC (Laboral)</option>
                   </select>
 
                   <button class="real-btn-switch" id="mockupSwitchBtn" data-i18n="mockup.switchBtn">Cambiar</button>
@@ -2204,6 +2205,9 @@
         "mockup.githubTitle": "Cuenta de GitHub",
         "mockup.githubCli": "GitHub CLI",
         "mockup.accountActive": "Activa",
+        "mockup.accountWork": "Cuenta Laboral",
+        "mockup.accountPersonal": "Cuenta Personal",
+        "mockup.roleWorkPill": "Laboral",
         "mockup.activeAccountLabel": "Cuenta activa:",
         "mockup.cliConnected": "CLI Conectado",
         "mockup.quickSwitchTo": "Cambiar a",
@@ -2236,8 +2240,8 @@
         "features.f6Desc": "Construido con WinUI 3 y material Mica para Windows 11. Se minimiza silenciosamente en la bandeja del sistema (System Tray) para no estorbar en tu pantalla.",
         "features.f7Title": "Sincronización con Google Drive",
         "features.f7Desc": "Respaldo automático de tus carpetas de trabajo con streaming SHA-256, filtros de exclusión por extensión y puente directo mediante Google Apps Script.",
-        "features.f8Title": "Selector Multi-cuenta de GitHub",
-        "features.f8Desc": "Alterna el perfil activo de GitHub CLI entre cuentas personales y laborales con un solo clic desde los ajustes de la aplicación.",
+        "features.f8Title": "Gestión & Conmutación de Cuenta Laboral GitHub",
+        "features.f8Desc": "Configura tu cuenta laboral de GitHub para alternar automáticamente durante tu jornada de trabajo y mostrarla identificada como Cuenta Laboral en el panel.",
         "features.f9Title": "Actualizaciones Automáticas",
         "features.f9Desc": "Detección periódica de nuevos releases en GitHub con notificaciones integradas y descarga directa de instaladores sin salir de la app.",
 
@@ -2312,6 +2316,9 @@
         "mockup.githubTitle": "GitHub Account",
         "mockup.githubCli": "GitHub CLI",
         "mockup.accountActive": "Active",
+        "mockup.accountWork": "Work Account",
+        "mockup.accountPersonal": "Personal Account",
+        "mockup.roleWorkPill": "Work",
         "mockup.activeAccountLabel": "Active account:",
         "mockup.cliConnected": "CLI Connected",
         "mockup.quickSwitchTo": "Switch to",
@@ -2344,8 +2351,8 @@
         "features.f6Desc": "Built with WinUI 3 and native Mica materials for Windows 11. Minimizes unobtrusively to the system tray.",
         "features.f7Title": "Google Drive Sync Engine",
         "features.f7Desc": "Seamless local file synchronization with Google Drive via Google Apps Script bridge with streaming SHA-256 and exclusion filters.",
-        "features.f8Title": "GitHub Multi-Account Switcher",
-        "features.f8Desc": "Switch active GitHub CLI contexts between personal and work accounts with a single click from settings.",
+        "features.f8Title": "GitHub Work Account Management & Auto-Switch",
+        "features.f8Desc": "Configure your work GitHub account to auto-switch during business hours and actively identify it as Work Account on the dashboard.",
         "features.f9Title": "In-App Auto-Updater",
         "features.f9Desc": "Automatic GitHub Releases check with direct installer download and interactive update notification banners.",
 
@@ -2450,20 +2457,56 @@
     const altUser = () => activeUser === 'AnaCataVC' ? 'CataVillalobosC' : 'AnaCataVC';
 
     function switchAccount(newUser) {
-      activeUser = newUser;
+      activeUser = newUser.includes(' ') ? newUser.split(' ')[0] : newUser;
       const alt = altUser();
+      const isWork = activeUser === 'CataVillalobosC';
       
       const activeUserElem = document.getElementById('mockupActiveUser');
       const activeUserSub = document.getElementById('mockupActiveUserSub');
       const headerUser = document.getElementById('mockupHeaderGithubAccount');
+      const headerRole = document.getElementById('mockupHeaderGithubRole');
+      const roleBadge = document.getElementById('mockupAccountRoleBadge');
       const altUserElem = document.getElementById('mockupAltUser');
       const selectElem = document.getElementById('mockupAccountSelect');
 
       if (activeUserElem) activeUserElem.textContent = activeUser;
-      if (activeUserSub) activeUserSub.textContent = activeUser;
       if (headerUser) headerUser.textContent = activeUser;
-      if (altUserElem) altUserElem.textContent = alt;
-      if (selectElem) selectElem.value = activeUser;
+      
+      if (isWork) {
+        if (headerRole) {
+          headerRole.style.display = 'inline-block';
+          headerRole.textContent = currentLang === 'es' ? 'Laboral' : 'Work';
+        }
+        if (roleBadge) {
+          roleBadge.textContent = currentLang === 'es' ? 'Cuenta Laboral' : 'Work Account';
+          roleBadge.style.background = 'var(--accent)';
+          roleBadge.style.color = '#ffffff';
+          roleBadge.style.borderColor = 'transparent';
+        }
+        if (activeUserSub) activeUserSub.textContent = `${activeUser} (${currentLang === 'es' ? 'Laboral' : 'Work'})`;
+        if (altUserElem) altUserElem.textContent = `${alt} (${currentLang === 'es' ? 'Personal' : 'Personal'})`;
+      } else {
+        if (headerRole) {
+          headerRole.style.display = 'none';
+        }
+        if (roleBadge) {
+          roleBadge.textContent = currentLang === 'es' ? 'Cuenta Personal' : 'Personal Account';
+          roleBadge.style.background = 'rgba(255,255,255,0.06)';
+          roleBadge.style.color = 'var(--text-secondary)';
+          roleBadge.style.borderColor = 'rgba(255,255,255,0.08)';
+        }
+        if (activeUserSub) activeUserSub.textContent = `${activeUser} (${currentLang === 'es' ? 'Personal' : 'Personal'})`;
+        if (altUserElem) altUserElem.textContent = `${alt} (${currentLang === 'es' ? 'Laboral' : 'Work'})`;
+      }
+
+      if (selectElem) {
+        for (let i = 0; i < selectElem.options.length; i++) {
+          if (selectElem.options[i].value.startsWith(activeUser)) {
+            selectElem.selectedIndex = i;
+            break;
+          }
+        }
+      }
     }
 
     const quickSwitchBtn = document.getElementById('mockupQuickSwitchBtn');

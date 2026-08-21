@@ -66,7 +66,7 @@ public class UpdateService : IUpdateService, IDisposable
         {
             // Fallback
         }
-        return "1.1.0";
+        return "1.2.0";
     }
 
     /// <inheritdoc />

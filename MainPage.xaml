@@ -54,6 +54,12 @@
                                            Style="{StaticResource CaptionTextBlockStyle}" 
                                            FontWeight="SemiBold"
                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" 
+                                        CornerRadius="4" Padding="4,0" VerticalAlignment="Center"
+                                        Visibility="{x:Bind ViewModel.IsActiveAccountWorkAccount, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="Laboral" Style="{StaticResource CaptionTextBlockStyle}" 
+                                               Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -306,9 +312,27 @@
                                             <TextBlock Text="No autenticado" 
                                                        Style="{StaticResource BodyStrongTextBlockStyle}"
                                                        Visibility="{x:Bind ViewModel.IsGitHubAuthenticated, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+
+                                            <!-- Work Account Distinctive Badge -->
+                                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" 
+                                                    CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                                                    Visibility="{x:Bind ViewModel.IsActiveAccountWorkAccount, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="Cuenta Laboral" Style="{StaticResource CaptionTextBlockStyle}" 
+                                                           Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                                            </Border>
+
+                                            <!-- Personal Account Badge -->
+                                            <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" 
+                                                    CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                                                    Visibility="{x:Bind ViewModel.IsActiveAccountPersonalAccount, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="Cuenta Personal" Style="{StaticResource CaptionTextBlockStyle}" 
+                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11"/>
+                                            </Border>
+
+                                            <!-- Generic Active Badge (when neither work nor personal matches) -->
                                             <Border Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" 
                                                     CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
-                                                    Visibility="{x:Bind ViewModel.IsGitHubAuthenticated, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    Visibility="{x:Bind ViewModel.IsWorkAccountConfigured, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                                 <TextBlock Text="Activa" Style="{StaticResource CaptionTextBlockStyle}" 
                                                            Foreground="{ThemeResource SystemFillColorSuccessBrush}" FontSize="11"/>
                                             </Border>
@@ -344,6 +368,7 @@
                                             <FontIcon Glyph="&#xE8AB;" FontSize="13"/>
                                             <TextBlock Text="Cambiar a"/>
                                             <TextBlock Text="{x:Bind ViewModel.AlternativeGitHubAccount, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{x:Bind ViewModel.QuickSwitchTargetRole, Mode=OneWay}" FontWeight="Normal"/>
                                         </StackPanel>
                                     </Button>
 

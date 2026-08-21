@@ -28,6 +28,16 @@ public class GitHubAccountInfo
     public string? StatusMessage { get; set; }
 
     /// <summary>
+    /// The configured work GitHub account username.
+    /// </summary>
+    public string? WorkAccount { get; set; }
+
+    /// <summary>
+    /// The configured personal GitHub account username.
+    /// </summary>
+    public string? PersonalAccount { get; set; }
+
+    /// <summary>
     /// True if an active account is configured and authenticated.
     /// </summary>
     public bool IsAuthenticated => IsGhInstalled && !string.IsNullOrEmpty(ActiveAccount);
@@ -36,4 +46,20 @@ public class GitHubAccountInfo
     /// True if there are 2 or more accounts available to switch between.
     /// </summary>
     public bool HasMultipleAccounts => AvailableAccounts.Count > 1;
+
+    /// <summary>
+    /// True if the currently active account matches the configured work account.
+    /// </summary>
+    public bool IsActiveAccountWorkAccount =>
+        !string.IsNullOrEmpty(ActiveAccount) &&
+        !string.IsNullOrEmpty(WorkAccount) &&
+        string.Equals(ActiveAccount, WorkAccount, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True if the currently active account matches the configured personal account.
+    /// </summary>
+    public bool IsActiveAccountPersonalAccount =>
+        !string.IsNullOrEmpty(ActiveAccount) &&
+        !string.IsNullOrEmpty(PersonalAccount) &&
+        string.Equals(ActiveAccount, PersonalAccount, StringComparison.OrdinalIgnoreCase);
 }

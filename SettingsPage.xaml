@@ -293,6 +293,66 @@
                     </Border>
                 </StackPanel>
 
+                <!-- GitHub CLI & Accounts Configuration -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="GitHub CLI y Cuentas" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Configura qué cuenta de GitHub corresponde a tu cuenta laboral y personal para alternar automáticamente según tu horario de trabajo." 
+                                       Style="{StaticResource CaptionTextBlockStyle}" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,8,0">
+                                    <TextBlock Text="Cuenta Laboral" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <ComboBox ItemsSource="{x:Bind ViewModel.AvailableGitHubAccounts, Mode=OneWay}"
+                                              SelectedItem="{x:Bind ViewModel.GitHubWorkAccount, Mode=TwoWay}"
+                                              IsEditable="True"
+                                              Text="{x:Bind ViewModel.GitHubWorkAccount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              HorizontalAlignment="Stretch"
+                                              PlaceholderText="Ej. CataVillalobosC" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Spacing="8" Margin="8,0,0,0">
+                                    <TextBlock Text="Cuenta Personal (opcional)" Style="{StaticResource BodyTextBlockStyle}" />
+                                    <ComboBox ItemsSource="{x:Bind ViewModel.AvailableGitHubAccounts, Mode=OneWay}"
+                                              SelectedItem="{x:Bind ViewModel.GitHubPersonalAccount, Mode=TwoWay}"
+                                              IsEditable="True"
+                                              Text="{x:Bind ViewModel.GitHubPersonalAccount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              HorizontalAlignment="Stretch"
+                                              PlaceholderText="Ej. AnaCataVC" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Automation Toggles -->
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                <StackPanel Spacing="12">
+                                    <ToggleSwitch Header="Cambiar automáticamente a la cuenta laboral al iniciar la jornada" 
+                                                  IsOn="{x:Bind ViewModel.GitHubAutoSwitchOnWorkStart, Mode=TwoWay}" />
+                                    <ToggleSwitch Header="Cambiar automáticamente a la cuenta personal al finalizar la jornada" 
+                                                  IsOn="{x:Bind ViewModel.GitHubAutoSwitchOnWorkEnd, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,4,0,0">
+                                <TextBlock Text="{x:Bind ViewModel.GitHubSettingsStatus, Mode=OneWay}" 
+                                           VerticalAlignment="Center" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <Button Content="Guardar Ajustes de GitHub" Style="{StaticResource AccentButtonStyle}"
+                                        Command="{x:Bind ViewModel.SaveGitHubSettingsCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
                 <!-- General Settings -->
                 <StackPanel Spacing="16">
                     <TextBlock Text="General" Style="{StaticResource SubtitleTextBlockStyle}" />

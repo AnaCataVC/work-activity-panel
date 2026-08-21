@@ -56,7 +56,13 @@ public class UpdateServiceTests
             CurrentVersion = "1.1.0",
             ErrorMessage = "Network timeout"
         };
-
         Assert.False(info.IsSuccess);
+    }
+
+    [Fact]
+    public void CurrentAppVersion_ReturnsCorrectVersion()
+    {
+        var service = new UpdateService();
+        Assert.Equal("1.2.0", service.CurrentAppVersion);
     }
 }
