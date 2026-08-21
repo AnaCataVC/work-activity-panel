@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:WorkActivityPanel"
     xmlns:vm="using:WorkActivityPanel.ViewModels"
+    xmlns:models="using:WorkActivityPanel.Models"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -184,6 +185,79 @@
                                            Style="{StaticResource CaptionTextBlockStyle}" 
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             </StackPanel>
+
+                            <!-- Additional Sync Sources Section -->
+                            <Expander Header="Orígenes adicionales de sincronización" HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                                <StackPanel Spacing="12" Padding="0,12,0,0">
+                                    <TextBlock Text="Agrega otras carpetas locales para respaldar bajo un prefijo o subcarpeta específico en Google Drive."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap" />
+
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.DriveSyncSources, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SyncSource">
+                                                <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                        BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                                                    <Grid ColumnSpacing="12">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0" Spacing="4">
+                                                            <TextBlock Text="{x:Bind LocalFolderPath}" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <TextBlock Text="Prefijo Drive:" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                                                                <TextBox Text="{x:Bind DestinationPrefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Height="32" Padding="6,2" PlaceholderText="ej: mi-proyecto" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1" ToolTipService.ToolTip="Eliminar origen"
+                                                                Tag="{x:Bind}"
+                                                                Click="DeleteSourceButton_Click"
+                                                                VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE74D;" FontSize="14" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Button Click="AddSourceFolderButton_Click" HorizontalAlignment="Left">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                            <TextBlock Text="Agregar carpeta..." />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Agent Instructions CLAUDE.md Sweep -->
+                            <Expander Header="Instrucciones de Agentes (CLAUDE.md sin versionar)" HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                                <StackPanel Spacing="14" Padding="0,12,0,0">
+                                    <ToggleSwitch Header="Respaldar archivos CLAUDE.md huérfanos/sin versionar"
+                                                  IsOn="{x:Bind ViewModel.DriveSyncUnversionedClaudeMarkdown, Mode=TwoWay}" />
+                                    <TextBlock Text="Rastrea automáticamente en tu perfil de usuario archivos CLAUDE.md que no pertenezcan a repositorios Git para respaldarlos en Google Drive."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Margin="0,-8,0,0"
+                                               TextWrapping="Wrap" />
+
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="140" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Prefijo de destino en Drive"
+                                                 Text="{x:Bind ViewModel.DriveClaudeMarkdownDestinationPrefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 PlaceholderText="claude-md-unversioned" />
+                                        <NumberBox Grid.Column="1" Header="Profundidad"
+                                                   Value="{x:Bind ViewModel.DriveClaudeMarkdownScanDepth, Mode=TwoWay}"
+                                                   Minimum="1" Maximum="15" SpinButtonPlacementMode="Inline" />
+                                    </Grid>
+                                </StackPanel>
+                            </Expander>
 
                             <!-- Filters & AutoSync Options -->
                             <Expander Header="Filtros y opciones avanzadas de sincronización" HorizontalAlignment="Stretch" Margin="0,8,0,0">
