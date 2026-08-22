@@ -244,12 +244,13 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         byte[] fileBytes = await File.ReadAllBytesAsync(filePath);
         string base64Data = Convert.ToBase64String(fileBytes);
-        string fileName = Path.GetFileName(filePath);
-        string mimeType = GetMimeType(fileName);
 
         string normalizedRelativePath = string.IsNullOrWhiteSpace(relativePath)
-            ? fileName
+            ? Path.GetFileName(filePath)
             : relativePath.Replace('\\', '/').TrimStart('/');
+
+        string fileName = ResolveUploadName(filePath, normalizedRelativePath);
+        string mimeType = GetMimeType(fileName);
 
         var content = new FormUrlEncodedContent(new[]
         {
@@ -280,6 +281,19 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             string rawPreview = responseString.Length > 200 ? responseString[..200] + "..." : responseString;
             throw new Exception($"Respuesta inválida de Apps Script (no es JSON):\n{rawPreview}");
         }
+    }
+
+    /// <summary>
+    /// Name the file takes at the destination: the last segment of the relative path, not
+    /// the local file name. The bridge creates the file with this name inside the folders
+    /// it derives from the earlier segments, so a sweep that renames files to keep them
+    /// apart (several CLAUDE.md landing in one folder) only works if the renamed segment
+    /// is what gets sent.
+    /// </summary>
+    public static string ResolveUploadName(string filePath, string normalizedRelativePath)
+    {
+        var lastSegment = normalizedRelativePath.Split('/')[^1];
+        return string.IsNullOrWhiteSpace(lastSegment) ? Path.GetFileName(filePath) : lastSegment;
     }
 
     public List<LocalFileMetadata> ScanFolder(string rootFolderPath, SyncFilterOptions? filters = null)

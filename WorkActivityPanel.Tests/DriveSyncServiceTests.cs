@@ -50,6 +50,17 @@ public class DriveSyncServiceTests : IDisposable
         Assert.Equal(expected, DriveSyncService.CombineDestination(prefix, relativePath));
     }
 
+    [Theory]
+    [InlineData(@"C:\Users\me\.claude\CLAUDE.md", "claude-md/.claude_CLAUDE.md", ".claude_CLAUDE.md")]
+    [InlineData(@"C:\docs\notes.md", "sub/notes.md", "notes.md")]
+    [InlineData(@"C:\docs\notes.md", "", "notes.md")]
+    public void ResolveUploadName_ShouldUseTheDestinationSegment(string filePath, string relativePath, string expected)
+    {
+        // Several CLAUDE.md flattened into one destination folder only stay apart if the
+        // renamed segment is the name sent to the bridge, not the local file name.
+        Assert.Equal(expected, DriveSyncService.ResolveUploadName(filePath, relativePath));
+    }
+
     [Fact]
     public void HashKey_ShouldFallBackToTheAbsolutePath()
     {
