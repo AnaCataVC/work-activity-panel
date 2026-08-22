@@ -1,41 +1,32 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json.Serialization;
 
 namespace WorkActivityPanel.Models;
 
 /// <summary>
-/// One local folder to synchronize, with the destination prefix it lands under and
-/// optional filter overrides. Different folders need different rules: a documents
-/// folder and a tool's configuration folder have almost nothing in common in terms of
-/// what is worth uploading.
+/// One local folder to synchronize and the name of the Drive subfolder it lands in.
+/// Every source is a sibling of every other one at the destination: there is no main
+/// folder, and no source nests inside another.
 /// </summary>
 public class SyncSource
 {
-    /// <summary>Label shown in the UI and in progress messages.</summary>
-    public string Name { get; set; } = string.Empty;
-
     public string LocalFolderPath { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Subfolder of the Drive destination this source writes into. Empty means the
-    /// destination root, which is how a single-source setup has always behaved.
-    /// </summary>
+    /// <summary>Name of the destination subfolder in Drive.</summary>
     public string DestinationPrefix { get; set; } = string.Empty;
 
-    /// <summary>Null falls back to the global setting of the same name.</summary>
-    public string? IncludedExtensions { get; set; }
-
-    /// <summary>Null falls back to the global setting of the same name.</summary>
-    public string? ExcludedExtensions { get; set; }
-
-    /// <summary>Null falls back to the global setting of the same name.</summary>
-    public string? ExcludedFolders { get; set; }
-
-    /// <summary>Null falls back to the global setting of the same name.</summary>
-    public long? MaxFileSizeMb { get; set; }
-
-    public bool IsEnabled { get; set; } = true;
+    /// <summary>
+    /// Destination actually used when syncing. An empty name falls back to the local
+    /// folder's own name, so a source can never end up writing loose into the Drive root
+    /// and mixing its files with another source's.
+    /// </summary>
+    [JsonIgnore]
+    public string EffectiveDestinationPrefix =>
+        string.IsNullOrWhiteSpace(DestinationPrefix)
+            ? new DirectoryInfo(LocalFolderPath.TrimEnd('\\', '/')).Name
+            : DestinationPrefix.Replace('\\', '/').Trim('/');
 }
 
 /// <summary>
@@ -43,8 +34,21 @@ public class SyncSource
 /// </summary>
 public class DriveSyncSettings
 {
-    public string LocalFolderPath { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
     public string WebAppUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Drive folder the Web App writes into, used only to open it from the panel. The
+    /// bridge already knows where it uploads; this is the link a person can click.
+    /// </summary>
+    public string DriveFolderUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Single main folder of the layout that had one, kept so an existing configuration
+    /// can be migrated into <see cref="Sources"/> on load and then cleared.
+    /// </summary>
+    [JsonPropertyName("LocalFolderPath")]
+    public string LegacyMainFolderPath { get; set; } = string.Empty;
+
     public string IncludedExtensions { get; set; } = string.Empty;
     public string ExcludedExtensions { get; set; } = ".tmp, .log, .exe, .bak, .zip";
     public string ExcludedFolders { get; set; } = "node_modules, .git, bin, obj, .vs, temp";
@@ -55,11 +59,7 @@ public class DriveSyncSettings
     public DateTime? LastSyncTime { get; set; }
     public string LastSyncStatus { get; set; } = "Nunca sincronizado";
 
-    /// <summary>
-    /// Additional folder-to-destination mappings, synchronized alongside
-    /// <see cref="LocalFolderPath"/> rather than instead of it: the main folder keeps its
-    /// own mapping whether this list is empty or not.
-    /// </summary>
+    /// <summary>Every folder to synchronize. All of them land side by side in Drive.</summary>
     public List<SyncSource> Sources { get; set; } = new();
 
     /// <summary>

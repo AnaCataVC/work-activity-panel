@@ -266,7 +266,8 @@ function doPost(e) {
 2. En la sección **Copia de Seguridad en Google Drive**:
    - Pega la **URL de la Web App** copiada en el paso anterior.
    - Haz clic en **Probar Conexión** para verificar que responde correctamente.
-   - Selecciona la carpeta local que deseas respaldar.
+   - Agrega en **Carpetas a sincronizar** cada carpeta local que deseas respaldar e indica el nombre de la subcarpeta que tendrá en Drive. Todas quedan al mismo nivel dentro de la carpeta del respaldo.
+   - Opcionalmente pega la **URL de la carpeta de Google Drive** para que el botón **Abrir Drive** del panel principal la abra directamente.
    - Guarda los cambios.
 3. ¡Listo! Puedes sincronizar en cualquier momento desde el panel principal o dejar que se sincronice automáticamente al terminar tu jornada laboral.
 

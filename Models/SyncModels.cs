@@ -16,7 +16,6 @@ public class LocalFileMetadata
     public string RelativePath { get; set; } = string.Empty;
     public string Hash { get; set; } = string.Empty;
     public long FileSize { get; set; }
-    public DateTime LastModified { get; set; }
 
     /// <summary>
     /// Key identifying this file in the incremental-sync hash index. Falls back to the

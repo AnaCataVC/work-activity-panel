@@ -51,13 +51,13 @@ public class DriveSyncServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData(@"C:\Users\me\.claude\CLAUDE.md", "claude-md/.claude_CLAUDE.md", ".claude_CLAUDE.md")]
+    [InlineData(@"C:\Users\me\.claude\CLAUDE.md", "claude-md/.claude/CLAUDE.md", "CLAUDE.md")]
     [InlineData(@"C:\docs\notes.md", "sub/notes.md", "notes.md")]
     [InlineData(@"C:\docs\notes.md", "", "notes.md")]
     public void ResolveUploadName_ShouldUseTheDestinationSegment(string filePath, string relativePath, string expected)
     {
-        // Several CLAUDE.md flattened into one destination folder only stay apart if the
-        // renamed segment is the name sent to the bridge, not the local file name.
+        // The bridge builds folders from the leading segments and names the file after the
+        // last one, so the name sent must be that segment and not the local file name.
         Assert.Equal(expected, DriveSyncService.ResolveUploadName(filePath, relativePath));
     }
 
@@ -202,7 +202,7 @@ public class DriveSyncServiceTests : IDisposable
         // Arrange
         var newSettings = new DriveSyncSettings
         {
-            LocalFolderPath = _testDir,
+            Sources = { new SyncSource { LocalFolderPath = _testDir, DestinationPrefix = "trabajo" } },
             WebAppUrl = "https://script.google.com/macros/s/test/exec",
             MaxFileSizeMb = 100
         };
@@ -211,9 +211,38 @@ public class DriveSyncServiceTests : IDisposable
         _service.UpdateSettings(newSettings);
 
         // Assert
-        Assert.Equal(_testDir, _service.Settings.LocalFolderPath);
+        Assert.Equal(_testDir, Assert.Single(_service.Settings.Sources).LocalFolderPath);
         Assert.Equal("https://script.google.com/macros/s/test/exec", _service.Settings.WebAppUrl);
         Assert.Equal(100, _service.Settings.MaxFileSizeMb);
         Assert.True(_service.IsConfigured);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Users\me\Documentos\Trabajo", "", "Trabajo")]
+    [InlineData(@"C:\Users\me\Documentos\Trabajo\", "", "Trabajo")]
+    [InlineData(@"C:\Users\me\Documentos\Trabajo", "/respaldo/", "respaldo")]
+    public void EffectiveDestinationPrefix_ShouldNeverBeEmpty(string localPath, string prefix, string expected)
+    {
+        // An empty destination would drop that source's files loose in the Drive root,
+        // where they mix with every other source's instead of staying side by side.
+        var source = new SyncSource { LocalFolderPath = localPath, DestinationPrefix = prefix };
+
+        Assert.Equal(expected, source.EffectiveDestinationPrefix);
+    }
+
+    [Fact]
+    public void LoadSettings_ShouldMigrateTheLegacyMainFolderIntoASource()
+    {
+        var json = """
+            {"LocalFolderPath":"C:\\Users\\me\\Documentos\\Trabajo","WebAppUrl":"https://script.google.com/macros/s/test/exec"}
+            """;
+        LocalSettingsHelper.Set("DriveSyncSettings", json);
+
+        using var service = new DriveSyncService(_scheduleMock.Object);
+
+        var migrated = Assert.Single(service.Settings.Sources);
+        Assert.Equal(@"C:\Users\me\Documentos\Trabajo", migrated.LocalFolderPath);
+        Assert.Equal("Trabajo", migrated.EffectiveDestinationPrefix);
+        Assert.Empty(service.Settings.LegacyMainFolderPath);
     }
 }

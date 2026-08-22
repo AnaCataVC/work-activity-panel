@@ -20,6 +20,14 @@
     <Version>1.3.0</Version>
     <AssemblyVersion>1.3.0.0</AssemblyVersion>
     <FileVersion>1.3.0.0</FileVersion>
+
+    <!--
+      The publish payload and the installers live inside the repo tree, and only bin\ and
+      obj\ are excluded from the default item globs. Without this, every build globs the
+      previous publish (hundreds of files) back in as project items and it ends up
+      travelling inside the next installer.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;releases\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

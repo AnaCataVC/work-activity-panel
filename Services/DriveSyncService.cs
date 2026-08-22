@@ -285,10 +285,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     /// <summary>
     /// Name the file takes at the destination: the last segment of the relative path, not
-    /// the local file name. The bridge creates the file with this name inside the folders
-    /// it derives from the earlier segments, so a sweep that renames files to keep them
-    /// apart (several CLAUDE.md landing in one folder) only works if the renamed segment
-    /// is what gets sent.
+    /// the local file name. The bridge creates the file with this name inside the folders it
+    /// derives from the earlier segments, so any renaming a sweep applies to that segment
+    /// only reaches the destination if the segment is what gets sent.
     /// </summary>
     public static string ResolveUploadName(string filePath, string normalizedRelativePath)
     {
@@ -341,7 +340,6 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                                 FileName = fileInfo.Name,
                                 RelativePath = Path.GetRelativePath(rootFolderPath, file),
                                 FileSize = fileInfo.Length,
-                                LastModified = fileInfo.LastWriteTimeUtc,
                                 Hash = ComputeSha256(file)
                             });
                         }
@@ -357,34 +355,19 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     }
 
     /// <summary>
-    /// The folder-to-destination mappings to synchronize: the main folder always comes
-    /// first, followed by every additional source. The main folder is not replaced by the
-    /// list — adding sources adds mappings, it never removes the one already configured.
-    ///
-    /// A source repeating the main folder with the same destination is dropped so it is not
-    /// uploaded twice.
+    /// The folders to synchronize. A source repeating another one's folder and destination
+    /// is dropped so it is not uploaded twice.
     /// </summary>
     private IEnumerable<SyncSource> EnumerateSources()
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (!string.IsNullOrWhiteSpace(_settings.LocalFolderPath))
-        {
-            seen.Add($"|{_settings.LocalFolderPath}");
-            yield return new SyncSource
-            {
-                Name = "Carpeta principal",
-                LocalFolderPath = _settings.LocalFolderPath,
-                DestinationPrefix = string.Empty
-            };
-        }
-
         foreach (var source in _settings.Sources)
         {
-            if (!source.IsEnabled || string.IsNullOrWhiteSpace(source.LocalFolderPath))
+            if (string.IsNullOrWhiteSpace(source.LocalFolderPath))
                 continue;
 
-            if (seen.Add($"{source.DestinationPrefix}|{source.LocalFolderPath}"))
+            if (seen.Add($"{source.EffectiveDestinationPrefix}|{source.LocalFolderPath}"))
                 yield return source;
         }
     }
@@ -399,25 +382,27 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     {
         var collected = new List<LocalFileMetadata>();
 
+        var filters = SyncFilterOptions.Create(
+            _settings.IncludedExtensions,
+            _settings.ExcludedExtensions,
+            _settings.ExcludedFolders,
+            _settings.MaxFileSizeMb);
+
         foreach (var source in EnumerateSources())
         {
             token.ThrowIfCancellationRequested();
 
+            var prefix = source.EffectiveDestinationPrefix;
+
             ReportProgress(progress, new SyncProgressReport
             {
-                StatusMessage = $"Escaneando {(string.IsNullOrWhiteSpace(source.Name) ? source.LocalFolderPath : source.Name)}..."
+                StatusMessage = $"Escaneando {prefix}..."
             });
-
-            var filters = SyncFilterOptions.Create(
-                source.IncludedExtensions ?? _settings.IncludedExtensions,
-                source.ExcludedExtensions ?? _settings.ExcludedExtensions,
-                source.ExcludedFolders ?? _settings.ExcludedFolders,
-                source.MaxFileSizeMb ?? _settings.MaxFileSizeMb);
 
             foreach (var file in ScanFolder(source.LocalFolderPath, filters))
             {
-                file.RelativePath = CombineDestination(source.DestinationPrefix, file.RelativePath);
-                file.HashKey = $"{source.DestinationPrefix}|{file.FilePath}";
+                file.RelativePath = CombineDestination(prefix, file.RelativePath);
+                file.HashKey = $"{prefix}|{file.FilePath}";
                 collected.Add(file);
             }
         }
@@ -443,21 +428,23 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         continue;
 
                     var fileInfo = new FileInfo(path);
-                    // The whole relative path becomes the file name: a tree of files all called
-                    // CLAUDE.md would otherwise collapse into one at the destination.
-                    var flattenedName = Path.GetRelativePath(profileRoot, path)
-                        .Replace(Path.DirectorySeparatorChar, '_')
-                        .Replace(Path.AltDirectorySeparatorChar, '_');
+                    // The path under the user profile is kept as a path, so the bridge
+                    // recreates the folder tree instead of dropping a tree of files all
+                    // called CLAUDE.md into one folder, where they would overwrite each other.
+                    var destination = CombineDestination(
+                        _settings.ClaudeMarkdownDestinationPrefix,
+                        Path.GetRelativePath(profileRoot, path));
 
                     collected.Add(new LocalFileMetadata
                     {
                         FilePath = path,
                         FileName = fileInfo.Name,
-                        RelativePath = CombineDestination(_settings.ClaudeMarkdownDestinationPrefix, flattenedName),
+                        RelativePath = destination,
                         FileSize = fileInfo.Length,
-                        LastModified = fileInfo.LastWriteTimeUtc,
                         Hash = ComputeSha256(path),
-                        HashKey = $"{_settings.ClaudeMarkdownDestinationPrefix}|{path}"
+                        // The destination, not just its prefix, is part of the key: a file already
+                        // uploaded under a different name has not been uploaded to where it belongs.
+                        HashKey = $"{destination}|{path}"
                     });
                 }
                 catch
@@ -556,12 +543,36 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             if (!string.IsNullOrEmpty(json))
             {
                 var settings = JsonSerializer.Deserialize<DriveSyncSettings>(json);
-                if (settings != null) return settings;
+                if (settings != null) return MigrateLegacyMainFolder(settings);
             }
         }
         catch { }
 
         return new DriveSyncSettings();
+    }
+
+    /// <summary>
+    /// Turns the main folder of the old layout into one more source, so a configuration
+    /// saved before the destinations were flattened keeps being backed up. Its files move
+    /// from the destination root into a subfolder, so they are uploaded once more.
+    /// </summary>
+    private static DriveSyncSettings MigrateLegacyMainFolder(DriveSyncSettings settings)
+    {
+        var legacyPath = settings.LegacyMainFolderPath;
+        settings.LegacyMainFolderPath = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(legacyPath))
+            return settings;
+
+        bool alreadyPresent = settings.Sources.Any(s =>
+            string.Equals(s.LocalFolderPath, legacyPath, StringComparison.OrdinalIgnoreCase));
+
+        if (!alreadyPresent)
+        {
+            settings.Sources.Add(new SyncSource { LocalFolderPath = legacyPath });
+        }
+
+        return settings;
     }
 
     private void SaveSettings()

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -123,7 +122,7 @@ public partial class DashboardViewModel : ObservableObject
     private double _driveSyncProgress;
 
     [ObservableProperty]
-    private string _driveSyncFolderDisplay = string.Empty;
+    private string _driveSyncFoldersDisplay = string.Empty;
 
     [ObservableProperty]
     private string _driveSyncLastSyncText = "Nunca";
@@ -416,9 +415,14 @@ public partial class DashboardViewModel : ObservableObject
         IsDriveSyncing = _driveSyncService.IsSyncing;
 
         var settings = _driveSyncService.Settings;
-        DriveSyncFolderDisplay = string.IsNullOrWhiteSpace(settings.LocalFolderPath)
-            ? "No se ha seleccionado carpeta"
-            : settings.LocalFolderPath;
+        var driveFolders = settings.Sources
+            .Where(s => !string.IsNullOrWhiteSpace(s.LocalFolderPath))
+            .Select(s => s.EffectiveDestinationPrefix)
+            .ToList();
+
+        DriveSyncFoldersDisplay = driveFolders.Count == 0
+            ? "Sin carpetas configuradas"
+            : string.Join(" · ", driveFolders);
 
         DriveSyncLastSyncText = settings.LastSyncTime.HasValue
             ? settings.LastSyncTime.Value.ToString("dd/MM HH:mm")
@@ -468,19 +472,21 @@ public partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private void OpenDriveFolder()
     {
-        var path = _driveSyncService.Settings.LocalFolderPath;
-        if (!string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
+        var url = _driveSyncService.Settings.DriveFolderUrl;
+        if (string.IsNullOrWhiteSpace(url))
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = path,
-                    UseShellExecute = true
-                });
-            }
-            catch { }
+            url = "https://drive.google.com/drive/my-drive";
         }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch { }
     }
 
     private void UpdateTodayMeetingsDisplay()

@@ -122,7 +122,7 @@ public partial class SettingsViewModel : ObservableObject
     private string _driveWebAppUrl = string.Empty;
 
     [ObservableProperty]
-    private string _driveLocalFolderPath = string.Empty;
+    private string _driveFolderUrl = string.Empty;
 
     [ObservableProperty]
     private string _driveIncludedExtensions = string.Empty;
@@ -222,7 +222,7 @@ public partial class SettingsViewModel : ObservableObject
         // Load Drive Sync settings
         var driveSettings = _driveSyncService.Settings;
         DriveWebAppUrl = driveSettings.WebAppUrl ?? string.Empty;
-        DriveLocalFolderPath = driveSettings.LocalFolderPath ?? string.Empty;
+        DriveFolderUrl = driveSettings.DriveFolderUrl ?? string.Empty;
         DriveIncludedExtensions = driveSettings.IncludedExtensions ?? string.Empty;
         DriveExcludedExtensions = !string.IsNullOrEmpty(driveSettings.ExcludedExtensions) ? driveSettings.ExcludedExtensions : ".tmp, .log, .exe, .bak, .zip";
         DriveExcludedFolders = !string.IsNullOrEmpty(driveSettings.ExcludedFolders) ? driveSettings.ExcludedFolders : "node_modules, .git, bin, obj, .vs, temp";
@@ -262,20 +262,17 @@ public partial class SettingsViewModel : ObservableObject
         IsDriveConnected = _driveSyncService.IsConfigured;
         DriveConnectionStatus = IsDriveConnected
             ? "Configurado y listo"
-            : "Falta configurar URL o carpeta local";
+            : "Falta configurar la URL o agregar carpetas";
     }
 
     [RelayCommand]
     public void AddDriveSyncSource(string? folderPath)
     {
         if (string.IsNullOrWhiteSpace(folderPath)) return;
-        var folderName = new DirectoryInfo(folderPath).Name;
         DriveSyncSources.Add(new SyncSource
         {
-            Name = folderName,
             LocalFolderPath = folderPath,
-            DestinationPrefix = folderName,
-            IsEnabled = true
+            DestinationPrefix = new DirectoryInfo(folderPath).Name
         });
     }
 
@@ -411,7 +408,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         var settings = _driveSyncService.Settings;
         settings.WebAppUrl = DriveWebAppUrl?.Trim() ?? string.Empty;
-        settings.LocalFolderPath = DriveLocalFolderPath?.Trim() ?? string.Empty;
+        settings.DriveFolderUrl = DriveFolderUrl?.Trim() ?? string.Empty;
         settings.IncludedExtensions = DriveIncludedExtensions?.Trim() ?? string.Empty;
         settings.ExcludedExtensions = DriveExcludedExtensions?.Trim() ?? ".tmp, .log, .exe, .bak, .zip";
         settings.ExcludedFolders = DriveExcludedFolders?.Trim() ?? "node_modules, .git, bin, obj, .vs, temp";

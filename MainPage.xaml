@@ -420,7 +420,7 @@
                                     <FontIcon Glyph="&#xE753;" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                                     <StackPanel>
                                         <TextBlock Text="Respaldo en Google Drive" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                        <TextBlock Text="{x:Bind ViewModel.DriveSyncFolderDisplay, Mode=OneWay}" 
+                                        <TextBlock Text="{x:Bind ViewModel.DriveSyncFoldersDisplay, Mode=OneWay}"
                                                    Style="{StaticResource CaptionTextBlockStyle}" 
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    TextTrimming="CharacterEllipsis" MaxWidth="380"/>
@@ -452,7 +452,8 @@
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                                    <Button Content="Abrir Carpeta" Command="{x:Bind ViewModel.OpenDriveFolderCommand}"
+                                    <Button Content="Abrir Drive" Command="{x:Bind ViewModel.OpenDriveFolderCommand}"
+                                            ToolTipService.ToolTip="Abrir la carpeta de respaldo en Google Drive"
                                             Visibility="{x:Bind ViewModel.IsDriveSyncConfigured, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                     <Button Content="Cancelar" Command="{x:Bind ViewModel.CancelDriveSyncCommand}"

@@ -33,6 +33,16 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
+; Payload published by:
+;   dotnet publish WorkActivityPanel.csproj -c Release -r win-x64 --self-contained true \
+;     -p:PublishSingleFile=false -o releases\WorkActivityPanel-win-x64
+;
+; It lands inside the repo tree, so the project excludes releases\ and artifacts\ from its
+; item globs (see DefaultItemExcludes in WorkActivityPanel.csproj); otherwise each build
+; globs the previous payload back in and the installer carries the one before it.
+;
+; Multi-file (no PublishSingleFile): this section copies the whole tree anyway, so bundling
+; buys nothing, and the bundler pads a 227 MB payload out to 2 GB.
 Source: "releases\WorkActivityPanel-win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

@@ -73,8 +73,9 @@ public class LocalSettingsAndPersistenceTests
         // Arrange
         var original = new DriveSyncSettings
         {
-            LocalFolderPath = @"C:\Mock\WorkFolder",
+            Sources = { new SyncSource { LocalFolderPath = @"C:\Mock\WorkFolder", DestinationPrefix = "trabajo" } },
             WebAppUrl = "https://script.google.com/macros/s/AKfycbz_test/exec",
+            DriveFolderUrl = "https://drive.google.com/drive/folders/abc123",
             IncludedExtensions = ".pdf, .docx, .xlsx",
             ExcludedExtensions = ".tmp, .bak",
             ExcludedFolders = "node_modules, bin, obj",
@@ -91,8 +92,11 @@ public class LocalSettingsAndPersistenceTests
 
         // Assert
         Assert.NotNull(restored);
-        Assert.Equal(original.LocalFolderPath, restored.LocalFolderPath);
+        var restoredSource = Assert.Single(restored.Sources);
+        Assert.Equal(@"C:\Mock\WorkFolder", restoredSource.LocalFolderPath);
+        Assert.Equal("trabajo", restoredSource.DestinationPrefix);
         Assert.Equal(original.WebAppUrl, restored.WebAppUrl);
+        Assert.Equal(original.DriveFolderUrl, restored.DriveFolderUrl);
         Assert.Equal(original.IncludedExtensions, restored.IncludedExtensions);
         Assert.Equal(original.ExcludedExtensions, restored.ExcludedExtensions);
         Assert.Equal(original.ExcludedFolders, restored.ExcludedFolders);
