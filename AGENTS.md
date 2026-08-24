@@ -143,6 +143,10 @@ iscc installer.iss
 - Installer downloads use chunked HTTP streams (80 KB buffers) directly into `%TEMP%` accompanied by `IProgress<double>` progress updates.
 - In-place installer launches must spawn the downloaded `.exe` with appropriate arguments and exit cleanly.
 
+### 4.9 Desktop Icon Assets & Shell Cache Reliability
+- `Assets/AppIcon.ico` must include native uncompressed 32-bit DIB bitmaps (BITMAPINFOHEADER + BGRA) for resolutions <= 128x128 and PNG for 256x256 to ensure full compatibility with `AppWindow.SetIcon()`, `H.NotifyIcon`, and Inno Setup shortcut binding.
+- After updating icon assets or executable binaries locally, ensure any running instances are terminated before overwriting, and restart `explorer.exe` (`Stop-Process -Name explorer -Force`) if the taskbar icon cache does not flush immediately.
+
 ---
 
 ## 5. Agent Constraints & Guidelines
