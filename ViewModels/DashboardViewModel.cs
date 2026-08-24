@@ -130,6 +130,18 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private Brush _driveSyncStatusColor = new SolidColorBrush(Microsoft.UI.Colors.SlateGray);
 
+    [ObservableProperty]
+    private bool _hasSyncErrors;
+
+    [ObservableProperty]
+    private int _syncErrorsCount;
+
+    [ObservableProperty]
+    private string _syncErrorsButtonText = string.Empty;
+
+    public ObservableCollection<SyncErrorItem> SyncErrorsList { get; } = new();
+
+
     // GitHub CLI & Account Switcher Properties
     [ObservableProperty]
     private bool _isGitHubInstalled;
@@ -199,6 +211,7 @@ public partial class DashboardViewModel : ObservableObject
         _driveSyncService.SyncProgressChanged += OnDriveSyncProgressChanged;
         _driveSyncService.SyncCompleted += OnDriveSyncCompleted;
         _driveSyncService.SettingsChanged += OnDriveSettingsChanged;
+        _driveSyncService.SyncErrorsChanged += OnDriveSyncErrorsChanged;
 
         _gitHubAuthService.ActiveAccountChanged += OnGitHubActiveAccountChanged;
         _gitHubAuthService.SettingsChanged += OnGitHubSettingsChanged;
@@ -366,6 +379,26 @@ public partial class DashboardViewModel : ObservableObject
         });
     }
 
+    private void OnDriveSyncErrorsChanged(object? sender, IReadOnlyList<SyncErrorItem> errors)
+    {
+        App.DispatcherQueue.TryEnqueue(() =>
+        {
+            UpdateSyncErrorsDisplay(errors);
+        });
+    }
+
+    private void UpdateSyncErrorsDisplay(IReadOnlyList<SyncErrorItem> errors)
+    {
+        SyncErrorsList.Clear();
+        foreach (var err in errors)
+        {
+            SyncErrorsList.Add(err);
+        }
+        SyncErrorsCount = errors.Count;
+        HasSyncErrors = errors.Count > 0;
+        SyncErrorsButtonText = $"Ver archivos no sincronizados ({errors.Count})";
+    }
+
     [RelayCommand]
     private void DismissUpcomingMeetingBanner()
     {
@@ -413,6 +446,7 @@ public partial class DashboardViewModel : ObservableObject
     {
         IsDriveSyncConfigured = _driveSyncService.IsConfigured;
         IsDriveSyncing = _driveSyncService.IsSyncing;
+        UpdateSyncErrorsDisplay(_driveSyncService.LastSyncErrors);
 
         var settings = _driveSyncService.Settings;
         var driveFolders = settings.Sources
@@ -438,6 +472,11 @@ public partial class DashboardViewModel : ObservableObject
             DriveSyncStatusText = "Sincronizando...";
             DriveSyncStatusColor = new SolidColorBrush(Microsoft.UI.Colors.DarkOrange);
         }
+        else if (HasSyncErrors)
+        {
+            DriveSyncStatusText = $"Con errores ({SyncErrorsCount})";
+            DriveSyncStatusColor = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
+        }
         else
         {
             DriveSyncStatusText = "Al día";
@@ -460,6 +499,58 @@ public partial class DashboardViewModel : ObservableObject
         RefreshDriveSyncStatus();
 
         await _driveSyncService.RunSyncAsync();
+    }
+
+    [RelayCommand]
+    private async Task RetrySyncErrors()
+    {
+        if (!_driveSyncService.IsConfigured) return;
+
+        IsDriveSyncing = true;
+        DriveSyncProgress = 0;
+        DriveSyncDetailText = "Iniciando reintento de archivos no sincronizados...";
+        RefreshDriveSyncStatus();
+
+        await _driveSyncService.RetryFailedFilesAsync();
+    }
+
+    [RelayCommand]
+    private void ClearAllSyncErrors()
+    {
+        _driveSyncService.ClearSyncErrors();
+        RefreshDriveSyncStatus();
+    }
+
+    [RelayCommand]
+    private void CopySyncErrorsReport()
+    {
+        if (SyncErrorsList.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("# Reporte de Errores de Sincronización - Work Activity Panel");
+        sb.AppendLine($"Fecha: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine($"Total de archivos no sincronizados: {SyncErrorsList.Count}");
+        sb.AppendLine(new string('-', 60));
+
+        foreach (var err in SyncErrorsList)
+        {
+            sb.AppendLine($"• Archivo: {err.FileName}");
+            sb.AppendLine($"  Ruta local: {err.FilePath}");
+            sb.AppendLine($"  Destino: {err.RelativePath}");
+            sb.AppendLine($"  Categoría: {err.ErrorCategory}");
+            sb.AppendLine($"  Detalle: {err.ErrorMessage}");
+            sb.AppendLine($"  Hora: {err.Timestamp:HH:mm:ss}");
+            sb.AppendLine();
+        }
+
+        try
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(sb.ToString());
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+            DriveSyncDetailText = "Reporte de errores copiado al portapapeles.";
+        }
+        catch { }
     }
 
     [RelayCommand]
@@ -488,6 +579,7 @@ public partial class DashboardViewModel : ObservableObject
         }
         catch { }
     }
+
 
     private void UpdateTodayMeetingsDisplay()
     {

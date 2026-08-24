@@ -24,11 +24,14 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         "WorkActivityPanel",
         "Data");
     private static readonly string HashIndexFile = Path.Combine(DataDirectory, "sync_hashes.json");
+    private static readonly string ErrorsFile = Path.Combine(DataDirectory, "sync_errors.json");
 
     private readonly HttpClient _httpClient;
     private readonly IScheduleService _scheduleService;
     private readonly ClaudeConfigDiscovery _claudeConfigDiscovery = new();
     private readonly object _hashLock = new();
+    private readonly object _errorLock = new();
+    private readonly List<SyncErrorItem> _lastSyncErrors = new();
     private Dictionary<string, string> _hashIndex = new(StringComparer.OrdinalIgnoreCase);
 
     private DriveSyncSettings _settings;
@@ -40,9 +43,21 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_settings.WebAppUrl)
                                 && (EnumerateSources().Any() || _settings.SyncUnversionedClaudeMarkdown);
 
+    public IReadOnlyList<SyncErrorItem> LastSyncErrors
+    {
+        get
+        {
+            lock (_errorLock)
+            {
+                return _lastSyncErrors.ToList().AsReadOnly();
+            }
+        }
+    }
+
     public event EventHandler? SettingsChanged;
     public event EventHandler<SyncProgressReport>? SyncProgressChanged;
     public event EventHandler<SyncResultSummary>? SyncCompleted;
+    public event EventHandler<IReadOnlyList<SyncErrorItem>>? SyncErrorsChanged;
 
     public DriveSyncService(IScheduleService scheduleService)
     {
@@ -50,9 +65,11 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
         _settings = LoadSettings();
         LoadHashIndex();
+        LoadSyncErrors();
 
         _scheduleService.WorkEnded += OnWorkEnded;
     }
+
 
     private void OnWorkEnded(object? sender, EventArgs e)
     {
@@ -110,6 +127,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         var token = _activeCts.Token;
 
         var summary = new SyncResultSummary();
+        var currentRunErrors = new List<SyncErrorItem>();
 
         try
         {
@@ -171,10 +189,28 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                     await UploadSingleFileAsync(file.FilePath, _settings.WebAppUrl, file.RelativePath);
                     SaveKnownHash(file.HashKey, file.Hash);
                     summary.Uploaded++;
+
+                    // Small throttle between uploads to avoid burst rate-limits
+                    await Task.Delay(100, token);
                 }
                 catch (Exception ex)
                 {
                     summary.Errors++;
+                    var (category, friendlyMsg) = CategorizeError(ex, file.FilePath);
+                    var errorItem = new SyncErrorItem
+                    {
+                        FileName = file.FileName,
+                        FilePath = file.FilePath,
+                        RelativePath = file.RelativePath,
+                        HashKey = file.HashKey,
+                        Hash = file.Hash,
+                        ErrorMessage = friendlyMsg,
+                        ErrorCategory = category,
+                        Timestamp = DateTime.Now
+                    };
+                    currentRunErrors.Add(errorItem);
+                    summary.FailedFiles.Add(errorItem);
+
                     ReportProgress(progress, new SyncProgressReport
                     {
                         TotalFiles = summary.TotalScanned,
@@ -183,14 +219,25 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         UploadedCount = summary.Uploaded,
                         SkippedCount = summary.Skipped,
                         ErrorCount = summary.Errors,
-                        StatusMessage = $"Error al subir {file.FileName}: {ex.Message}"
+                        StatusMessage = $"Error al subir {file.FileName}: {friendlyMsg}"
                     });
                 }
             }
 
+            lock (_errorLock)
+            {
+                _lastSyncErrors.Clear();
+                _lastSyncErrors.AddRange(currentRunErrors);
+                SaveSyncErrors();
+            }
+            SyncErrorsChanged?.Invoke(this, LastSyncErrors);
+
             if (!token.IsCancellationRequested)
             {
-                summary.Message = $"Sincronización completada: {summary.Uploaded} subidos, {summary.Skipped} sin cambios, {summary.Errors} errores.";
+                summary.Message = summary.Success
+                    ? $"Sincronización completada: {summary.Uploaded} subidos, {summary.Skipped} sin cambios."
+                    : $"Sincronización completada con {summary.Errors} errores ({summary.Uploaded} subidos, {summary.Skipped} sin cambios).";
+
                 _settings.LastSyncTime = DateTime.Now;
                 _settings.LastSyncStatus = summary.Success
                     ? $"Al día ({DateTime.Now:HH:mm})"
@@ -212,6 +259,169 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         return summary;
     }
+
+    public async Task<SyncResultSummary> RetryFailedFilesAsync(
+        IProgress<SyncProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_isSyncing)
+        {
+            return new SyncResultSummary
+            {
+                Message = "Ya hay una sincronización en curso."
+            };
+        }
+
+        if (!IsConfigured)
+        {
+            return new SyncResultSummary
+            {
+                Message = "Configuración incompleta: Verifica la URL del Web App y la carpeta local."
+            };
+        }
+
+        List<SyncErrorItem> filesToRetry;
+        lock (_errorLock)
+        {
+            filesToRetry = _lastSyncErrors.ToList();
+        }
+
+        if (filesToRetry.Count == 0)
+        {
+            return new SyncResultSummary
+            {
+                Message = "No hay archivos con error pendientes de reintentar."
+            };
+        }
+
+        _isSyncing = true;
+        _activeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = _activeCts.Token;
+
+        var summary = new SyncResultSummary
+        {
+            TotalScanned = filesToRetry.Count
+        };
+
+        var remainingErrors = new List<SyncErrorItem>();
+        int processed = 0;
+
+        try
+        {
+            foreach (var item in filesToRetry)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    summary.Message = "Reintento cancelado por el usuario.";
+                    for (int i = processed; i < filesToRetry.Count; i++)
+                    {
+                        remainingErrors.Add(filesToRetry[i]);
+                    }
+                    break;
+                }
+
+                processed++;
+
+                if (!File.Exists(item.FilePath))
+                {
+                    summary.Errors++;
+                    item.ErrorMessage = "El archivo local ya no existe.";
+                    item.ErrorCategory = "Archivo no encontrado";
+                    item.Timestamp = DateTime.Now;
+                    remainingErrors.Add(item);
+                    continue;
+                }
+
+                try
+                {
+                    ReportProgress(progress, new SyncProgressReport
+                    {
+                        TotalFiles = filesToRetry.Count,
+                        ProcessedFiles = processed,
+                        CurrentFileName = item.FileName,
+                        UploadedCount = summary.Uploaded,
+                        SkippedCount = summary.Skipped,
+                        ErrorCount = summary.Errors,
+                        StatusMessage = $"Reintentando ({processed}/{filesToRetry.Count}): {item.FileName}..."
+                    });
+
+                    await UploadSingleFileAsync(item.FilePath, _settings.WebAppUrl, item.RelativePath);
+
+                    var currentHash = string.IsNullOrEmpty(item.Hash) ? ComputeSha256(item.FilePath) : item.Hash;
+                    SaveKnownHash(item.HashKey, currentHash);
+                    summary.Uploaded++;
+
+                    await Task.Delay(100, token);
+                }
+                catch (Exception ex)
+                {
+                    summary.Errors++;
+                    var (category, friendlyMsg) = CategorizeError(ex, item.FilePath);
+                    item.ErrorMessage = friendlyMsg;
+                    item.ErrorCategory = category;
+                    item.Timestamp = DateTime.Now;
+                    remainingErrors.Add(item);
+
+                    ReportProgress(progress, new SyncProgressReport
+                    {
+                        TotalFiles = filesToRetry.Count,
+                        ProcessedFiles = processed,
+                        CurrentFileName = item.FileName,
+                        UploadedCount = summary.Uploaded,
+                        SkippedCount = summary.Skipped,
+                        ErrorCount = summary.Errors,
+                        StatusMessage = $"Error al reintentar {item.FileName}: {friendlyMsg}"
+                    });
+                }
+            }
+
+            lock (_errorLock)
+            {
+                _lastSyncErrors.Clear();
+                _lastSyncErrors.AddRange(remainingErrors);
+                SaveSyncErrors();
+            }
+            SyncErrorsChanged?.Invoke(this, LastSyncErrors);
+
+            summary.FailedFiles = remainingErrors;
+            if (!token.IsCancellationRequested)
+            {
+                summary.Message = summary.Success
+                    ? $"Reintento exitoso: Todos los {summary.Uploaded} archivos se subieron correctamente."
+                    : $"Reintento completado: {summary.Uploaded} subidos, {summary.Errors} aún con error.";
+
+                _settings.LastSyncTime = DateTime.Now;
+                _settings.LastSyncStatus = summary.Success
+                    ? $"Al día ({DateTime.Now:HH:mm})"
+                    : $"Completado con {summary.Errors} errores ({DateTime.Now:HH:mm})";
+                SaveSettings();
+            }
+        }
+        catch (Exception ex)
+        {
+            summary.Message = $"Error durante el reintento: {ex.Message}";
+        }
+        finally
+        {
+            _isSyncing = false;
+            _activeCts?.Dispose();
+            _activeCts = null;
+            SyncCompleted?.Invoke(this, summary);
+        }
+
+        return summary;
+    }
+
+    public void ClearSyncErrors()
+    {
+        lock (_errorLock)
+        {
+            _lastSyncErrors.Clear();
+            SaveSyncErrors();
+        }
+        SyncErrorsChanged?.Invoke(this, LastSyncErrors);
+    }
+
 
     public async Task<string?> TestConnectionAsync(string webAppUrl)
     {
@@ -252,36 +462,116 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         string fileName = ResolveUploadName(filePath, normalizedRelativePath);
         string mimeType = GetMimeType(fileName);
 
-        var content = new FormUrlEncodedContent(new[]
+        int maxRetries = 2;
+        int delayMs = 1500;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
-            new KeyValuePair<string, string>("filename", fileName),
-            new KeyValuePair<string, string>("relativePath", normalizedRelativePath),
-            new KeyValuePair<string, string>("mimeType", mimeType),
-            new KeyValuePair<string, string>("data", base64Data)
-        });
-
-        var response = await _httpClient.PostAsync(webAppUrl, content);
-        response.EnsureSuccessStatusCode();
-
-        var responseString = await response.Content.ReadAsStringAsync();
-
-        try
-        {
-            var result = JsonSerializer.Deserialize<JsonElement>(responseString);
-            if (result.TryGetProperty("status", out var status) && status.GetString() == "error")
+            try
             {
-                string msg = result.TryGetProperty("message", out var m) ? m.GetString() ?? "Error desconocido" : "Error desconocido";
-                throw new Exception($"Apps Script Error: {msg}");
-            }
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("filename", fileName),
+                    new KeyValuePair<string, string>("relativePath", normalizedRelativePath),
+                    new KeyValuePair<string, string>("mimeType", mimeType),
+                    new KeyValuePair<string, string>("data", base64Data)
+                });
 
-            return result.TryGetProperty("fileId", out var id) ? id.GetString() : null;
+                var response = await _httpClient.PostAsync(webAppUrl, content);
+
+                // If rate limited or server overloaded (429, 503, 500), retry with backoff
+                if ((response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                     response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                     response.StatusCode == System.Net.HttpStatusCode.InternalServerError) && attempt < maxRetries)
+                {
+                    await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                    delayMs *= 2;
+                    continue;
+                }
+
+                response.EnsureSuccessStatusCode();
+
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var result = JsonSerializer.Deserialize<JsonElement>(responseString);
+                    if (result.TryGetProperty("status", out var status) && status.GetString() == "error")
+                    {
+                        string msg = result.TryGetProperty("message", out var m) ? m.GetString() ?? "Error desconocido" : "Error desconocido";
+
+                        if ((msg.Contains("Service invoked too many times", StringComparison.OrdinalIgnoreCase) ||
+                             msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase)) && attempt < maxRetries)
+                        {
+                            await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                            delayMs *= 2;
+                            continue;
+                        }
+
+                        throw new Exception($"Apps Script Error: {msg}");
+                    }
+
+                    return result.TryGetProperty("fileId", out var id) ? id.GetString() : null;
+                }
+                catch (JsonException)
+                {
+                    if (attempt < maxRetries)
+                    {
+                        await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                        delayMs *= 2;
+                        continue;
+                    }
+
+                    string rawPreview = responseString.Length > 200 ? responseString[..200] + "..." : responseString;
+                    throw new Exception($"Respuesta inválida de Apps Script (no es JSON):\n{rawPreview}");
+                }
+            }
+            catch (Exception ex) when (attempt < maxRetries && (ex is TaskCanceledException || ex is HttpRequestException))
+            {
+                await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                delayMs *= 2;
+            }
         }
-        catch (JsonException)
-        {
-            string rawPreview = responseString.Length > 200 ? responseString[..200] + "..." : responseString;
-            throw new Exception($"Respuesta inválida de Apps Script (no es JSON):\n{rawPreview}");
-        }
+
+        throw new Exception("Se agotaron los intentos de subida.");
     }
+
+    public static (string Category, string FriendlyMessage) CategorizeError(Exception ex, string filePath)
+    {
+        if (ex is IOException ioEx && (ioEx.HResult == unchecked((int)0x80070020) || ioEx.Message.Contains("used by another process", StringComparison.OrdinalIgnoreCase)))
+        {
+            return ("Archivo en uso / Bloqueado", "El archivo está abierto en otra aplicación o bloqueado por Windows.");
+        }
+
+        if (ex is UnauthorizedAccessException)
+        {
+            return ("Permiso denegado", "Sin permisos de lectura para acceder a este archivo local.");
+        }
+
+        if (ex is TaskCanceledException || ex is TimeoutException)
+        {
+            return ("Tiempo de espera agotado", "La subida superó el límite de tiempo (30s) de Google Apps Script.");
+        }
+
+        var message = ex.Message;
+        if (message.Contains("429") || message.Contains("Service invoked too many times", StringComparison.OrdinalIgnoreCase) || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Límite de Google Apps Script", "Google Apps Script ha superado la cuota de peticiones por minuto o día.");
+        }
+
+        if (message.Contains("503") || message.Contains("500") || message.Contains("504") || message.Contains("Respuesta inválida de Apps Script", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Error de servidor en Google", "El servidor de Google Apps Script falló o devolvió una respuesta no válida.");
+        }
+
+        if (message.Contains("Payload too large", StringComparison.OrdinalIgnoreCase) || message.Contains("OutOfMemory", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Archivo demasiado grande", "El archivo excede el tamaño máximo permitido para subir vía Base64.");
+        }
+
+        return ("Error de subida", message);
+    }
+
 
     /// <summary>
     /// Name the file takes at the destination: the last segment of the relative path, not
@@ -534,6 +824,45 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             // Ignore index save errors
         }
     }
+
+    private void LoadSyncErrors()
+    {
+        lock (_errorLock)
+        {
+            try
+            {
+                if (File.Exists(ErrorsFile))
+                {
+                    var json = File.ReadAllText(ErrorsFile);
+                    var list = JsonSerializer.Deserialize<List<SyncErrorItem>>(json);
+                    if (list != null)
+                    {
+                        _lastSyncErrors.Clear();
+                        _lastSyncErrors.AddRange(list);
+                    }
+                }
+            }
+            catch
+            {
+                _lastSyncErrors.Clear();
+            }
+        }
+    }
+
+    private void SaveSyncErrors()
+    {
+        try
+        {
+            Directory.CreateDirectory(DataDirectory);
+            var json = JsonSerializer.Serialize(_lastSyncErrors, new JsonSerializerOptions { WriteIndented = false });
+            File.WriteAllText(ErrorsFile, json);
+        }
+        catch
+        {
+            // Ignore error log save errors
+        }
+    }
+
 
     private DriveSyncSettings LoadSettings()
     {

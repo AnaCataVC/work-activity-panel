@@ -137,6 +137,21 @@ public class SyncProgressReport
 }
 
 /// <summary>
+/// Details of an individual file that failed to synchronize.
+/// </summary>
+public class SyncErrorItem
+{
+    public string FileName { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public string RelativePath { get; set; } = string.Empty;
+    public string HashKey { get; set; } = string.Empty;
+    public string Hash { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = string.Empty;
+    public string ErrorCategory { get; set; } = "Error desconocido";
+    public DateTime Timestamp { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Final summary of a completed synchronization run.
 /// </summary>
 public class SyncResultSummary
@@ -146,5 +161,8 @@ public class SyncResultSummary
     public int Skipped { get; set; }
     public int Errors { get; set; }
     public bool Success => Errors == 0;
+    public bool HasErrors => Errors > 0;
     public string Message { get; set; } = string.Empty;
+    public List<SyncErrorItem> FailedFiles { get; set; } = new();
 }
+

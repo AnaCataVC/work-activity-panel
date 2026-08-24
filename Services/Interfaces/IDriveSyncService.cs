@@ -53,6 +53,23 @@ public interface IDriveSyncService
     Task<string?> UploadSingleFileAsync(string filePath, string webAppUrl, string? relativePath = null);
 
     /// <summary>
+    /// List of errors recorded in the most recent synchronization or retry run.
+    /// </summary>
+    IReadOnlyList<SyncErrorItem> LastSyncErrors { get; }
+
+    /// <summary>
+    /// Retries uploading only the files that previously failed.
+    /// </summary>
+    Task<SyncResultSummary> RetryFailedFilesAsync(
+        IProgress<SyncProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clears the last recorded sync errors.
+    /// </summary>
+    void ClearSyncErrors();
+
+    /// <summary>
     /// Event triggered when sync settings are updated.
     /// </summary>
     event EventHandler? SettingsChanged;
@@ -66,5 +83,10 @@ public interface IDriveSyncService
     /// Event triggered when sync completes.
     /// </summary>
     event EventHandler<SyncResultSummary>? SyncCompleted;
+
+    /// <summary>
+    /// Event triggered when the list of sync errors changes.
+    /// </summary>
+    event EventHandler<IReadOnlyList<SyncErrorItem>>? SyncErrorsChanged;
 }
 

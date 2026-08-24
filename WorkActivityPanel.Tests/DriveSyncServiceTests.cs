@@ -245,4 +245,50 @@ public class DriveSyncServiceTests : IDisposable
         Assert.Equal("Trabajo", migrated.EffectiveDestinationPrefix);
         Assert.Empty(service.Settings.LegacyMainFolderPath);
     }
+
+    [Fact]
+    public void CategorizeError_ShouldIdentifyLockedFiles()
+    {
+        var ioEx = new IOException("The process cannot access the file because it is being used by another process.");
+        var (category, message) = DriveSyncService.CategorizeError(ioEx, "C:\\test\\doc.docx");
+
+        Assert.Equal("Archivo en uso / Bloqueado", category);
+        Assert.Contains("abierto en otra aplicación", message);
+    }
+
+    [Fact]
+    public void CategorizeError_ShouldIdentifyRateLimitsAndTimeouts()
+    {
+        var ex429 = new Exception("Service invoked too many times for one day");
+        var (category1, _) = DriveSyncService.CategorizeError(ex429, "C:\\test\\data.csv");
+        Assert.Equal("Límite de Google Apps Script", category1);
+
+        var timeoutEx = new TimeoutException("The operation timed out.");
+        var (category2, _) = DriveSyncService.CategorizeError(timeoutEx, "C:\\test\\data.csv");
+        Assert.Equal("Tiempo de espera agotado", category2);
+    }
+
+    [Fact]
+    public void ClearSyncErrors_ShouldEmptyLastSyncErrors()
+    {
+        _service.ClearSyncErrors();
+        Assert.Empty(_service.LastSyncErrors);
+    }
+
+    [Fact]
+    public async Task RetryFailedFiles_ShouldReturnEarly_WhenNoErrorsExist()
+    {
+        _service.UpdateSettings(new DriveSyncSettings
+        {
+            WebAppUrl = "https://script.google.com/test",
+            Sources = { new SyncSource { LocalFolderPath = _testDir } }
+        });
+        _service.ClearSyncErrors();
+        var summary = await _service.RetryFailedFilesAsync();
+
+        Assert.Contains("No hay archivos con error", summary.Message);
+        Assert.Equal(0, summary.TotalScanned);
+    }
 }
+
+
