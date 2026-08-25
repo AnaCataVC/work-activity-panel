@@ -44,7 +44,7 @@ public sealed partial class MainPage : Page
 
     private void InfoBar_CloseButtonClick(InfoBar sender, object args)
     {
-        ViewModel.ShowUpcomingMeetingBanner = false;
+        ViewModel.DismissUpcomingMeetingBannerCommand.Execute(null);
     }
 
     private void UpdateInfoBar_CloseButtonClick(InfoBar sender, object args)

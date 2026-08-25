@@ -102,6 +102,9 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private string _upcomingMeetingTitle = string.Empty;
 
+    private string? _currentAlertMeetingId;
+    private string? _userDismissedMeetingId;
+
     public ObservableCollection<CalendarEvent> TodayMeetings { get; } = new();
     private readonly List<CalendarEvent> _allTodayEvents = new();
 
@@ -354,6 +357,12 @@ public partial class DashboardViewModel : ObservableObject
 
         App.DispatcherQueue.TryEnqueue(() =>
         {
+            if (_userDismissedMeetingId == meeting.Id)
+            {
+                return;
+            }
+
+            _currentAlertMeetingId = meeting.Id;
             UpcomingMeetingTitle = $"{meeting.Title} ({meeting.FormattedStartTime})";
             ShowUpcomingMeetingBanner = true;
         });
@@ -403,6 +412,7 @@ public partial class DashboardViewModel : ObservableObject
     private void DismissUpcomingMeetingBanner()
     {
         ShowUpcomingMeetingBanner = false;
+        _userDismissedMeetingId = _currentAlertMeetingId;
     }
 
     [RelayCommand]
@@ -452,6 +462,7 @@ public partial class DashboardViewModel : ObservableObject
         var driveFolders = settings.Sources
             .Where(s => !string.IsNullOrWhiteSpace(s.LocalFolderPath))
             .Select(s => s.EffectiveDestinationPrefix)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         DriveSyncFoldersDisplay = driveFolders.Count == 0
@@ -583,11 +594,15 @@ public partial class DashboardViewModel : ObservableObject
 
     private void UpdateTodayMeetingsDisplay()
     {
-        if (!_googleCalendarService.IsConfigured)
+        if (!_googleCalendarService.IsConfigured || IsVacationMode)
         {
             TodayMeetings.Clear();
             HasMeetings = false;
-            NoMeetingsMessage = "Google Calendar no está configurado en Ajustes.";
+            NoMeetingsMessage = IsVacationMode
+                ? "El modo vacaciones está activo."
+                : "Google Calendar no está configurado en Ajustes.";
+            ShowUpcomingMeetingBanner = false;
+            _currentAlertMeetingId = null;
             return;
         }
 
@@ -624,6 +639,35 @@ public partial class DashboardViewModel : ObservableObject
             NoMeetingsMessage = _allTodayEvents.Count > 0
                 ? "No tienes más reuniones pendientes por hoy."
                 : "No tienes reuniones programadas para hoy.";
+        }
+
+        // Auto-dismiss the 5-minute pre-meeting banner if the meeting has started or concluded,
+        // or if no qualifying meeting is currently in the pre-start window.
+        if (ShowUpcomingMeetingBanner)
+        {
+            if (!string.IsNullOrEmpty(_currentAlertMeetingId))
+            {
+                var alertMeeting = _allTodayEvents.FirstOrDefault(ev => ev.Id == _currentAlertMeetingId);
+                // If meeting not found, or now >= StartTime (meeting started/past), or now < StartTime - 5min
+                if (alertMeeting == null || now >= alertMeeting.StartTime || now < alertMeeting.StartTime.AddMinutes(-5))
+                {
+                    ShowUpcomingMeetingBanner = false;
+                    _currentAlertMeetingId = null;
+                }
+            }
+            else
+            {
+                var anyInWindow = _allTodayEvents.Any(ev =>
+                    ev.OpensGranola &&
+                    !ev.IsAllDay &&
+                    now >= ev.StartTime.AddMinutes(-5) &&
+                    now < ev.StartTime);
+
+                if (!anyInWindow)
+                {
+                    ShowUpcomingMeetingBanner = false;
+                }
+            }
         }
     }
 

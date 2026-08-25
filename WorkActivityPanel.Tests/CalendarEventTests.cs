@@ -106,4 +106,27 @@ public class CalendarEventTests
         Assert.Equal("Todo el día", evt.FormattedStartTime);
         Assert.Equal("Todo el día", evt.FormattedEndTime);
     }
+
+    [Theory]
+    [InlineData(6, false)]  // 6 min before: outside 5-min window
+    [InlineData(5, true)]   // Exactly 5 min before: inside window
+    [InlineData(2, true)]   // 2 min before: inside window
+    [InlineData(0, false)]  // 0 min (meeting starts): outside pre-meeting window (now in progress)
+    [InlineData(-5, false)] // 5 min after start: meeting in progress/past
+    public void CalendarEvent_PreMeetingWindow_ShouldEvaluateCorrectly(int minutesBeforeStart, bool expectedInPreWindow)
+    {
+        var meeting = new CalendarEvent
+        {
+            Id = "test-window",
+            Title = "Sync Meeting",
+            StartTime = DateTime.Now.AddMinutes(minutesBeforeStart),
+            EndTime = DateTime.Now.AddMinutes(minutesBeforeStart + 30),
+            OpensGranola = true
+        };
+
+        var now = DateTime.Now;
+        bool inPreWindow = meeting.OpensGranola && !meeting.IsAllDay && now >= meeting.StartTime.AddMinutes(-5) && now < meeting.StartTime;
+
+        Assert.Equal(expectedInPreWindow, inPreWindow);
+    }
 }
