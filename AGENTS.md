@@ -83,11 +83,14 @@ work-activity-panel/
 
 ### Publishing Releases
 ```powershell
-# Publish self-contained single-file x64 release
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish WorkActivityPanel.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o bin\Release\net9.0-windows10.0.26100.0\win-x64\publish
+# Publish self-contained multi-file payload for Inno Setup installer
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish WorkActivityPanel.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o releases\WorkActivityPanel-win-x64
 
 # Compile Inno Setup installer (requires Inno Setup 6 installed; outputs to releases/)
-iscc installer.iss
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+# Compress standalone zip
+Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "releases\WorkActivityPanel-vX.Y.Z-win-x64.zip" -Force
 ```
 
 ---
@@ -175,9 +178,9 @@ Whenever a new release or version tag (e.g., `vX.Y.Z`) is planned and published,
    - Update the feature grid and `translations` object (`es` and `en`) with any new features, improvements, or architecture enhancements introduced in that release.
    - Add/update the direct link to the GitHub Release notes (`https://github.com/AnaCataVC/work-activity-panel/releases/tag/vX.Y.Z`).
 3. **Build & Release Packaging:**
-   - Execute `dotnet publish` for `win-x64` self-contained single-file.
-   - Compile the Inno Setup installer via `iscc installer.iss` into `releases/`.
-   - Compress the published output into `releases/WorkActivityPanel-vX.Y.Z-win-x64.zip`.
+   - Execute `dotnet publish WorkActivityPanel.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o releases\WorkActivityPanel-win-x64`.
+   - Compile the Inno Setup installer via `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss` into `releases/`.
+   - Compress the published output from `releases\WorkActivityPanel-win-x64` into `releases/WorkActivityPanel-vX.Y.Z-win-x64.zip`.
    - Publish the GitHub Release via `gh release create vX.Y.Z` attaching both binaries and bilingual release notes.
 4. **Release In-Place Update Protocol (Without Version Bump):**
    - When updating an already published release (e.g. critical fixes in `vX.Y.Z`):
