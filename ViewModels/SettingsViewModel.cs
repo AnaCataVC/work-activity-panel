@@ -122,6 +122,9 @@ public partial class SettingsViewModel : ObservableObject
     private string _driveWebAppUrl = string.Empty;
 
     [ObservableProperty]
+    private string _driveAuthToken = string.Empty;
+
+    [ObservableProperty]
     private string _driveFolderUrl = string.Empty;
 
     [ObservableProperty]
@@ -222,11 +225,12 @@ public partial class SettingsViewModel : ObservableObject
         // Load Drive Sync settings
         var driveSettings = _driveSyncService.Settings;
         DriveWebAppUrl = driveSettings.WebAppUrl ?? string.Empty;
+        DriveAuthToken = driveSettings.AuthToken ?? string.Empty;
         DriveFolderUrl = driveSettings.DriveFolderUrl ?? string.Empty;
         DriveIncludedExtensions = driveSettings.IncludedExtensions ?? string.Empty;
         DriveExcludedExtensions = !string.IsNullOrEmpty(driveSettings.ExcludedExtensions) ? driveSettings.ExcludedExtensions : ".tmp, .log, .exe, .bak, .zip";
         DriveExcludedFolders = !string.IsNullOrEmpty(driveSettings.ExcludedFolders) ? driveSettings.ExcludedFolders : "node_modules, .git, bin, obj, .vs, temp";
-        DriveMaxFileSizeMb = driveSettings.MaxFileSizeMb > 0 ? driveSettings.MaxFileSizeMb : 50;
+        DriveMaxFileSizeMb = driveSettings.MaxFileSizeMb > 0 ? driveSettings.MaxFileSizeMb : 20;
         DriveOnlyModifiedOrNew = driveSettings.OnlyModifiedOrNew;
         DriveAutoSyncOnWorkEnd = driveSettings.AutoSyncOnWorkEnd;
         DriveSyncUnversionedClaudeMarkdown = driveSettings.SyncUnversionedClaudeMarkdown;
@@ -408,11 +412,12 @@ public partial class SettingsViewModel : ObservableObject
     {
         var settings = _driveSyncService.Settings;
         settings.WebAppUrl = DriveWebAppUrl?.Trim() ?? string.Empty;
+        settings.AuthToken = DriveAuthToken?.Trim() ?? string.Empty;
         settings.DriveFolderUrl = DriveFolderUrl?.Trim() ?? string.Empty;
         settings.IncludedExtensions = DriveIncludedExtensions?.Trim() ?? string.Empty;
         settings.ExcludedExtensions = DriveExcludedExtensions?.Trim() ?? ".tmp, .log, .exe, .bak, .zip";
         settings.ExcludedFolders = DriveExcludedFolders?.Trim() ?? "node_modules, .git, bin, obj, .vs, temp";
-        settings.MaxFileSizeMb = DriveMaxFileSizeMb > 0 ? DriveMaxFileSizeMb : 50;
+        settings.MaxFileSizeMb = DriveMaxFileSizeMb > 0 ? DriveMaxFileSizeMb : 20;
         settings.OnlyModifiedOrNew = DriveOnlyModifiedOrNew;
         settings.AutoSyncOnWorkEnd = DriveAutoSyncOnWorkEnd;
         settings.SyncUnversionedClaudeMarkdown = DriveSyncUnversionedClaudeMarkdown;
@@ -424,6 +429,14 @@ public partial class SettingsViewModel : ObservableObject
         UpdateDriveStatus();
 
         SaveConfirmationMessage = "¡Ajustes de Google Drive guardados correctamente!";
+        ShowSaveConfirmation = true;
+    }
+
+    [RelayCommand]
+    private void ClearHashIndex()
+    {
+        _driveSyncService.ClearHashIndex();
+        SaveConfirmationMessage = "¡Caché de respaldo restablecida! La próxima sincronización re-evaluará todos los archivos.";
         ShowSaveConfirmation = true;
     }
 

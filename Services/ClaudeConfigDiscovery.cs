@@ -56,7 +56,7 @@ public sealed class ClaudeConfigDiscovery
             if (string.IsNullOrEmpty(directory))
                 continue;
 
-            if (!await IsTrackedByGitAsync(directory, candidate, cancellationToken))
+            if (!await IsInGitRepositoryAsync(directory, cancellationToken))
                 found.Add(candidate);
         }
 
@@ -112,17 +112,12 @@ public sealed class ClaudeConfigDiscovery
     }
 
     /// <summary>
-    /// Asks git whether the file is tracked. The exit code is the answer: 0 means tracked,
-    /// anything else means it is not, which also covers the common case of the directory
-    /// not being a repository at all.
-    ///
-    /// When git cannot be run, the file is reported as untracked. Backing up a file that a
-    /// repository already holds costs a duplicate; skipping one that nothing holds loses
-    /// it, so the uncertain case errs toward keeping the data.
+    /// Checks whether the directory is part of a Git working tree repository.
+    /// If it is not in a repository (exit code != 0), the instruction file is truly unversioned/orphaned
+    /// and must be backed up to Google Drive.
     /// </summary>
-    private async Task<bool> IsTrackedByGitAsync(
+    public async Task<bool> IsInGitRepositoryAsync(
         string directory,
-        string filePath,
         CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
@@ -135,9 +130,8 @@ public sealed class ClaudeConfigDiscovery
         };
         startInfo.ArgumentList.Add("-C");
         startInfo.ArgumentList.Add(directory);
-        startInfo.ArgumentList.Add("ls-files");
-        startInfo.ArgumentList.Add("--error-unmatch");
-        startInfo.ArgumentList.Add(filePath);
+        startInfo.ArgumentList.Add("rev-parse");
+        startInfo.ArgumentList.Add("--is-inside-work-tree");
 
         try
         {

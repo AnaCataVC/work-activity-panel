@@ -29,6 +29,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly IScheduleService _scheduleService;
     private readonly ClaudeConfigDiscovery _claudeConfigDiscovery = new();
+    private readonly SemaphoreSlim _uploadSemaphore = new(1, 1);
     private readonly object _hashLock = new();
     private readonly object _errorLock = new();
     private readonly List<SyncErrorItem> _lastSyncErrors = new();
@@ -91,11 +92,55 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     public void UpdateSettings(DriveSyncSettings settings)
     {
+        // Invalidation Guard: If the Claude destination prefix changed, invalidate cached hashes for it
+        if (!string.Equals(_settings.ClaudeMarkdownDestinationPrefix, settings.ClaudeMarkdownDestinationPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            InvalidateHashesByPrefix(_settings.ClaudeMarkdownDestinationPrefix);
+        }
+
+        // Invalidation Guard: If WebAppUrl changed, clear all hashes to force fresh sync to new target
+        if (!string.Equals(_settings.WebAppUrl, settings.WebAppUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            ClearHashIndex();
+        }
+
         _settings = settings;
         SaveSettings();
         SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    public void ClearHashIndex()
+    {
+        lock (_hashLock)
+        {
+            _hashIndex.Clear();
+            SaveHashIndex();
+        }
+    }
+
+    private void InvalidateHashesByPrefix(string? prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix)) return;
+
+        lock (_hashLock)
+        {
+            var prefixNormalized = prefix.Replace('\\', '/').Trim('/');
+            var keysToRemove = _hashIndex.Keys
+                .Where(k => k.StartsWith(prefixNormalized + "/", StringComparison.OrdinalIgnoreCase) ||
+                            k.StartsWith(prefixNormalized + "|", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                _hashIndex.Remove(key);
+            }
+
+            if (keysToRemove.Count > 0)
+            {
+                SaveHashIndex();
+            }
+        }
+    }
 
     public void CancelSync()
     {
@@ -104,7 +149,8 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     public async Task<SyncResultSummary> RunSyncAsync(
         IProgress<SyncProgressReport>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool forceFullSync = false)
     {
         if (_isSyncing)
         {
@@ -151,8 +197,8 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
                 processed++;
 
-                // 1. Check SHA-256 hash if incremental sync is enabled
-                if (_settings.OnlyModifiedOrNew)
+                // 1. Check SHA-256 hash if incremental sync is enabled and not forcing a full sync
+                if (!forceFullSync && _settings.OnlyModifiedOrNew)
                 {
                     string? previousHash = GetKnownHash(file.HashKey);
                     if (!string.IsNullOrEmpty(previousHash) && string.Equals(previousHash, file.Hash, StringComparison.OrdinalIgnoreCase))
@@ -186,12 +232,17 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         StatusMessage = $"Subiendo ({processed}/{summary.TotalScanned}): {file.FileName}..."
                     });
 
-                    await UploadSingleFileAsync(file.FilePath, _settings.WebAppUrl, file.RelativePath);
+                    var fileId = await UploadSingleFileAsync(file.FilePath, _settings.WebAppUrl, file.RelativePath);
+                    if (string.IsNullOrWhiteSpace(fileId))
+                    {
+                        throw new Exception("Google Apps Script no confirmó el identificador del archivo creado (fileId).");
+                    }
+
                     SaveKnownHash(file.HashKey, file.Hash);
                     summary.Uploaded++;
 
-                    // Small throttle between uploads to avoid burst rate-limits
-                    await Task.Delay(100, token);
+                    // Throttle between uploads to avoid Google Apps Script burst rate-limits
+                    await Task.Delay(300, token);
                 }
                 catch (Exception ex)
                 {
@@ -234,6 +285,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
             if (!token.IsCancellationRequested)
             {
+                // Housekeeping: Purge hashes of local files that were deleted to prevent index bloat
+                PurgeOrphanHashes();
+
                 summary.Message = summary.Success
                     ? $"Sincronización completada: {summary.Uploaded} subidos, {summary.Skipped} sin cambios."
                     : $"Sincronización completada con {summary.Errors} errores ({summary.Uploaded} subidos, {summary.Skipped} sin cambios).";
@@ -452,88 +506,109 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         if (!File.Exists(filePath))
             throw new FileNotFoundException("El archivo local no existe.", filePath);
 
-        byte[] fileBytes = await File.ReadAllBytesAsync(filePath);
-        string base64Data = Convert.ToBase64String(fileBytes);
-
-        string normalizedRelativePath = string.IsNullOrWhiteSpace(relativePath)
-            ? Path.GetFileName(filePath)
-            : relativePath.Replace('\\', '/').TrimStart('/');
-
-        string fileName = ResolveUploadName(filePath, normalizedRelativePath);
-        string mimeType = GetMimeType(fileName);
-
-        int maxRetries = 2;
-        int delayMs = 1500;
-
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        var fileInfo = new FileInfo(filePath);
+        long maxBytes = Math.Min(_settings.MaxFileSizeMb, 25) * 1024 * 1024;
+        if (fileInfo.Length > maxBytes)
         {
-            try
+            throw new InvalidOperationException($"El archivo ({fileInfo.Length / (1024.0 * 1024.0):F1} MB) supera el límite seguro de {_settings.MaxFileSizeMb} MB permitido para Google Apps Script.");
+        }
+
+        await _uploadSemaphore.WaitAsync();
+        try
+        {
+            byte[] fileBytes = await File.ReadAllBytesAsync(filePath);
+            string base64Data = Convert.ToBase64String(fileBytes);
+
+            string normalizedRelativePath = string.IsNullOrWhiteSpace(relativePath)
+                ? Path.GetFileName(filePath)
+                : relativePath.Replace('\\', '/').TrimStart('/');
+
+            string fileName = ResolveUploadName(filePath, normalizedRelativePath);
+            string mimeType = GetMimeType(fileName);
+
+            int maxRetries = 2;
+            int delayMs = 1500;
+
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                var content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("filename", fileName),
-                    new KeyValuePair<string, string>("relativePath", normalizedRelativePath),
-                    new KeyValuePair<string, string>("mimeType", mimeType),
-                    new KeyValuePair<string, string>("data", base64Data)
-                });
-
-                var response = await _httpClient.PostAsync(webAppUrl, content);
-
-                // If rate limited or server overloaded (429, 503, 500), retry with backoff
-                if ((response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
-                     response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
-                     response.StatusCode == System.Net.HttpStatusCode.InternalServerError) && attempt < maxRetries)
-                {
-                    await Task.Delay(delayMs + Random.Shared.Next(100, 500));
-                    delayMs *= 2;
-                    continue;
-                }
-
-                response.EnsureSuccessStatusCode();
-
-                var responseString = await response.Content.ReadAsStringAsync();
-
                 try
                 {
-                    var result = JsonSerializer.Deserialize<JsonElement>(responseString);
-                    if (result.TryGetProperty("status", out var status) && status.GetString() == "error")
+                    var postParams = new List<KeyValuePair<string, string>>
                     {
-                        string msg = result.TryGetProperty("message", out var m) ? m.GetString() ?? "Error desconocido" : "Error desconocido";
+                        new("filename", fileName),
+                        new("relativePath", normalizedRelativePath),
+                        new("mimeType", mimeType),
+                        new("data", base64Data)
+                    };
 
-                        if ((msg.Contains("Service invoked too many times", StringComparison.OrdinalIgnoreCase) ||
-                             msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase)) && attempt < maxRetries)
-                        {
-                            await Task.Delay(delayMs + Random.Shared.Next(100, 500));
-                            delayMs *= 2;
-                            continue;
-                        }
-
-                        throw new Exception($"Apps Script Error: {msg}");
+                    if (!string.IsNullOrWhiteSpace(_settings.AuthToken))
+                    {
+                        postParams.Add(new("authToken", _settings.AuthToken.Trim()));
                     }
 
-                    return result.TryGetProperty("fileId", out var id) ? id.GetString() : null;
-                }
-                catch (JsonException)
-                {
-                    if (attempt < maxRetries)
+                    var content = new FormUrlEncodedContent(postParams);
+                    var response = await _httpClient.PostAsync(webAppUrl, content);
+
+                    // If rate limited or server overloaded (429, 503, 500), retry with backoff
+                    if ((response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                         response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                         response.StatusCode == System.Net.HttpStatusCode.InternalServerError) && attempt < maxRetries)
                     {
                         await Task.Delay(delayMs + Random.Shared.Next(100, 500));
                         delayMs *= 2;
                         continue;
                     }
 
-                    string rawPreview = responseString.Length > 200 ? responseString[..200] + "..." : responseString;
-                    throw new Exception($"Respuesta inválida de Apps Script (no es JSON):\n{rawPreview}");
+                    response.EnsureSuccessStatusCode();
+
+                    var responseString = await response.Content.ReadAsStringAsync();
+
+                    try
+                    {
+                        var result = JsonSerializer.Deserialize<JsonElement>(responseString);
+                        if (result.TryGetProperty("status", out var status) && status.GetString() == "error")
+                        {
+                            string msg = result.TryGetProperty("message", out var m) ? m.GetString() ?? "Error desconocido" : "Error desconocido";
+
+                            if ((msg.Contains("Service invoked too many times", StringComparison.OrdinalIgnoreCase) ||
+                                 msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase)) && attempt < maxRetries)
+                            {
+                                await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                                delayMs *= 2;
+                                continue;
+                            }
+
+                            throw new Exception($"Apps Script Error: {msg}");
+                        }
+
+                        return result.TryGetProperty("fileId", out var id) ? id.GetString() : null;
+                    }
+                    catch (JsonException)
+                    {
+                        if (attempt < maxRetries)
+                        {
+                            await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                            delayMs *= 2;
+                            continue;
+                        }
+
+                        string rawPreview = responseString.Length > 200 ? responseString[..200] + "..." : responseString;
+                        throw new Exception($"Respuesta inválida de Apps Script (no es JSON):\n{rawPreview}");
+                    }
+                }
+                catch (Exception ex) when (attempt < maxRetries && (ex is TaskCanceledException || ex is HttpRequestException))
+                {
+                    await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                    delayMs *= 2;
                 }
             }
-            catch (Exception ex) when (attempt < maxRetries && (ex is TaskCanceledException || ex is HttpRequestException))
-            {
-                await Task.Delay(delayMs + Random.Shared.Next(100, 500));
-                delayMs *= 2;
-            }
-        }
 
-        throw new Exception("Se agotaron los intentos de subida.");
+            throw new Exception("Se agotaron los intentos de subida.");
+        }
+        finally
+        {
+            _uploadSemaphore.Release();
+        }
     }
 
     public static (string Category, string FriendlyMessage) CategorizeError(Exception ex, string filePath)
@@ -933,11 +1008,43 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         };
     }
 
+    /// <summary>
+    /// Purges hash entries from the index for local files that no longer exist on disk,
+    /// preventing perpetual state drift and memory bloat.
+    /// </summary>
+    public void PurgeOrphanHashes()
+    {
+        lock (_hashLock)
+        {
+            var orphanKeys = new List<string>();
+            foreach (var (key, _) in _hashIndex)
+            {
+                var pipeIndex = key.IndexOf('|');
+                var localPath = pipeIndex >= 0 ? key[(pipeIndex + 1)..] : key;
+                if (!File.Exists(localPath))
+                {
+                    orphanKeys.Add(key);
+                }
+            }
+
+            foreach (var k in orphanKeys)
+            {
+                _hashIndex.Remove(k);
+            }
+
+            if (orphanKeys.Count > 0)
+            {
+                SaveHashIndex();
+            }
+        }
+    }
+
     public void Dispose()
     {
         _scheduleService.WorkEnded -= OnWorkEnded;
         _activeCts?.Cancel();
         _activeCts?.Dispose();
         _httpClient.Dispose();
+        _uploadSemaphore.Dispose();
     }
 }

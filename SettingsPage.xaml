@@ -160,6 +160,10 @@
                                      Text="{x:Bind ViewModel.DriveWebAppUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="https://script.google.com/macros/s/.../exec" />
 
+                            <PasswordBox Header="Token de autorización secreto (opcional)"
+                                         Password="{x:Bind ViewModel.DriveAuthToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="Token configurado en tu Apps Script para autorizar subidas" />
+
                             <TextBox Header="URL de la carpeta de Google Drive (para el botón «Abrir Drive»)"
                                      Text="{x:Bind ViewModel.DriveFolderUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="https://drive.google.com/drive/folders/..." />
@@ -275,6 +279,23 @@
                                         <ToggleSwitch Grid.Column="1" Header="Auto-sync al terminar jornada" 
                                                       IsOn="{x:Bind ViewModel.DriveAutoSyncOnWorkEnd, Mode=TwoWay}" />
                                     </Grid>
+
+                                    <!-- Hash Index Cache Reset -->
+                                    <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Content="Restablecer Caché de Hashes" 
+                                                    Command="{x:Bind ViewModel.ClearHashIndexCommand}" />
+                                            <TextBlock Grid.Column="1" 
+                                                       Text="Limpia el registro local de hashes para forzar una re-evaluación y sincronización completa en la próxima ejecución."
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                       VerticalAlignment="Center" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
                             </Expander>
 

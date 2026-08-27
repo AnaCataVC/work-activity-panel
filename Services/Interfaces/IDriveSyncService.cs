@@ -31,11 +31,20 @@ public interface IDriveSyncService
     void UpdateSettings(DriveSyncSettings settings);
 
     /// <summary>
-    /// Runs a full synchronization job according to configured settings.
+    /// Runs a synchronization job according to configured settings.
     /// </summary>
+    /// <param name="progress">Progress reporter for UI updates.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="forceFullSync">When true, ignores the local SHA-256 hash index and uploads all files.</param>
     Task<SyncResultSummary> RunSyncAsync(
         IProgress<SyncProgressReport>? progress = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool forceFullSync = false);
+
+    /// <summary>
+    /// Clears the local SHA-256 hash index so the next sync will re-evaluate and re-upload all files.
+    /// </summary>
+    void ClearHashIndex();
 
     /// <summary>
     /// Cancels any active synchronization job.

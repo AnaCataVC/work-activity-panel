@@ -49,10 +49,15 @@ public class DriveSyncSettings
     [JsonPropertyName("LocalFolderPath")]
     public string LegacyMainFolderPath { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional shared secret authentication token for Google Apps Script Web App.
+    /// </summary>
+    public string AuthToken { get; set; } = string.Empty;
+
     public string IncludedExtensions { get; set; } = string.Empty;
     public string ExcludedExtensions { get; set; } = ".tmp, .log, .exe, .bak, .zip";
     public string ExcludedFolders { get; set; } = "node_modules, .git, bin, obj, .vs, temp";
-    public long MaxFileSizeMb { get; set; } = 50;
+    public long MaxFileSizeMb { get; set; } = 20;
     public bool OnlyModifiedOrNew { get; set; } = true;
     public bool AutoSyncOnWorkEnd { get; set; } = true;
     public bool IsEnabled { get; set; } = true;

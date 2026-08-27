@@ -513,6 +513,23 @@ public partial class DashboardViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ForceSyncDrive()
+    {
+        if (!_driveSyncService.IsConfigured)
+        {
+            DriveSyncDetailText = "Configura la URL y la carpeta en Ajustes antes de sincronizar.";
+            return;
+        }
+
+        IsDriveSyncing = true;
+        DriveSyncProgress = 0;
+        DriveSyncDetailText = "Iniciando sincronización completa forzada (sin omitir archivos)...";
+        RefreshDriveSyncStatus();
+
+        await _driveSyncService.RunSyncAsync(forceFullSync: true);
+    }
+
+    [RelayCommand]
     private async Task RetrySyncErrors()
     {
         if (!_driveSyncService.IsConfigured) return;

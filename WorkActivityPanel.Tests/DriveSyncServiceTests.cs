@@ -289,6 +289,69 @@ public class DriveSyncServiceTests : IDisposable
         Assert.Contains("No hay archivos con error", summary.Message);
         Assert.Equal(0, summary.TotalScanned);
     }
+
+    [Fact]
+    public void ClearHashIndex_ShouldExecuteWithoutExceptions()
+    {
+        _service.ClearHashIndex();
+    }
+
+    [Fact]
+    public void UpdateSettings_ShouldInvalidatePrefixHashes_WhenPrefixChanges()
+    {
+        var settings1 = new DriveSyncSettings
+        {
+            ClaudeMarkdownDestinationPrefix = "old-prefix",
+            WebAppUrl = "https://script.google.com/macros/s/test/exec"
+        };
+        _service.UpdateSettings(settings1);
+
+        var settings2 = new DriveSyncSettings
+        {
+            ClaudeMarkdownDestinationPrefix = "new-prefix",
+            WebAppUrl = "https://script.google.com/macros/s/test/exec"
+        };
+        _service.UpdateSettings(settings2);
+
+        Assert.Equal("new-prefix", _service.Settings.ClaudeMarkdownDestinationPrefix);
+    }
+
+    [Fact]
+    public void PurgeOrphanHashes_ShouldExecuteWithoutError()
+    {
+        _service.PurgeOrphanHashes();
+    }
+
+    [Fact]
+    public async Task UploadSingleFile_ShouldThrow_WhenFileExceedsMaxSafeSize()
+    {
+        var largeFile = Path.Combine(_testDir, "oversized.bin");
+        File.WriteAllBytes(largeFile, new byte[26 * 1024 * 1024]); // 26 MB
+
+        _service.UpdateSettings(new DriveSyncSettings
+        {
+            WebAppUrl = "https://script.google.com/test",
+            MaxFileSizeMb = 20
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.UploadSingleFileAsync(largeFile, "https://script.google.com/test", "oversized.bin"));
+    }
+
+    [Fact]
+    public void DriveSyncSettings_ShouldPersistAuthToken()
+    {
+        var settings = new DriveSyncSettings
+        {
+            AuthToken = "secret-token-12345",
+            MaxFileSizeMb = 20
+        };
+
+        _service.UpdateSettings(settings);
+
+        Assert.Equal("secret-token-12345", _service.Settings.AuthToken);
+        Assert.Equal(20, _service.Settings.MaxFileSizeMb);
+    }
 }
 
 
