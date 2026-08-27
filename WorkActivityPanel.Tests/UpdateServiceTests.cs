@@ -63,7 +63,7 @@ public class UpdateServiceTests
     public void CurrentAppVersion_ReturnsCorrectVersion()
     {
         var service = new UpdateService();
-        Assert.Equal("1.4.0", service.CurrentAppVersion);
+        Assert.Equal("1.5.0", service.CurrentAppVersion);
     }
 }
 
