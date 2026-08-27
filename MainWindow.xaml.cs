@@ -16,7 +16,9 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        App.LogTrace("MainWindow constructor started");
         InitializeComponent();
+        App.LogTrace("MainWindow InitializeComponent completed");
 
         ShowPanelCommand = new RelayCommand(ShowPanel);
         HidePanelCommand = new RelayCommand(HidePanel);
@@ -24,11 +26,13 @@ public sealed partial class MainWindow : Window
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+        App.LogTrace("MainWindow TitleBar configured");
 
         var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
         if (System.IO.File.Exists(iconPath))
         {
             AppWindow.SetIcon(iconPath);
+            App.LogTrace("MainWindow AppIcon set");
         }
 
         // Hide to tray on window closing unless explicitly exiting
@@ -43,9 +47,12 @@ public sealed partial class MainWindow : Window
 
         // Left click on tray icon toggles window visibility
         TrayIcon.LeftClickCommand = new RelayCommand(ToggleWindowVisibility);
+        App.LogTrace("MainWindow TrayIcon configured");
 
         // Navigate the root frame to the main page on startup.
+        App.LogTrace("MainWindow navigating to MainPage");
         RootFrame.Navigate(typeof(MainPage));
+        App.LogTrace("MainWindow navigation to MainPage completed");
     }
 
     private void ToggleWindowVisibility()

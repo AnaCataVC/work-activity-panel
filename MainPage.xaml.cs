@@ -11,14 +11,27 @@ public sealed partial class MainPage : Page
 
     public MainPage()
     {
-        ViewModel = App.GetService<DashboardViewModel>();
-        InitializeComponent();
+        App.LogTrace("MainPage constructor started");
+        try
+        {
+            ViewModel = App.GetService<DashboardViewModel>();
+            App.LogTrace("MainPage DashboardViewModel resolved");
+            InitializeComponent();
+            App.LogTrace("MainPage InitializeComponent completed");
+        }
+        catch (System.Exception ex)
+        {
+            App.LogCrash("MainPage_Constructor", ex, ex.Message);
+            throw;
+        }
     }
     
     protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
+        App.LogTrace("MainPage OnNavigatedTo started");
         base.OnNavigatedTo(e);
         ViewModel.RefreshAllStatus();
+        App.LogTrace("MainPage OnNavigatedTo finished");
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)

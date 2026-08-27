@@ -486,7 +486,7 @@
                                     <Button Content="Cancelar" Command="{x:Bind ViewModel.CancelDriveSyncCommand}"
                                             Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                    <SplitButton Content="Sincronizar Ahora" Style="{StaticResource AccentSplitButtonStyle}"
+                                    <SplitButton Content="Sincronizar Ahora"
                                                  Command="{x:Bind ViewModel.SyncDriveNowCommand}"
                                                  Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <SplitButton.Flyout>
