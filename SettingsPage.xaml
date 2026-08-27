@@ -160,9 +160,9 @@
                                      Text="{x:Bind ViewModel.DriveWebAppUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="https://script.google.com/macros/s/.../exec" />
 
-                            <PasswordBox Header="Token de autorización secreto (opcional)"
-                                         Password="{x:Bind ViewModel.DriveAuthToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         PlaceholderText="Token configurado en tu Apps Script para autorizar subidas" />
+                            <TextBox Header="Token de autorización secreto (opcional)"
+                                     Text="{x:Bind ViewModel.DriveAuthToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="Token configurado en tu Apps Script para autorizar subidas" />
 
                             <TextBox Header="URL de la carpeta de Google Drive (para el botón «Abrir Drive»)"
                                      Text="{x:Bind ViewModel.DriveFolderUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
