@@ -152,7 +152,7 @@ public partial class SettingsViewModel : ObservableObject
     private string _driveClaudeMarkdownDestinationPrefix = "claude-md-unversioned";
 
     [ObservableProperty]
-    private int _driveClaudeMarkdownScanDepth = 6;
+    private double _driveClaudeMarkdownScanDepth = 6;
 
     public ObservableCollection<SyncSource> DriveSyncSources { get; } = new();
 
@@ -422,7 +422,7 @@ public partial class SettingsViewModel : ObservableObject
         settings.AutoSyncOnWorkEnd = DriveAutoSyncOnWorkEnd;
         settings.SyncUnversionedClaudeMarkdown = DriveSyncUnversionedClaudeMarkdown;
         settings.ClaudeMarkdownDestinationPrefix = DriveClaudeMarkdownDestinationPrefix?.Trim() ?? "claude-md-unversioned";
-        settings.ClaudeMarkdownScanDepth = DriveClaudeMarkdownScanDepth > 0 ? DriveClaudeMarkdownScanDepth : 6;
+        settings.ClaudeMarkdownScanDepth = !double.IsNaN(DriveClaudeMarkdownScanDepth) && DriveClaudeMarkdownScanDepth > 0 ? (int)DriveClaudeMarkdownScanDepth : 6;
         settings.Sources = DriveSyncSources.ToList();
 
         _driveSyncService.UpdateSettings(settings);

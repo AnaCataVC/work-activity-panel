@@ -44,8 +44,8 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        Window = new MainWindow();
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        Window = new MainWindow();
         
         // Start the schedule service
         var scheduleService = GetService<IScheduleService>();
