@@ -53,8 +53,28 @@ This guide provides step-by-step instructions for configuring your Google Drive 
 
 ```javascript
 function doPost(e) {
+  // 1. Concurrency lock to prevent simultaneous duplicate file creation
+  var lock = LockService.getScriptLock();
   try {
-    // 1. Paste your Google Drive Folder ID here
+    lock.waitLock(25000);
+  } catch (t) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: "Server is busy. Please try again shortly."
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  try {
+    // 2. Optional: Set a shared secret token to protect your endpoint (leave empty if not needed)
+    var AUTH_TOKEN = ""; // e.g. "my-super-secret-token"
+    if (AUTH_TOKEN && e.parameter.authToken !== AUTH_TOKEN) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Unauthorized: Invalid or missing authentication token."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Paste your Google Drive Folder ID here
     var rootFolderId = "PASTE_YOUR_FOLDER_ID_HERE"; 
     var currentFolder = DriveApp.getFolderById(rootFolderId);
 
@@ -62,7 +82,7 @@ function doPost(e) {
     var relativePath = e.parameter.relativePath || fileName;
     var mimeType = e.parameter.mimeType || "application/octet-stream";
 
-    // 2. Recreate subfolder hierarchy in Google Drive
+    // 4. Recreate subfolder hierarchy in Google Drive
     var pathParts = relativePath.split("/");
     if (pathParts.length > 1) {
       for (var i = 0; i < pathParts.length - 1; i++) {
@@ -78,14 +98,14 @@ function doPost(e) {
       }
     }
 
-    // 3. Clean overwrite: Trash previous versions of the same file in this folder
+    // 4. Clean overwrite under lock: Trash previous versions of the same file in this folder
     var existingFiles = currentFolder.getFilesByName(fileName);
     while (existingFiles.hasNext()) {
       var oldFile = existingFiles.next();
       oldFile.setTrashed(true);
     }
 
-    // 4. Decode Base64 and save the new file
+    // 5. Decode Base64 and save the new file
     var data = Utilities.base64Decode(e.parameter.data);
     var blob = Utilities.newBlob(data, mimeType, fileName);
     var file = currentFolder.createFile(blob);
@@ -101,6 +121,8 @@ function doPost(e) {
       status: "error",
       message: err.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
 ```
@@ -186,8 +208,28 @@ Esta guía proporciona instrucciones paso a paso para configurar tu destino en G
 
 ```javascript
 function doPost(e) {
+  // 1. Bloqueo de concurrencia para evitar subidas duplicadas simultáneas
+  var lock = LockService.getScriptLock();
   try {
-    // 1. Pega aquí el ID de tu carpeta destino de Google Drive
+    lock.waitLock(25000);
+  } catch (t) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: "Servidor ocupado. Intenta de nuevo en unos momentos."
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  try {
+    // 2. Opcional: Define un token secreto compartido para proteger tu Web App (déjalo vacío si no lo requieres)
+    var AUTH_TOKEN = ""; // ej: "mi-token-super-secreto"
+    if (AUTH_TOKEN && e.parameter.authToken !== AUTH_TOKEN) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "No autorizado: Token de autenticación inválido o ausente."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Pega aquí el ID de tu carpeta destino de Google Drive
     var rootFolderId = "PEGA_AQUI_EL_ID_DE_TU_CARPETA"; 
     var currentFolder = DriveApp.getFolderById(rootFolderId);
 
@@ -195,7 +237,7 @@ function doPost(e) {
     var relativePath = e.parameter.relativePath || fileName;
     var mimeType = e.parameter.mimeType || "application/octet-stream";
 
-    // 2. Recrear la jerarquía de subcarpetas en Google Drive
+    // 4. Recrear la jerarquía de subcarpetas en Google Drive
     var pathParts = relativePath.split("/");
     if (pathParts.length > 1) {
       for (var i = 0; i < pathParts.length - 1; i++) {
@@ -211,14 +253,14 @@ function doPost(e) {
       }
     }
 
-    // 3. Sobrescritura limpia: Elimina versiones anteriores del mismo archivo
+    // 4. Sobrescritura limpia garantizada bajo lock: papelera a versiones anteriores
     var existingFiles = currentFolder.getFilesByName(fileName);
     while (existingFiles.hasNext()) {
       var oldFile = existingFiles.next();
       oldFile.setTrashed(true);
     }
 
-    // 4. Decodificar Base64 y guardar el nuevo archivo
+    // 5. Decodificar Base64 y guardar el nuevo archivo
     var data = Utilities.base64Decode(e.parameter.data);
     var blob = Utilities.newBlob(data, mimeType, fileName);
     var file = currentFolder.createFile(blob);
@@ -234,6 +276,8 @@ function doPost(e) {
       status: "error",
       message: err.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
 ```
