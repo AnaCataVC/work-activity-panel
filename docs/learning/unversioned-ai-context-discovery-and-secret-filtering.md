@@ -23,18 +23,22 @@ When collaborating with AI coding agents (such as Claude Code, Antigravity, or C
 
 ### 2.1 Multi-Zone Breadth-First Search (BFS) Traversal
 `ClaudeConfigDiscovery.cs` implements an iterative BFS walk up to a configurable depth (`ClaudeMarkdownScanDepth`, default 6):
-- **Direct Instructions:** Detects `CLAUDE.md` in any scanned folder.
-- **Companion Reference Folders:** Discovers all `*.md` files inside direct `references/` subdirectories.
-- **Claude Configuration Trees:** Recursively traverses `.claude/` directories (including `.claude/references/**`) up to 3 levels deep.
+- **Direct Instructions:** Detects `CLAUDE.md` in any scanned folder and `.claude/CLAUDE.md`.
+- **Targeted Reference Folders:** Discovers all `*.md` files inside direct `references/` subdirectories (`references/**/*.md`) and within `.claude/references/**/*.md`.
+- **Strict Isolation of Claude Internals:** Excludes Claude CLI and desktop internal state directories (`.claude/projects/**/memory`, `.claude/plans`, `.claude/security`, `.claude/cache`, `.claude/plugins`, `*.log`, `log.txt`).
 - **Strict Directory Exclusions:** Automatically skips build outputs, package caches, note vaults, and backup trees (`node_modules`, `.git`, `.vs`, `bin`, `obj`, `venv`, `.venv`, `__pycache__`, `AppData`, `dist`, `build`, `.obsidian`, `.trash`, `.idea`, and directories matching `_backup_*` or `backup_*`).
 
 ```
 Project Root / User Profile
 ├── CLAUDE.md                     ──> Discovered
 ├── .claude/
-│    └── references/
-│         ├── team-roster.md      ──> Discovered
-│         └── architecture.md     ──> Discovered
+│    ├── CLAUDE.md                ──> Discovered
+│    ├── references/
+│    │    ├── team-roster.md      ──> Discovered
+│    │    └── architecture.md     ──> Discovered
+│    ├── projects/                ──> Skipped (Internal session memory)
+│    ├── plans/                   ──> Skipped (Internal session plans)
+│    └── security/                ──> Skipped (Internal security logs)
 ├── geocoding/
 │    ├── CLAUDE.md                ──> Discovered
 │    └── references/
@@ -58,7 +62,7 @@ To eliminate process creation overhead while accurately identifying untracked fi
 
 ### 2.3 Multi-Tier Infrastructure Secret Protection
 To prevent uploading live infrastructure credentials without blocking legitimate sandbox documentation (e.g., test tokens or mock hashes):
-- **Filename Keyword Filter:** Discards candidate files named `id_rsa`, `id_ed25519`, `credentials`, `auth_token`, or `api_key`.
+- **Filename Keyword Filter:** Discards candidate files named `id_rsa`, `id_ed25519`, `credentials`, `auth_token`, or `api_key`, as well as log files (`*.log`, `log.txt`).
 - **Bounded Stream Content Inspection (64 KB):** Reads the initial 64 KB of file contents to evaluate compiled regex signatures:
   - **SSH / PGP Private Keys:** `-----BEGIN\s+[A-Z\s]+PRIVATE\s+KEY-----`
   - **AWS Access Keys:** `\bAKIA[0-9A-Z]{16}\b`
@@ -70,6 +74,6 @@ To prevent uploading live infrastructure credentials without blocking legitimate
 
 ## 3. Verification & Benchmark Results
 
-- **Unit Test Suite:** 109 automated xUnit tests passing with 0 errors (`WorkActivityPanel.Tests.ClaudeConfigDiscoveryTests`).
-- **Live Discovery:** Verified 100% discovery of all 16 reference files across 5 distinct directory hierarchies.
+- **Unit Test Suite:** 110 automated xUnit tests passing with 0 errors (`WorkActivityPanel.Tests.ClaudeConfigDiscoveryTests`).
+- **Live Discovery:** Verified 100% discovery of all reference files and `CLAUDE.md` anchors across directory hierarchies without leaking Claude CLI internal memory, plans, or security logs.
 - **Process Efficiency:** Git query execution reduced from $>16$ individual process invocations to 2 batched executions with $<150$ ms total execution time.

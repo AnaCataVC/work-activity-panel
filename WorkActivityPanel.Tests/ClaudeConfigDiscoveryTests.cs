@@ -93,20 +93,60 @@ public class ClaudeConfigDiscoveryTests : IDisposable
     {
         var claudeRef = WriteCustomFile("# team", ".claude", "references", "team_roster.md");
         var directRef = WriteCustomFile("# geocoding ref", "geocoding", "references", "spec.md");
+        var nestedRef = WriteCustomFile("# nested ref", "optimizer", "references", "models", "heuristics.md");
+        var claudeNestedRef = WriteCustomFile("# claude nested ref", ".claude", "references", "team", "roles.md");
         var rootClaude = WriteInstructionFile();
+        var dotClaudeInstruction = WriteCustomFile("# dot claude root", ".claude", "CLAUDE.md");
 
         var found = await _discovery.FindUnversionedAsync(_root, maxDepth: 4);
 
         Assert.Contains(claudeRef, found);
         Assert.Contains(directRef, found);
+        Assert.Contains(nestedRef, found);
+        Assert.Contains(claudeNestedRef, found);
         Assert.Contains(rootClaude, found);
+        Assert.Contains(dotClaudeInstruction, found);
+    }
+
+    [Fact]
+    public async Task IgnoresClaudeInternalDirectories()
+    {
+        // Claude CLI / Desktop internal state files that must never sync
+        var memoryFile = WriteCustomFile("# auto memory", ".claude", "projects", "repo-123", "memory", "MEMORY.md");
+        var refNoteFile = WriteCustomFile("# auto ref", ".claude", "projects", "repo-123", "memory", "reference_notes.md");
+        var feedbackFile = WriteCustomFile("# feedback", ".claude", "projects", "repo-123", "memory", "feedback_user.md");
+        var planFile = WriteCustomFile("# plan", ".claude", "plans", "session-plan-woolly.md");
+        var securityLog = WriteCustomFile("security log content", ".claude", "security", "log.txt");
+        var cacheFile = WriteCustomFile("cache data", ".claude", "cache", "data.md");
+        var pluginFile = WriteCustomFile("plugin data", ".claude", "plugins", "tool.md");
+        var projectClaudeMd = WriteCustomFile("# project claude", ".claude", "projects", "repo-123", "CLAUDE.md");
+        var projectReferencesLeak = WriteCustomFile("# project ref leak", ".claude", "projects", "repo-123", "references", "leak.md");
+
+        // Legitimate files that must be included
+        var validClaude = WriteCustomFile("# instructions", ".claude", "CLAUDE.md");
+        var validRef = WriteCustomFile("# roster", ".claude", "references", "team_roster.md");
+
+        var found = await _discovery.FindUnversionedAsync(_root, maxDepth: 6);
+
+        Assert.DoesNotContain(memoryFile, found);
+        Assert.DoesNotContain(refNoteFile, found);
+        Assert.DoesNotContain(feedbackFile, found);
+        Assert.DoesNotContain(planFile, found);
+        Assert.DoesNotContain(securityLog, found);
+        Assert.DoesNotContain(cacheFile, found);
+        Assert.DoesNotContain(pluginFile, found);
+        Assert.DoesNotContain(projectClaudeMd, found);
+        Assert.DoesNotContain(projectReferencesLeak, found);
+
+        Assert.Contains(validClaude, found);
+        Assert.Contains(validRef, found);
     }
 
     [Fact]
     public async Task SkipsBackupAndSensitiveFiles()
     {
         var backupFile = WriteCustomFile("# backup", "_backup_claudemd_20260828", "CLAUDE.md");
-        var sensitiveFile = WriteCustomFile("api_key=123", ".claude", "api_key.md");
+        var sensitiveFile = WriteCustomFile("api_key=123", ".claude", "references", "api_key.md");
         var sshKeyFile = WriteCustomFile("-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----", "references", "id_rsa.md");
         var awsKeyFile = WriteCustomFile("export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE", "references", "aws_setup.md");
         var sandboxDoc = WriteCustomFile("Token cuenta de pruebas 95542: `343f05ff9c8ad7a2473500e2d33f61dc5b81cb40`", "geocoding", "references", "cuenta-pruebas-95542.md");

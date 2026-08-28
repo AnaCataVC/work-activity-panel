@@ -20,12 +20,12 @@ public sealed class ClaudeConfigDiscovery
     public const string InstructionFileName = "CLAUDE.md";
 
     /// <summary>
-    /// Directories never worth walking into: build output, dependencies, and caches.
+    /// Directories never worth walking into: build output, dependencies, caches, and explicitly handled context folders.
     /// </summary>
     private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
     {
         "node_modules", ".git", ".vs", "bin", "obj", "venv", ".venv", "__pycache__",
-        "AppData", "dist", "build", ".obsidian", ".trash", ".idea"
+        "AppData", "dist", "build", ".obsidian", ".trash", ".idea", ".claude", "references"
     };
 
     /// <summary>
@@ -146,7 +146,7 @@ public sealed class ClaudeConfigDiscovery
     }
 
     /// <summary>
-    /// Breadth-first walk that yields every candidate instruction and reference file within the depth limit.
+    /// Breadth-first walk that yields candidate instruction (CLAUDE.md) and reference (references/*.md) files within the depth limit.
     /// </summary>
     public static IEnumerable<string> EnumerateCandidates(string rootPath, int maxDepth)
     {
@@ -169,21 +169,33 @@ public sealed class ClaudeConfigDiscovery
             var directReferencesDir = Path.Combine(currentDir, "references");
             if (Directory.Exists(directReferencesDir))
             {
-                foreach (var file in SafeEnumerateFiles(directReferencesDir, "*.md"))
+                foreach (var file in SafeEnumerateFilesRecursive(directReferencesDir, 3))
                 {
                     if (IsCandidateAllowed(file) && yielded.Add(file))
                         yield return file;
                 }
             }
 
-            // 3. .claude/ folder under currentDir (including .claude/references/ and subfolders)
+            // 3. .claude/ directory under currentDir: ONLY CLAUDE.md and .claude/references/
             var claudeDir = Path.Combine(currentDir, ".claude");
             if (Directory.Exists(claudeDir))
             {
-                foreach (var file in SafeEnumerateFilesRecursive(claudeDir, 3))
+                // 3a. .claude/CLAUDE.md
+                var claudeInstruction = Path.Combine(claudeDir, InstructionFileName);
+                if (File.Exists(claudeInstruction) && IsCandidateAllowed(claudeInstruction) && yielded.Add(claudeInstruction))
                 {
-                    if (IsCandidateAllowed(file) && yielded.Add(file))
-                        yield return file;
+                    yield return claudeInstruction;
+                }
+
+                // 3b. .claude/references/ (nested reference documents)
+                var claudeReferencesDir = Path.Combine(claudeDir, "references");
+                if (Directory.Exists(claudeReferencesDir))
+                {
+                    foreach (var file in SafeEnumerateFilesRecursive(claudeReferencesDir, 3))
+                    {
+                        if (IsCandidateAllowed(file) && yielded.Add(file))
+                            yield return file;
+                    }
                 }
             }
 
@@ -245,6 +257,12 @@ public sealed class ClaudeConfigDiscovery
         }
 
         var fileName = Path.GetFileName(filePath);
+        if (fileName.EndsWith(".log", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(fileName, "log.txt", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         foreach (var keyword in SensitiveNameKeywords)
         {
             if (fileName.Contains(keyword, StringComparison.OrdinalIgnoreCase))
@@ -305,6 +323,17 @@ public sealed class ClaudeConfigDiscovery
     private static IEnumerable<string> SafeEnumerateFilesRecursive(string rootDir, int maxDepth)
     {
         var results = new List<string>();
+        try
+        {
+            var rootInfo = new DirectoryInfo(rootDir);
+            if (rootInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                return results;
+        }
+        catch
+        {
+            return results;
+        }
+
         var queue = new Queue<(string Path, int Depth)>();
         queue.Enqueue((rootDir, 0));
 
@@ -359,9 +388,10 @@ public sealed class ClaudeConfigDiscovery
         startInfo.ArgumentList.Add("rev-parse");
         startInfo.ArgumentList.Add("--show-toplevel");
 
+        Process? process = null;
         try
         {
-            using var process = Process.Start(startInfo);
+            process = Process.Start(startInfo);
             if (process == null) return null;
 
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
@@ -379,11 +409,16 @@ public sealed class ClaudeConfigDiscovery
         }
         catch (OperationCanceledException)
         {
+            try { process?.Kill(); } catch { }
             throw;
         }
         catch
         {
             return null;
+        }
+        finally
+        {
+            process?.Dispose();
         }
     }
 
@@ -421,9 +456,10 @@ public sealed class ClaudeConfigDiscovery
                 startInfo.ArgumentList.Add(relPath.Replace('\\', '/'));
             }
 
+            Process? process = null;
             try
             {
-                using var process = Process.Start(startInfo);
+                process = Process.Start(startInfo);
                 if (process == null) continue;
 
                 var stdoutTask = process.StandardOutput.ReadToEndAsync();
@@ -448,11 +484,16 @@ public sealed class ClaudeConfigDiscovery
             }
             catch (OperationCanceledException)
             {
+                try { process?.Kill(); } catch { }
                 throw;
             }
             catch
             {
                 // If git fails, treat files as untracked
+            }
+            finally
+            {
+                process?.Dispose();
             }
         }
 
