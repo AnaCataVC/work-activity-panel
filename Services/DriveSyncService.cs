@@ -776,7 +776,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         {
             ReportProgress(progress, new SyncProgressReport
             {
-                StatusMessage = "Buscando CLAUDE.md sin versionar..."
+                StatusMessage = "Buscando CLAUDE.md y referencias sin versionar..."
             });
 
             var profileRoot = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

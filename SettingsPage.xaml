@@ -228,12 +228,12 @@
                                 </Button>
                             </StackPanel>
 
-                            <!-- Agent Instructions CLAUDE.md Sweep -->
-                            <Expander Header="Instrucciones de Agentes (CLAUDE.md sin versionar)" HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                            <!-- Agent Instructions CLAUDE.md & References Sweep -->
+                            <Expander Header="Instrucciones de Agentes (CLAUDE.md y Referencias sin versionar)" HorizontalAlignment="Stretch" Margin="0,8,0,0">
                                 <StackPanel Spacing="14" Padding="0,12,0,0">
-                                    <ToggleSwitch Header="Respaldar archivos CLAUDE.md huérfanos/sin versionar"
+                                    <ToggleSwitch Header="Respaldar archivos CLAUDE.md y carpetas references/ no versionadas"
                                                   IsOn="{x:Bind ViewModel.DriveSyncUnversionedClaudeMarkdown, Mode=TwoWay}" />
-                                    <TextBlock Text="Rastrea automáticamente en tu perfil de usuario archivos CLAUDE.md que no pertenezcan a repositorios Git para respaldarlos en Google Drive."
+                                    <TextBlock Text="Rastrea automáticamente en tu perfil de usuario archivos CLAUDE.md, .claude/references y carpetas references/*.md no trackeados en Git para respaldarlos en Google Drive de forma segura."
                                                Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                Margin="0,-8,0,0"

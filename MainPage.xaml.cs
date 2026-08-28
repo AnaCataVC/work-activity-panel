@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using WorkActivityPanel.ViewModels;
 
 namespace WorkActivityPanel;
@@ -63,6 +64,98 @@ public sealed partial class MainPage : Page
     private void UpdateInfoBar_CloseButtonClick(InfoBar sender, object args)
     {
         ViewModel.ShowUpdateBanner = false;
+    }
+
+    private async void ShowSyncHistoryDialog_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SyncErrorsList.Count > 0)
+        {
+            ShowSyncErrorsDialog_Click(sender, e);
+            return;
+        }
+
+        var dialogStack = new StackPanel { Spacing = 12, Margin = new Thickness(0, 4, 0, 4) };
+
+        var statusCard = new Border
+        {
+            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(16, 12, 16, 12)
+        };
+
+        var cardStack = new StackPanel { Spacing = 8 };
+
+        var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        headerStack.Children.Add(new FontIcon
+        {
+            Glyph = "\uE73E",
+            FontSize = 18,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        headerStack.Children.Add(new TextBlock
+        {
+            Text = "Sincronización al día",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 15,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        cardStack.Children.Add(headerStack);
+
+        var infoGrid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
+        infoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        infoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        infoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        infoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var lblLastSync = new TextBlock { Text = "Último respaldo:", Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], FontSize = 12, Margin = new Thickness(0, 2, 12, 2) };
+        var valLastSync = new TextBlock { Text = ViewModel.DriveSyncLastSyncText, FontWeight = Microsoft.UI.Text.FontWeights.Medium, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
+        Grid.SetRow(lblLastSync, 0); Grid.SetColumn(lblLastSync, 0);
+        Grid.SetRow(valLastSync, 0); Grid.SetColumn(valLastSync, 1);
+        infoGrid.Children.Add(lblLastSync);
+        infoGrid.Children.Add(valLastSync);
+
+        var lblErrors = new TextBlock { Text = "Archivos con error:", Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], FontSize = 12, Margin = new Thickness(0, 2, 12, 2) };
+        var valErrors = new TextBlock { Text = "0 (Sin incidencias registradas)", Foreground = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen), FontWeight = Microsoft.UI.Text.FontWeights.Medium, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
+        Grid.SetRow(lblErrors, 1); Grid.SetColumn(lblErrors, 0);
+        Grid.SetRow(valErrors, 1); Grid.SetColumn(valErrors, 1);
+        infoGrid.Children.Add(lblErrors);
+        infoGrid.Children.Add(valErrors);
+
+        cardStack.Children.Add(infoGrid);
+        statusCard.Child = cardStack;
+        dialogStack.Children.Add(statusCard);
+
+        var noteText = new TextBlock
+        {
+            Text = "Todos los archivos nuevos o modificados en tu carpeta de trabajo configurada se encuentran sincronizados correctamente con Google Drive.",
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            TextWrapping = TextWrapping.Wrap
+        };
+        dialogStack.Children.Add(noteText);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Registro de Sincronización",
+            Content = dialogStack,
+            PrimaryButtonText = "Aceptar",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot
+        };
+
+        if (ViewModel.IsDriveSyncConfigured)
+        {
+            dialog.SecondaryButtonText = "Abrir carpeta en Drive";
+        }
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Secondary)
+        {
+            ViewModel.OpenDriveFolderCommand.Execute(null);
+        }
     }
 
     private async void ShowSyncErrorsDialog_Click(object sender, RoutedEventArgs e)
