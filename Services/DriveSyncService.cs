@@ -37,10 +37,11 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     private DriveSyncSettings _settings;
     private CancellationTokenSource? _activeCts;
-    private bool _isSyncing;
+    private readonly object _ctsLock = new();
+    private int _isSyncing; // 0 = idle, 1 = syncing
 
     public DriveSyncSettings Settings => _settings;
-    public bool IsSyncing => _isSyncing;
+    public bool IsSyncing => Volatile.Read(ref _isSyncing) == 1;
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_settings.WebAppUrl)
                                 && (EnumerateSources().Any() || _settings.SyncUnversionedClaudeMarkdown);
 
@@ -144,7 +145,20 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     public void CancelSync()
     {
-        _activeCts?.Cancel();
+        lock (_ctsLock)
+        {
+            try
+            {
+                if (_activeCts != null && !_activeCts.IsCancellationRequested)
+                {
+                    _activeCts.Cancel();
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignored safely if already disposed
+            }
+        }
     }
 
     public async Task<SyncResultSummary> RunSyncAsync(
@@ -152,7 +166,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         CancellationToken cancellationToken = default,
         bool forceFullSync = false)
     {
-        if (_isSyncing)
+        if (Interlocked.CompareExchange(ref _isSyncing, 1, 0) != 0)
         {
             return new SyncResultSummary
             {
@@ -162,15 +176,20 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         if (!IsConfigured)
         {
+            Interlocked.Exchange(ref _isSyncing, 0);
             return new SyncResultSummary
             {
                 Message = "Configuración incompleta: Verifica la URL del Web App y la carpeta local."
             };
         }
 
-        _isSyncing = true;
-        _activeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var token = _activeCts.Token;
+        CancellationToken token;
+        lock (_ctsLock)
+        {
+            _activeCts?.Dispose();
+            _activeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            token = _activeCts.Token;
+        }
 
         var summary = new SyncResultSummary();
         var currentRunErrors = new List<SyncErrorItem>();
@@ -305,9 +324,13 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         }
         finally
         {
-            _isSyncing = false;
-            _activeCts?.Dispose();
-            _activeCts = null;
+            lock (_ctsLock)
+            {
+                _activeCts?.Dispose();
+                _activeCts = null;
+            }
+
+            Interlocked.Exchange(ref _isSyncing, 0);
             SyncCompleted?.Invoke(this, summary);
         }
 
@@ -318,7 +341,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         IProgress<SyncProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (_isSyncing)
+        if (Interlocked.CompareExchange(ref _isSyncing, 1, 0) != 0)
         {
             return new SyncResultSummary
             {
@@ -328,6 +351,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         if (!IsConfigured)
         {
+            Interlocked.Exchange(ref _isSyncing, 0);
             return new SyncResultSummary
             {
                 Message = "Configuración incompleta: Verifica la URL del Web App y la carpeta local."
@@ -342,15 +366,20 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         if (filesToRetry.Count == 0)
         {
+            Interlocked.Exchange(ref _isSyncing, 0);
             return new SyncResultSummary
             {
                 Message = "No hay archivos con error pendientes de reintentar."
             };
         }
 
-        _isSyncing = true;
-        _activeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var token = _activeCts.Token;
+        CancellationToken token;
+        lock (_ctsLock)
+        {
+            _activeCts?.Dispose();
+            _activeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            token = _activeCts.Token;
+        }
 
         var summary = new SyncResultSummary
         {
@@ -376,36 +405,38 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
                 processed++;
 
-                if (!File.Exists(item.FilePath))
-                {
-                    summary.Errors++;
-                    item.ErrorMessage = "El archivo local ya no existe.";
-                    item.ErrorCategory = "Archivo no encontrado";
-                    item.Timestamp = DateTime.Now;
-                    remainingErrors.Add(item);
-                    continue;
-                }
-
                 try
                 {
                     ReportProgress(progress, new SyncProgressReport
                     {
-                        TotalFiles = filesToRetry.Count,
+                        TotalFiles = summary.TotalScanned,
                         ProcessedFiles = processed,
                         CurrentFileName = item.FileName,
                         UploadedCount = summary.Uploaded,
                         SkippedCount = summary.Skipped,
                         ErrorCount = summary.Errors,
-                        StatusMessage = $"Reintentando ({processed}/{filesToRetry.Count}): {item.FileName}..."
+                        StatusMessage = $"Reintentando ({processed}/{summary.TotalScanned}): {item.FileName}..."
                     });
 
-                    await UploadSingleFileAsync(item.FilePath, _settings.WebAppUrl, item.RelativePath);
+                    if (!File.Exists(item.FilePath))
+                    {
+                        throw new FileNotFoundException("El archivo local ya no existe.", item.FilePath);
+                    }
 
-                    var currentHash = string.IsNullOrEmpty(item.Hash) ? ComputeSha256(item.FilePath) : item.Hash;
-                    SaveKnownHash(item.HashKey, currentHash);
+                    var fileId = await UploadSingleFileAsync(item.FilePath, _settings.WebAppUrl, item.RelativePath);
+                    if (string.IsNullOrWhiteSpace(fileId))
+                    {
+                        throw new Exception("Google Apps Script no confirmó el identificador del archivo creado (fileId).");
+                    }
+
+                    if (!string.IsNullOrEmpty(item.HashKey) && !string.IsNullOrEmpty(item.Hash))
+                    {
+                        SaveKnownHash(item.HashKey, item.Hash);
+                    }
+
                     summary.Uploaded++;
 
-                    await Task.Delay(100, token);
+                    await Task.Delay(300, token);
                 }
                 catch (Exception ex)
                 {
@@ -415,10 +446,11 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                     item.ErrorCategory = category;
                     item.Timestamp = DateTime.Now;
                     remainingErrors.Add(item);
+                    summary.FailedFiles.Add(item);
 
                     ReportProgress(progress, new SyncProgressReport
                     {
-                        TotalFiles = filesToRetry.Count,
+                        TotalFiles = summary.TotalScanned,
                         ProcessedFiles = processed,
                         CurrentFileName = item.FileName,
                         UploadedCount = summary.Uploaded,
@@ -457,9 +489,13 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         }
         finally
         {
-            _isSyncing = false;
-            _activeCts?.Dispose();
-            _activeCts = null;
+            lock (_ctsLock)
+            {
+                _activeCts?.Dispose();
+                _activeCts = null;
+            }
+
+            Interlocked.Exchange(ref _isSyncing, 0);
             SyncCompleted?.Invoke(this, summary);
         }
 
@@ -745,81 +781,84 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         IProgress<SyncProgressReport>? progress,
         CancellationToken token)
     {
-        var collected = new List<LocalFileMetadata>();
-
-        var filters = SyncFilterOptions.Create(
-            _settings.IncludedExtensions,
-            _settings.ExcludedExtensions,
-            _settings.ExcludedFolders,
-            _settings.MaxFileSizeMb);
-
-        foreach (var source in EnumerateSources())
+        return await Task.Run(async () =>
         {
-            token.ThrowIfCancellationRequested();
+            var collected = new List<LocalFileMetadata>();
 
-            var prefix = source.EffectiveDestinationPrefix;
+            var filters = SyncFilterOptions.Create(
+                _settings.IncludedExtensions,
+                _settings.ExcludedExtensions,
+                _settings.ExcludedFolders,
+                _settings.MaxFileSizeMb);
 
-            ReportProgress(progress, new SyncProgressReport
+            foreach (var source in EnumerateSources())
             {
-                StatusMessage = $"Escaneando {prefix}..."
-            });
+                token.ThrowIfCancellationRequested();
 
-            foreach (var file in ScanFolder(source.LocalFolderPath, filters))
-            {
-                file.RelativePath = CombineDestination(prefix, file.RelativePath);
-                file.HashKey = $"{prefix}|{file.FilePath}";
-                collected.Add(file);
-            }
-        }
+                var prefix = source.EffectiveDestinationPrefix;
 
-        if (_settings.SyncUnversionedClaudeMarkdown)
-        {
-            ReportProgress(progress, new SyncProgressReport
-            {
-                StatusMessage = "Buscando CLAUDE.md y referencias sin versionar..."
-            });
-
-            var profileRoot = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var unversioned = await _claudeConfigDiscovery.FindUnversionedAsync(
-                profileRoot,
-                _settings.ClaudeMarkdownScanDepth,
-                token);
-
-            foreach (var path in unversioned)
-            {
-                try
+                ReportProgress(progress, new SyncProgressReport
                 {
-                    if (!File.Exists(path))
-                        continue;
+                    StatusMessage = $"Escaneando {prefix}..."
+                });
 
-                    var fileInfo = new FileInfo(path);
-                    // The path under the user profile is kept as a path, so the bridge
-                    // recreates the folder tree instead of dropping a tree of files all
-                    // called CLAUDE.md into one folder, where they would overwrite each other.
-                    var destination = CombineDestination(
-                        _settings.ClaudeMarkdownDestinationPrefix,
-                        Path.GetRelativePath(profileRoot, path));
+                foreach (var file in ScanFolder(source.LocalFolderPath, filters))
+                {
+                    file.RelativePath = CombineDestination(prefix, file.RelativePath);
+                    file.HashKey = $"{prefix}|{file.FilePath}";
+                    collected.Add(file);
+                }
+            }
 
-                    collected.Add(new LocalFileMetadata
+            if (_settings.SyncUnversionedClaudeMarkdown)
+            {
+                ReportProgress(progress, new SyncProgressReport
+                {
+                    StatusMessage = "Buscando CLAUDE.md y referencias sin versionar..."
+                });
+
+                var profileRoot = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var unversioned = await _claudeConfigDiscovery.FindUnversionedAsync(
+                    profileRoot,
+                    _settings.ClaudeMarkdownScanDepth,
+                    token);
+
+                foreach (var path in unversioned)
+                {
+                    try
                     {
-                        FilePath = path,
-                        FileName = fileInfo.Name,
-                        RelativePath = destination,
-                        FileSize = fileInfo.Length,
-                        Hash = ComputeSha256(path),
-                        // The destination, not just its prefix, is part of the key: a file already
-                        // uploaded under a different name has not been uploaded to where it belongs.
-                        HashKey = $"{destination}|{path}"
-                    });
-                }
-                catch
-                {
-                    // Skip files that cannot be read or are locked
+                        if (!File.Exists(path))
+                            continue;
+
+                        var fileInfo = new FileInfo(path);
+                        // The path under the user profile is kept as a path, so the bridge
+                        // recreates the folder tree instead of dropping a tree of files all
+                        // called CLAUDE.md into one folder, where they would overwrite each other.
+                        var destination = CombineDestination(
+                            _settings.ClaudeMarkdownDestinationPrefix,
+                            Path.GetRelativePath(profileRoot, path));
+
+                        collected.Add(new LocalFileMetadata
+                        {
+                            FilePath = path,
+                            FileName = fileInfo.Name,
+                            RelativePath = destination,
+                            FileSize = fileInfo.Length,
+                            Hash = ComputeSha256(path),
+                            // The destination, not just its prefix, is part of the key: a file already
+                            // uploaded under a different name has not been uploaded to where it belongs.
+                            HashKey = $"{destination}|{path}"
+                        });
+                    }
+                    catch
+                    {
+                        // Skip files that cannot be read or are locked
+                    }
                 }
             }
-        }
 
-        return collected;
+            return collected;
+        }, token);
     }
 
     /// <summary>

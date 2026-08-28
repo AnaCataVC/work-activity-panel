@@ -509,7 +509,23 @@ public partial class DashboardViewModel : ObservableObject
         DriveSyncDetailText = "Iniciando sincronización...";
         RefreshDriveSyncStatus();
 
-        await _driveSyncService.RunSyncAsync();
+        try
+        {
+            var result = await Task.Run(() => _driveSyncService.RunSyncAsync());
+            if (result != null && !string.IsNullOrWhiteSpace(result.Message))
+            {
+                DriveSyncDetailText = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            DriveSyncDetailText = $"Error al sincronizar: {ex.Message}";
+        }
+        finally
+        {
+            IsDriveSyncing = _driveSyncService.IsSyncing;
+            RefreshDriveSyncStatus();
+        }
     }
 
     [RelayCommand]
@@ -526,7 +542,23 @@ public partial class DashboardViewModel : ObservableObject
         DriveSyncDetailText = "Iniciando sincronización completa forzada (sin omitir archivos)...";
         RefreshDriveSyncStatus();
 
-        await _driveSyncService.RunSyncAsync(forceFullSync: true);
+        try
+        {
+            var result = await Task.Run(() => _driveSyncService.RunSyncAsync(forceFullSync: true));
+            if (result != null && !string.IsNullOrWhiteSpace(result.Message))
+            {
+                DriveSyncDetailText = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            DriveSyncDetailText = $"Error al forzar sincronización: {ex.Message}";
+        }
+        finally
+        {
+            IsDriveSyncing = _driveSyncService.IsSyncing;
+            RefreshDriveSyncStatus();
+        }
     }
 
     [RelayCommand]
@@ -539,7 +571,23 @@ public partial class DashboardViewModel : ObservableObject
         DriveSyncDetailText = "Iniciando reintento de archivos no sincronizados...";
         RefreshDriveSyncStatus();
 
-        await _driveSyncService.RetryFailedFilesAsync();
+        try
+        {
+            var result = await Task.Run(() => _driveSyncService.RetryFailedFilesAsync());
+            if (result != null && !string.IsNullOrWhiteSpace(result.Message))
+            {
+                DriveSyncDetailText = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            DriveSyncDetailText = $"Error al reintentar: {ex.Message}";
+        }
+        finally
+        {
+            IsDriveSyncing = _driveSyncService.IsSyncing;
+            RefreshDriveSyncStatus();
+        }
     }
 
     [RelayCommand]

@@ -66,217 +66,300 @@ public sealed partial class MainPage : Page
         ViewModel.ShowUpdateBanner = false;
     }
 
+    private static readonly System.Threading.SemaphoreSlim _dialogLock = new(1, 1);
+
+    private static Brush GetThemeBrush(string resourceKey, Brush fallback)
+    {
+        if (Application.Current.Resources.TryGetValue(resourceKey, out var res) && res is Brush brush)
+        {
+            return brush;
+        }
+        return fallback;
+    }
+
+    private XamlRoot? GetEffectiveXamlRoot()
+    {
+        return this.XamlRoot ?? App.Window?.Content?.XamlRoot;
+    }
+
     private async void ShowSyncHistoryDialog_Click(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.SyncErrorsList.Count > 0)
+        if (!await _dialogLock.WaitAsync(0))
         {
-            ShowSyncErrorsDialog_Click(sender, e);
             return;
         }
 
-        var dialogStack = new StackPanel { Spacing = 12, Margin = new Thickness(0, 4, 0, 4) };
-
-        var statusCard = new Border
+        try
         {
-            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(16, 12, 16, 12)
-        };
+            var xamlRoot = GetEffectiveXamlRoot();
+            if (xamlRoot == null) return;
 
-        var cardStack = new StackPanel { Spacing = 8 };
+            if (ViewModel.SyncErrorsList.Count > 0)
+            {
+                _dialogLock.Release();
+                ShowSyncErrorsDialog_Click(sender, e);
+                return;
+            }
 
-        var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        headerStack.Children.Add(new FontIcon
-        {
-            Glyph = "\uE73E",
-            FontSize = 18,
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen),
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        headerStack.Children.Add(new TextBlock
-        {
-            Text = "Sincronización al día",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            FontSize = 15,
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        cardStack.Children.Add(headerStack);
+            var cardBg = GetThemeBrush("CardBackgroundFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Transparent));
+            var cardBorder = GetThemeBrush("CardStrokeColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Gray));
+            var secText = GetThemeBrush("TextFillColorSecondaryBrush", new SolidColorBrush(Microsoft.UI.Colors.DimGray));
+            var successBrush = GetThemeBrush("SystemFillColorSuccessBrush", new SolidColorBrush(Microsoft.UI.Colors.SeaGreen));
 
-        var infoGrid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
-        infoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        infoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        infoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        infoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var dialogStack = new StackPanel { Spacing = 12, Margin = new Thickness(0, 4, 0, 4) };
 
-        var lblLastSync = new TextBlock { Text = "Último respaldo:", Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], FontSize = 12, Margin = new Thickness(0, 2, 12, 2) };
-        var valLastSync = new TextBlock { Text = ViewModel.DriveSyncLastSyncText, FontWeight = Microsoft.UI.Text.FontWeights.Medium, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
-        Grid.SetRow(lblLastSync, 0); Grid.SetColumn(lblLastSync, 0);
-        Grid.SetRow(valLastSync, 0); Grid.SetColumn(valLastSync, 1);
-        infoGrid.Children.Add(lblLastSync);
-        infoGrid.Children.Add(valLastSync);
+            var statusCard = new Border
+            {
+                Background = cardBg,
+                BorderBrush = cardBorder,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16, 12, 16, 12)
+            };
 
-        var lblErrors = new TextBlock { Text = "Archivos con error:", Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], FontSize = 12, Margin = new Thickness(0, 2, 12, 2) };
-        var valErrors = new TextBlock { Text = "0 (Sin incidencias registradas)", Foreground = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen), FontWeight = Microsoft.UI.Text.FontWeights.Medium, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
-        Grid.SetRow(lblErrors, 1); Grid.SetColumn(lblErrors, 0);
-        Grid.SetRow(valErrors, 1); Grid.SetColumn(valErrors, 1);
-        infoGrid.Children.Add(lblErrors);
-        infoGrid.Children.Add(valErrors);
+            var cardStack = new StackPanel { Spacing = 8 };
 
-        cardStack.Children.Add(infoGrid);
-        statusCard.Child = cardStack;
-        dialogStack.Children.Add(statusCard);
+            var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            headerStack.Children.Add(new FontIcon
+            {
+                Glyph = "\uE73E",
+                FontSize = 18,
+                Foreground = successBrush,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            headerStack.Children.Add(new TextBlock
+            {
+                Text = "Sincronización al día",
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                FontSize = 15,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            cardStack.Children.Add(headerStack);
 
-        var noteText = new TextBlock
-        {
-            Text = "Todos los archivos nuevos o modificados en tu carpeta de trabajo configurada se encuentran sincronizados correctamente con Google Drive.",
-            FontSize = 12,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            TextWrapping = TextWrapping.Wrap
-        };
-        dialogStack.Children.Add(noteText);
+            var infoGrid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
+            infoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            infoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            infoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            infoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var dialog = new ContentDialog
-        {
-            Title = "Registro de Sincronización",
-            Content = dialogStack,
-            PrimaryButtonText = "Aceptar",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
+            var lblLastSync = new TextBlock { Text = "Último respaldo:", Foreground = secText, FontSize = 12, Margin = new Thickness(0, 2, 12, 2) };
+            var valLastSync = new TextBlock { Text = ViewModel.DriveSyncLastSyncText, FontWeight = Microsoft.UI.Text.FontWeights.Medium, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
+            Grid.SetRow(lblLastSync, 0); Grid.SetColumn(lblLastSync, 0);
+            Grid.SetRow(valLastSync, 0); Grid.SetColumn(valLastSync, 1);
+            infoGrid.Children.Add(lblLastSync);
+            infoGrid.Children.Add(valLastSync);
 
-        if (ViewModel.IsDriveSyncConfigured)
-        {
-            dialog.SecondaryButtonText = "Abrir carpeta en Drive";
+            var lblErrors = new TextBlock { Text = "Archivos con error:", Foreground = secText, FontSize = 12, Margin = new Thickness(0, 2, 12, 2) };
+            var valErrors = new TextBlock { Text = "0 (Sin incidencias registradas)", Foreground = successBrush, FontWeight = Microsoft.UI.Text.FontWeights.Medium, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
+            Grid.SetRow(lblErrors, 1); Grid.SetColumn(lblErrors, 0);
+            Grid.SetRow(valErrors, 1); Grid.SetColumn(valErrors, 1);
+            infoGrid.Children.Add(lblErrors);
+            infoGrid.Children.Add(valErrors);
+
+            cardStack.Children.Add(infoGrid);
+            statusCard.Child = cardStack;
+            dialogStack.Children.Add(statusCard);
+
+            var noteText = new TextBlock
+            {
+                Text = "Todos los archivos nuevos o modificados en tu carpeta de trabajo configurada se encuentran sincronizados correctamente con Google Drive.",
+                FontSize = 12,
+                Foreground = secText,
+                TextWrapping = TextWrapping.Wrap
+            };
+            dialogStack.Children.Add(noteText);
+
+            var dialog = new ContentDialog
+            {
+                Title = "Registro de Sincronización",
+                Content = dialogStack,
+                PrimaryButtonText = "Aceptar",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = xamlRoot
+            };
+
+            if (ViewModel.IsDriveSyncConfigured && ViewModel.OpenDriveFolderCommand.CanExecute(null))
+            {
+                dialog.SecondaryButtonText = "Abrir carpeta en Drive";
+            }
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Secondary && ViewModel.OpenDriveFolderCommand.CanExecute(null))
+            {
+                ViewModel.OpenDriveFolderCommand.Execute(null);
+            }
         }
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Secondary)
+        catch (Exception ex)
         {
-            ViewModel.OpenDriveFolderCommand.Execute(null);
+            Debug.WriteLine($"[ShowSyncHistoryDialog] Error: {ex.Message}");
+        }
+        finally
+        {
+            if (_dialogLock.CurrentCount == 0)
+            {
+                _dialogLock.Release();
+            }
         }
     }
 
     private async void ShowSyncErrorsDialog_Click(object sender, RoutedEventArgs e)
     {
-        var errors = ViewModel.SyncErrorsList;
-        if (errors.Count == 0) return;
-
-        var scrollViewer = new ScrollViewer
+        if (!await _dialogLock.WaitAsync(0))
         {
-            MaxHeight = 380,
-            HorizontalScrollMode = ScrollMode.Disabled,
-            VerticalScrollMode = ScrollMode.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-        };
+            return;
+        }
 
-        var listStack = new StackPanel { Spacing = 8, Margin = new Thickness(0, 4, 0, 4) };
-
-        foreach (var err in errors)
+        try
         {
-            var itemBorder = new Border
+            var xamlRoot = GetEffectiveXamlRoot();
+            if (xamlRoot == null) return;
+
+            var errorsSnapshot = ViewModel.SyncErrorsList.ToList();
+            if (errorsSnapshot.Count == 0)
             {
-                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(12, 8, 12, 8)
+                _dialogLock.Release();
+                ShowSyncHistoryDialog_Click(sender, e);
+                return;
+            }
+
+            var cardBg = GetThemeBrush("CardBackgroundFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Transparent));
+            var cardBorder = GetThemeBrush("CardStrokeColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Gray));
+            var critBg = GetThemeBrush("SystemFillColorCriticalBackgroundBrush", new SolidColorBrush(Microsoft.UI.Colors.MistyRose));
+            var critFg = GetThemeBrush("SystemFillColorCriticalBrush", new SolidColorBrush(Microsoft.UI.Colors.Crimson));
+            var secText = GetThemeBrush("TextFillColorSecondaryBrush", new SolidColorBrush(Microsoft.UI.Colors.DimGray));
+            var tertText = GetThemeBrush("TextFillColorTertiaryBrush", new SolidColorBrush(Microsoft.UI.Colors.Gray));
+
+            var scrollViewer = new ScrollViewer
+            {
+                MaxHeight = 380,
+                HorizontalScrollMode = ScrollMode.Disabled,
+                VerticalScrollMode = ScrollMode.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
 
-            var itemGrid = new Grid();
-            itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var listStack = new StackPanel { Spacing = 8, Margin = new Thickness(0, 4, 0, 4) };
 
-            // Row 0: File Name + Category Badge
-            var topGrid = new Grid();
-            topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var titleStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-            titleStack.Children.Add(new FontIcon { Glyph = "\uE8A5", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
-            titleStack.Children.Add(new TextBlock
+            foreach (var err in errorsSnapshot)
             {
-                Text = err.FileName,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxWidth = 260
-            });
-            Grid.SetColumn(titleStack, 0);
-            topGrid.Children.Add(titleStack);
-
-            var badgeBorder = new Border
-            {
-                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBackgroundBrush"],
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(6, 1, 6, 1),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
+                var itemBorder = new Border
                 {
-                    Text = err.ErrorCategory,
+                    Background = cardBg,
+                    BorderBrush = cardBorder,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(12, 8, 12, 8)
+                };
+
+                var itemGrid = new Grid();
+                itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                // Row 0: File Name + Category Badge
+                var topGrid = new Grid();
+                topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var titleStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+                titleStack.Children.Add(new FontIcon { Glyph = "\uE8A5", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+                titleStack.Children.Add(new TextBlock
+                {
+                    Text = err.FileName,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    MaxWidth = 260
+                });
+                Grid.SetColumn(titleStack, 0);
+                topGrid.Children.Add(titleStack);
+
+                var badgeBorder = new Border
+                {
+                    Background = critBg,
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 1, 6, 1),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock
+                    {
+                        Text = err.ErrorCategory,
+                        FontSize = 10,
+                        Foreground = critFg,
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+                    }
+                };
+                Grid.SetColumn(badgeBorder, 1);
+                topGrid.Children.Add(badgeBorder);
+
+                Grid.SetRow(topGrid, 0);
+                itemGrid.Children.Add(topGrid);
+
+                // Row 1: Reason / Error message
+                var errorText = new TextBlock
+                {
+                    Text = err.ErrorMessage,
+                    FontSize = 11,
+                    Foreground = secText,
+                    Margin = new Thickness(20, 4, 0, 2),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                Grid.SetRow(errorText, 1);
+                itemGrid.Children.Add(errorText);
+
+                // Row 2: File Path
+                var pathText = new TextBlock
+                {
+                    Text = err.FilePath,
                     FontSize = 10,
-                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
-                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+                    Foreground = tertText,
+                    Margin = new Thickness(20, 0, 0, 0),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
+                Grid.SetRow(pathText, 2);
+                itemGrid.Children.Add(pathText);
+
+                itemBorder.Child = itemGrid;
+                listStack.Children.Add(itemBorder);
+            }
+
+            scrollViewer.Content = listStack;
+
+            var dialog = new ContentDialog
+            {
+                Title = $"Archivos no sincronizados ({errorsSnapshot.Count})",
+                Content = scrollViewer,
+                PrimaryButtonText = "Reintentar estos archivos",
+                SecondaryButtonText = "Copiar reporte",
+                CloseButtonText = "Cerrar",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = xamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                if (ViewModel.RetrySyncErrorsCommand.CanExecute(null))
+                {
+                    await ViewModel.RetrySyncErrorsCommand.ExecuteAsync(null);
                 }
-            };
-            Grid.SetColumn(badgeBorder, 1);
-            topGrid.Children.Add(badgeBorder);
-
-
-            Grid.SetRow(topGrid, 0);
-            itemGrid.Children.Add(topGrid);
-
-            // Row 1: Reason / Error message
-            var errorText = new TextBlock
+            }
+            else if (result == ContentDialogResult.Secondary)
             {
-                Text = err.ErrorMessage,
-                FontSize = 11,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-                Margin = new Thickness(20, 4, 0, 2),
-                TextWrapping = TextWrapping.Wrap
-            };
-            Grid.SetRow(errorText, 1);
-            itemGrid.Children.Add(errorText);
-
-            // Row 2: File Path
-            var pathText = new TextBlock
+                if (ViewModel.CopySyncErrorsReportCommand.CanExecute(null))
+                {
+                    ViewModel.CopySyncErrorsReportCommand.Execute(null);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ShowSyncErrorsDialog] Error: {ex.Message}");
+        }
+        finally
+        {
+            if (_dialogLock.CurrentCount == 0)
             {
-                Text = err.FilePath,
-                FontSize = 10,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
-                Margin = new Thickness(20, 0, 0, 0),
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            Grid.SetRow(pathText, 2);
-            itemGrid.Children.Add(pathText);
-
-            itemBorder.Child = itemGrid;
-            listStack.Children.Add(itemBorder);
-        }
-
-        scrollViewer.Content = listStack;
-
-        var dialog = new ContentDialog
-        {
-            Title = $"Archivos no sincronizados ({errors.Count})",
-            Content = scrollViewer,
-            PrimaryButtonText = "Reintentar estos archivos",
-            SecondaryButtonText = "Copiar reporte",
-            CloseButtonText = "Cerrar",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            await ViewModel.RetrySyncErrorsCommand.ExecuteAsync(null);
-        }
-        else if (result == ContentDialogResult.Secondary)
-        {
-            ViewModel.CopySyncErrorsReportCommand.Execute(null);
+                _dialogLock.Release();
+            }
         }
     }
 }

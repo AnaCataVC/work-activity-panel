@@ -59,6 +59,7 @@
 - Profiling memory anatomy and proving why legacy `EmptyWorkingSet` hacks cause hard page faults: [Memory Anatomy & Performance Profiling Learning](docs/learning/winui3-dotnet9-memory-and-performance-profiling.md).
 - Handling `InfoBar.ActionButton` compilation constraints and layout whitespace in WinUI 3: [InfoBar Layout Constraints Learning](docs/learning/winui3-infobar-layout-and-actionbutton.md).
 - Implementing standalone single-file Windows installers and clean uninstallation scripts using Inno Setup 6: [Inno Setup Lifecycle & Persistence Learning](docs/learning/inno-setup-persistence-and-clean-uninstall.md).
+- Hardening WinUI 3 concurrency with async offloading, `ContentDialog` anti-collision locking, and thread-safe cancellation management: [WinUI 3 Concurrency & ContentDialog Learning](docs/learning/winui3-async-offloading-and-contentdialog-concurrency.md).
 
 ### 5. Local Setup Instructions
 
@@ -137,6 +138,7 @@ For detailed architecture specifications, setup guides, and engineering learning
 - Análisis anatómico de memoria y verificación de por qué `EmptyWorkingSet` degrada el rendimiento: [Aprendizaje de Perfilado de Memoria en WinUI 3](docs/learning/winui3-dotnet9-memory-and-performance-profiling.md).
 - Gestión de restricciones en `InfoBar.ActionButton` y espaciado de layout en WinUI 3: [Aprendizaje de Restricciones en InfoBar](docs/learning/winui3-infobar-layout-and-actionbutton.md).
 - Creación de asistentes de instalación limpios con desinstalación completa en Inno Setup 6: [Aprendizaje de Ciclo de Vida Inno Setup](docs/learning/inno-setup-persistence-and-clean-uninstall.md).
+- Blindaje de concurrencia en WinUI 3 con desacoplamiento asíncrono, exclusión mutua en `ContentDialog` y gestión segura de cancelaciones: [Aprendizaje de Concurrencia y ContentDialog en WinUI 3](docs/learning/winui3-async-offloading-and-contentdialog-concurrency.md).
 
 ### 5. Instrucciones de Instalación y Ejecución
 

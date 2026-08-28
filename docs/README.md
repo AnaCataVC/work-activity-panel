@@ -55,6 +55,8 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
    - Line unfolding, timezone normalization, cancellation filtering, and multi-platform meeting link extraction.
 9. **[High-Performance Unversioned AI Context Discovery & Infrastructure Secret Scanning](learning/unversioned-ai-context-discovery-and-secret-filtering.md)**
    - Breadth-first walk for AI instructions, batched `git ls-files` verification, and multi-layer secret protection.
+10. **[WinUI 3 Async Offloading, ContentDialog Lifecycle & Concurrency Hardening](learning/winui3-async-offloading-and-contentdialog-concurrency.md)**
+    - Zero-wait `SemaphoreSlim` dialog anti-collision, `Task.Run` UI offloading, `Interlocked` atomic sync guards, and safe `DispatcherQueue` UI thread marshalling.
 
 ---
 

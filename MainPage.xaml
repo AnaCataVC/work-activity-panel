@@ -461,9 +461,13 @@
 
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
                                         <Button Content="Ver detalles" Click="ShowSyncErrorsDialog_Click" 
+                                                ToolTipService.ToolTip="Ver el detalle de los archivos que no pudieron sincronizarse"
+                                                AutomationProperties.Name="Ver detalles de errores de sincronización"
                                                 Padding="10,4" FontSize="12"/>
                                         <Button Content="Reintentar errores" Command="{x:Bind ViewModel.RetrySyncErrorsCommand}"
                                                 IsEnabled="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                ToolTipService.ToolTip="Reintentar la sincronización de los archivos fallidos"
+                                                AutomationProperties.Name="Reintentar sincronización de archivos fallidos"
                                                 Style="{StaticResource AccentButtonStyle}"
                                                 Padding="10,4" FontSize="12"/>
                                     </StackPanel>
@@ -481,31 +485,39 @@
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
                                     <Button Content="Abrir Drive" Command="{x:Bind ViewModel.OpenDriveFolderCommand}"
                                             ToolTipService.ToolTip="Abrir la carpeta de respaldo en Google Drive"
+                                            AutomationProperties.Name="Abrir carpeta de respaldo en Google Drive"
                                             Visibility="{x:Bind ViewModel.IsDriveSyncConfigured, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                     <Button Content="Cancelar" Command="{x:Bind ViewModel.CancelDriveSyncCommand}"
+                                            ToolTipService.ToolTip="Cancelar la sincronización en curso"
+                                            AutomationProperties.Name="Cancelar sincronización en curso"
                                             Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                     <Button Content="Sincronizar Ahora"
                                             Command="{x:Bind ViewModel.SyncDriveNowCommand}"
                                             ToolTipService.ToolTip="Sincronizar archivos nuevos o modificados con Google Drive"
+                                            AutomationProperties.Name="Sincronizar archivos ahora con Google Drive"
                                             Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
 
                                     <Button ToolTipService.ToolTip="Más opciones de sincronización y registro"
+                                            AutomationProperties.Name="Más opciones de sincronización y registro"
                                             Padding="8,6"
                                             Visibility="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <FontIcon Glyph="&#xE712;" FontSize="13"/>
                                         <Button.Flyout>
                                             <MenuFlyout Placement="BottomEdgeAlignedRight">
                                                 <MenuFlyoutItem Text="Ver registro de sincronización / errores"
-                                                                Click="ShowSyncHistoryDialog_Click">
+                                                                Click="ShowSyncHistoryDialog_Click"
+                                                                AutomationProperties.Name="Ver registro de sincronización o errores">
                                                     <MenuFlyoutItem.Icon>
                                                         <FontIcon Glyph="&#xE81C;" />
                                                     </MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
                                                 <MenuFlyoutSeparator />
                                                 <MenuFlyoutItem Text="Verificar y forzar sincronización total"
-                                                                Command="{x:Bind ViewModel.ForceSyncDriveCommand}">
+                                                                Command="{x:Bind ViewModel.ForceSyncDriveCommand}"
+                                                                IsEnabled="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                                AutomationProperties.Name="Verificar y forzar sincronización total de archivos">
                                                     <MenuFlyoutItem.Icon>
                                                         <FontIcon Glyph="&#xE72C;" />
                                                     </MenuFlyoutItem.Icon>
