@@ -27,6 +27,8 @@
   - Lightweight Google Apps Script Web App endpoint (no complex Google Cloud project or third-party client required).
   - SHA-256 hash incremental change detection (only uploads new or modified files).
   - Multi-criteria filtering (whitelist/blacklist extensions, folder exclusion, file size limits).
+  - **AI Agent Context & Instruction Sync:** Automatic background sweep for unversioned `CLAUDE.md`, `.claude/references/`, and `references/*.md` context files.
+  - **Batched Git Verification & Secret Protection:** Batched `git ls-files` verification and regex content scanning against sensitive infrastructure secrets (SSH keys, AWS keys, GitHub PATs, Slack tokens).
   - Optional automatic sync at the end of your workday (`AutoSyncOnWorkEnd`).
   - Step-by-step setup guide: [Google Drive Setup Guide](docs/google-setup-guide.md).
 - 💻 **Fluent Design & System Tray:** Native Windows 11 Mica backdrop, dark/light theme support, and minimize-to-system-tray capability.
@@ -49,6 +51,7 @@
 - Building native unpackaged WinUI 3 desktop applications with custom multi-resolution assets and Mica backdrops.
 - Designing an RFC 5545 iCalendar parsing engine with line unfolding and video conference link extraction: [iCalendar Engine Learning](docs/learning/rfc5545-icalendar-parsing-and-meeting-extraction.md).
 - Building a lightweight cloud synchronization bridge using Google Apps Script Web Apps with streaming SHA-256 hash indexing.
+- Implementing high-performance unversioned AI context discovery with batched Git checking and multi-layer infrastructure secret scanning: [Unversioned AI Context Discovery Learning](docs/learning/unversioned-ai-context-discovery-and-secret-filtering.md).
 - Multi-account profile switching and configuration discovery via GitHub CLI: [GitHub CLI Multi-Account Learning](docs/learning/github-cli-multi-account-management.md).
 - Implementing zero-infrastructure desktop auto-updaters via GitHub Releases with progress reporting: [Auto-Updater Architecture Learning](docs/learning/github-releases-auto-updater-architecture.md).
 - Handling companion Electron process discovery and URI protocol handlers: [Electron App Launcher Learning](docs/learning/granola-windows-electron-launcher.md).
@@ -102,6 +105,8 @@ For detailed architecture specifications, setup guides, and engineering learning
   - Endpoint ligero mediante Google Apps Script Web App (sin proyectos complejos de GCP ni clientes pesados de terceros).
   - Detección incremental de cambios por hash SHA-256 (solo sube archivos nuevos o modificados).
   - Filtrado multi-criterio (extensiones permitidas/ignoradas, exclusión de carpetas del sistema, límite de MB).
+  - **Sincronización de Contexto e Instrucciones de IA:** Detección automática de archivos `CLAUDE.md`, `.claude/references/` y `references/*.md` no versionados.
+  - **Verificación Git por Lotes y Protección de Secretos:** Verificación masiva mediante `git ls-files` y escaneo regex contra credenciales críticas (claves SSH, claves AWS, PATs de GitHub, tokens de Slack).
   - Respaldo automático opcional al finalizar la jornada laboral (`AutoSyncOnWorkEnd`).
   - Guía paso a paso: [Guía de Configuración de Google Drive](docs/google-setup-guide.md).
 - 💻 **Diseño Fluent y Bandeja del Sistema:** Efecto Mica nativo de Windows 11, soporte para temas claro/oscuro y minimizado a la bandeja del sistema (System Tray).
@@ -124,6 +129,7 @@ For detailed architecture specifications, setup guides, and engineering learning
 - Desarrollo de aplicaciones de escritorio nativas WinUI 3 con assets multirresolución e integración de Mica.
 - Creación de un motor de parsing RFC 5545 para iCalendar con normalización horaria y extracción de videollamadas: [Aprendizaje de Motor iCalendar](docs/learning/rfc5545-icalendar-parsing-and-meeting-extraction.md).
 - Diseño de una arquitectura puente de sincronización con Google Apps Script y persistencia liviana de hashes SHA-256.
+- Descubrimiento de alto rendimiento de contexto de IA no versionado con verificación Git por lotes y escaneo de secretos de infraestructura: [Aprendizaje de Descubrimiento de Contexto de IA](docs/learning/unversioned-ai-context-discovery-and-secret-filtering.md).
 - Conmutación rápida de perfiles de cuenta y lectura YAML mediante GitHub CLI: [Aprendizaje de Conmutador GitHub CLI](docs/learning/github-cli-multi-account-management.md).
 - Implementación de auto-actualizadores de escritorio sin servidores dedicados usando GitHub Releases: [Aprendizaje de Auto-Actualización](docs/learning/github-releases-auto-updater-architecture.md).
 - Descubrimiento de procesos auxiliares Electron y esquemas de protocolo URI en Windows: [Aprendizaje de Lanzador de Apps](docs/learning/granola-windows-electron-launcher.md).

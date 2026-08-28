@@ -87,4 +87,48 @@ public class ClaudeConfigDiscoveryTests : IDisposable
 
         Assert.Contains(path, found);
     }
+
+    [Fact]
+    public async Task FindsClaudeFolderAndReferencesFiles()
+    {
+        var claudeRef = WriteCustomFile("# team", ".claude", "references", "team_roster.md");
+        var directRef = WriteCustomFile("# geocoding ref", "geocoding", "references", "spec.md");
+        var rootClaude = WriteInstructionFile();
+
+        var found = await _discovery.FindUnversionedAsync(_root, maxDepth: 4);
+
+        Assert.Contains(claudeRef, found);
+        Assert.Contains(directRef, found);
+        Assert.Contains(rootClaude, found);
+    }
+
+    [Fact]
+    public async Task SkipsBackupAndSensitiveFiles()
+    {
+        var backupFile = WriteCustomFile("# backup", "_backup_claudemd_20260828", "CLAUDE.md");
+        var sensitiveFile = WriteCustomFile("api_key=123", ".claude", "api_key.md");
+        var sshKeyFile = WriteCustomFile("-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----", "references", "id_rsa.md");
+        var awsKeyFile = WriteCustomFile("export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE", "references", "aws_setup.md");
+        var sandboxDoc = WriteCustomFile("Token cuenta de pruebas 95542: `343f05ff9c8ad7a2473500e2d33f61dc5b81cb40`", "geocoding", "references", "cuenta-pruebas-95542.md");
+        var validFile = WriteCustomFile("# valid context", ".claude", "references", "architecture.md");
+
+        var found = await _discovery.FindUnversionedAsync(_root, maxDepth: 4);
+
+        Assert.DoesNotContain(backupFile, found);
+        Assert.DoesNotContain(sensitiveFile, found);
+        Assert.DoesNotContain(sshKeyFile, found);
+        Assert.DoesNotContain(awsKeyFile, found);
+        Assert.Contains(sandboxDoc, found);
+        Assert.Contains(validFile, found);
+    }
+
+    private string WriteCustomFile(string content, params string[] relativeSegments)
+    {
+        var fullPath = Path.Combine(new[] { _root }.Concat(relativeSegments).ToArray());
+        var dir = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+        File.WriteAllText(fullPath, content);
+        return fullPath;
+    }
 }

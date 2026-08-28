@@ -40,6 +40,7 @@ work-activity-panel/
 ├── Services/
 │   ├── Interfaces/                 # Service contracts (IScheduleService, IAppLauncherService, IGitHubAuthService, etc.)
 │   ├── AppLauncherService.cs       # Process launcher (Slack, Granola, browser meeting URLs)
+│   ├── ClaudeConfigDiscovery.cs    # Untracked CLAUDE.md & references discovery, git batching & secret filtering
 │   ├── DriveSyncService.cs         # Streaming SHA-256 hashing, filtering, Google Apps Script HTTP client
 │   ├── GitHubAuthService.cs        # GitHub CLI integration (hosts.yml parsing, gh auth switch)
 │   ├── GoogleCalendarService.cs    # iCal feed fetcher, parser integration, caching, deduplication
@@ -116,10 +117,17 @@ Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "
 ### 4.3 Calendar Engine & RFC 5545 Parsing
 - `ICalParser.cs` handles raw `.ics` data. All line-unfolding (CRLF + space/tab), timezone adjustments (`DTSTART`, `DTEND`), cancellation status checks (`STATUS:CANCELLED`), and video conference URL extraction (Google Meet, Zoom, Teams, Webex) must maintain backwards-compatible unit test coverage in `WorkActivityPanel.Tests/ICalParserTests.cs`.
 
-### 4.4 Google Drive Sync Engine
+### 4.4 Google Drive Sync & AI Context Discovery Engine
 - Hashing must use streaming SHA-256 (`SHA256.Create()`) to avoid loading large files fully into memory.
 - Multi-criteria filtering (extension whitelist/blacklist, system folder exclusions, maximum file size in MB) must be strictly enforced before generating upload requests.
 - All HTTP requests to Google Apps Script Web Apps must follow redirects (`HttpClientHandler.AllowAutoRedirect = true`) and carry the configured authentication token in the request header or payload.
+- **Unversioned AI Context Discovery (`ClaudeConfigDiscovery.cs`):**
+  - **Discovery Scope:** Breadth-first walk discovering `CLAUDE.md`, `.claude/**/*.md` (up to 3 levels deep), and direct `references/*.md` files within the configured depth limit (`ClaudeMarkdownScanDepth`).
+  - **Excluded Directories:** Always skip dependency and build caches (`node_modules`, `.git`, `.vs`, `bin`, `obj`, `venv`, `.venv`, `__pycache__`, `AppData`, `dist`, `build`, `.obsidian`, `.trash`, `.idea`, and directories starting with `_backup_` or `backup_`).
+  - **Batched Git Verification:** To avoid high process-spawning overhead, group candidate files by repository root via `git rev-parse --show-toplevel`, and execute batched queries (`git ls-files -- <batch>`) in chunks of 50 files. Only files not tracked in Git or existing outside any repository are queued for sync.
+  - **Multi-Layer Secret Filtering:**
+    - Reject files matching sensitive name keywords: `id_rsa`, `id_ed25519`, `credentials`, `auth_token`, `api_key`.
+    - Inspect the first 64 KB of candidate files with compiled regex signatures for live infrastructure credentials: SSH private keys (`-----BEGIN ... PRIVATE KEY-----`), AWS access keys (`\bAKIA[0-9A-Z]{16}\b`), GitHub PATs (`\bghp_[A-Za-z0-9_]{36}\b`), and Slack tokens (`\bxox[baprs]-[0-9a-zA-Z]{10,48}\b`).
 
 ### 4.5 Settings & Local Persistence
 - Configuration files are stored as serialized JSON under `%LOCALAPPDATA%\WorkActivityPanel\` via `LocalSettingsHelper.cs`.

@@ -53,6 +53,8 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
    - Two-tier inspection (`hosts.yml` YAML parser + `gh auth status` fallback) and safe delegated account switching.
 8. **[Lightweight RFC 5545 iCalendar Parsing & Meeting Link Extraction](learning/rfc5545-icalendar-parsing-and-meeting-extraction.md)**
    - Line unfolding, timezone normalization, cancellation filtering, and multi-platform meeting link extraction.
+9. **[High-Performance Unversioned AI Context Discovery & Infrastructure Secret Scanning](learning/unversioned-ai-context-discovery-and-secret-filtering.md)**
+   - Breadth-first walk for AI instructions, batched `git ls-files` verification, and multi-layer secret protection.
 
 ---
 
