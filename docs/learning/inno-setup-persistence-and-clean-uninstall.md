@@ -46,8 +46,31 @@ begin
 end;
 ```
 
+## 4. Preventing Ghost Binaries & Directory Hijacking (`UsePreviousAppDir`)
+
+### Problem
+Inno Setup enables `UsePreviousAppDir=yes` by default. When an installer or automated test script executes targeting a temporary folder (e.g. `%LOCALAPPDATA%\Temp\TestWAPInstall`), Inno Setup saves that custom path to the registry under the application `AppId`. Subsequent silent updates or standard installs read the registry key and continue deploying binaries to the temporary folder instead of `{localappdata}\Programs\WorkActivityPanel`.
+
+This causes **Ghost Binaries**:
+1. Old versions (e.g. v1.5.0) remain frozen in `{localappdata}\Programs\WorkActivityPanel`.
+2. Windows Startup keys or shortcuts may launch the old orphaned executable on boot.
+3. Windows "Installed Apps" list only displays a single entry pointing to the temporary test path, masking the existence of the older binary.
+
+### Solution
+In `installer.iss`:
+* Set `DisableDirPage=yes` and `UsePreviousAppDir=no` in `[Setup]` to enforce deterministic, immutable installation to `{localappdata}\Programs\WorkActivityPanel`.
+* Never allow temporary test runs to reuse the production `AppId` without explicitly overriding or cleaning up the registry state.
+
+```ini
+[Setup]
+DisableProgramGroupPage=yes
+DisableDirPage=yes
+UsePreviousAppDir=no
+```
+
 ## Key Takeaway
 When developing unpackaged Windows desktop applications packaged with Inno Setup:
 * Clearly decouple **Application Binaries** (`{localappdata}\Programs\<App>`) from **User Data** (`{localappdata}\<App>\Data`).
 * Always register autostart keys with `Flags: uninsdeletevalue` to prevent broken startup entries after uninstallation.
+* Enforce `UsePreviousAppDir=no` and `DisableDirPage=yes` for user-level per-user desktop apps to guarantee every update and installation targets the canonical application directory without directory drift or ghost binaries.
 * Explicitly configure post-uninstall directory cleanup (`DelTree`) to prevent credential leakage and orphaned data files on clean removals while keeping updates seamless.
