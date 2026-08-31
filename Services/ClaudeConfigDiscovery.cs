@@ -24,8 +24,23 @@ public sealed class ClaudeConfigDiscovery
     /// </summary>
     private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
     {
-        "node_modules", ".git", ".vs", "bin", "obj", "venv", ".venv", "__pycache__",
-        "AppData", "dist", "build", ".obsidian", ".trash", ".idea", ".claude", "references"
+        // Version control & IDE artifacts
+        ".git", ".vs", ".idea", ".obsidian", ".trash",
+        // Build outputs
+        "bin", "obj", "dist", "build",
+        // Language/runtime caches & package stores — these directories can be massive
+        // (hundreds of thousands of files) and will never contain user-authored CLAUDE.md files.
+        "node_modules", ".npm",
+        "venv", ".venv", "__pycache__",
+        ".cargo", ".rustup",        // Rust toolchain & crate registry
+        ".nuget", "packages",       // NuGet package cache (global & legacy project-level)
+        ".gradle", ".m2",           // Java/Kotlin Gradle & Maven local repositories
+        ".cache",                   // Generic XDG-style tool caches (pip, pre-commit, etc.)
+        "__MACOSX",                 // macOS metadata directories extracted from ZIP archives
+        // OS / app data blobs
+        "AppData",
+        // Claude CLI internal session directories (explicitly excluded per AGENTS.md)
+        ".claude", "references"
     };
 
     /// <summary>

@@ -29,8 +29,11 @@ Errors during desktop file sync divide into 4 concrete categories:
 
 ### 2.3 Incremental Scanning Fast-Path
 Calculating SHA-256 over 1,000+ files on every sync cycle creates unnecessary disk I/O.
-- Store `{ Hash, LastWriteTimeUtc, FileSize }` in `sync_hashes.json`.
-- If `FileInfo.LastWriteTimeUtc == cached.LastWriteTimeUtc` AND `FileInfo.Length == cached.FileSize`, skip SHA-256 computation entirely during the collection phase.
+- Store `{ Hash, LastWriteTimeUtcTicks, FileSize }` in `sync_hashes.json` using the `HashCacheEntry` model.
+- Eager hashing is replaced by lazy hash deferral: `ScanFolder` no longer computes SHA-256 immediately. Instead, the hash is computed lazily in the sync loop using metadata validation.
+- Files ≥ 1 KB with matching metadata (`FileInfo.LastWriteTimeUtc.Ticks == cached.LastWriteTimeUtcTicks` AND `FileInfo.Length == cached.FileSize`) skip SHA-256 computation entirely.
+- A thread-safe `IsMetadataConfirmed` helper runs under `_hashLock` to validate existing cache entries without exposing `_hashIndex` to callers outside the lock.
+- Legacy cache auto-migration: `LoadHashIndex` auto-migrates old `sync_hashes.json` formats (`Dictionary<string, string>`) to the new `HashCacheEntry` schema on first load to prevent full re-uploads on upgrade.
 
 ### 2.4 User-Facing Error Diagnostics UI in WinUI 3
 - Native `ContentDialog` or expandable flyout detailing failed files:

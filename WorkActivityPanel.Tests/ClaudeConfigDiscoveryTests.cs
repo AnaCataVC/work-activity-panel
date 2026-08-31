@@ -171,4 +171,22 @@ public class ClaudeConfigDiscoveryTests : IDisposable
         File.WriteAllText(fullPath, content);
         return fullPath;
     }
+
+    [Theory]
+    [InlineData(".cargo")]
+    [InlineData(".rustup")]
+    [InlineData(".nuget")]
+    [InlineData("packages")]
+    [InlineData(".gradle")]
+    [InlineData(".m2")]
+    [InlineData(".cache")]
+    [InlineData(".npm")]
+    [InlineData("__MACOSX")]
+    public void IsDirectorySkipped_ShouldExcludePackageCacheDirectories(string dirName)
+    {
+        // These directories can contain hundreds of thousands of files and will never
+        // hold user-authored CLAUDE.md files. They must always be excluded.
+        Assert.True(ClaudeConfigDiscovery.IsDirectorySkipped(dirName),
+            $"Expected '{dirName}' to be skipped but it was not.");
+    }
 }

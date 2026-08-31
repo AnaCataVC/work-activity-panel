@@ -57,6 +57,8 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
    - Breadth-first walk for AI instructions, batched `git ls-files` verification, and multi-layer secret protection.
 10. **[WinUI 3 Async Offloading, ContentDialog Lifecycle & Concurrency Hardening](learning/winui3-async-offloading-and-contentdialog-concurrency.md)**
     - Zero-wait `SemaphoreSlim` dialog anti-collision, `Task.Run` UI offloading, `Interlocked` atomic sync guards, and safe `DispatcherQueue` UI thread marshalling.
+11. **[Drive Sync Fast-Path Hash Cache Optimization](learning/drive-sync-fast-path-hash-cache.md)**
+    - Disk I/O reduction using metadata-first validation (`LastWriteTimeUtcTicks` + `FileSize`), lazy SHA-256 hashing, 1 KB fast-path threshold, seamless JSON schema migration, and thread-safe `IsMetadataConfirmed` design.
 
 ---
 

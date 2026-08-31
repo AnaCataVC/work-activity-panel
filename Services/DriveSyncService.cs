@@ -33,7 +33,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     private readonly object _hashLock = new();
     private readonly object _errorLock = new();
     private readonly List<SyncErrorItem> _lastSyncErrors = new();
-    private Dictionary<string, string> _hashIndex = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, HashCacheEntry> _hashIndex = new(StringComparer.OrdinalIgnoreCase);
 
     private DriveSyncSettings _settings;
     private CancellationTokenSource? _activeCts;
@@ -216,12 +216,24 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
                 processed++;
 
-                // 1. Check SHA-256 hash if incremental sync is enabled and not forcing a full sync
+                // 1. Resolve the file hash lazily with the fast-path cache.
+                //    IsMetadataConfirmed does the single FileInfo stat to check LastWriteTimeUtc + FileSize.
+                //    GetKnownHash is a pure cache lookup (no disk I/O). This avoids duplicate stat calls.
+                //    When metadata matches, the file is skipped with no disk read. When it does not
+                //    (new file, size/mtime changed, legacy entry with ticks=0, or file < 1 KB),
+                //    we fall through to ComputeSha256.
+                string currentHash;
+                FileInfo? uploadFileInfo = null;
                 if (!forceFullSync && _settings.OnlyModifiedOrNew)
                 {
-                    string? previousHash = GetKnownHash(file.HashKey);
-                    if (!string.IsNullOrEmpty(previousHash) && string.Equals(previousHash, file.Hash, StringComparison.OrdinalIgnoreCase))
+                    string? cachedHash = GetKnownHash(file.HashKey);
+
+                    // IsMetadataConfirmed does the single authoritative FileInfo stat under _hashLock.
+                    bool metadataConfirmed = cachedHash != null && IsMetadataConfirmed(file.HashKey, file.FilePath, file.FileSize);
+
+                    if (metadataConfirmed)
                     {
+                        // Fast-path: metadata identical, file unchanged, no disk read needed.
                         summary.Skipped++;
                         ReportProgress(progress, new SyncProgressReport
                         {
@@ -235,6 +247,38 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         });
                         continue;
                     }
+
+                    // Metadata changed or unavailable — compute the real hash from disk.
+                    uploadFileInfo = new FileInfo(file.FilePath);
+                    currentHash = ComputeSha256(file.FilePath);
+                    file.Hash = currentHash;
+
+                    if (cachedHash != null &&
+                        string.Equals(cachedHash, currentHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Hash matches even though metadata mismatched (e.g. git checkout restored mtime,
+                        // or xcopy preserved timestamp). Upgrade the cache entry with fresh metadata.
+                        SaveKnownHash(file.HashKey, currentHash, uploadFileInfo);
+                        summary.Skipped++;
+                        ReportProgress(progress, new SyncProgressReport
+                        {
+                            TotalFiles = summary.TotalScanned,
+                            ProcessedFiles = processed,
+                            CurrentFileName = file.FileName,
+                            UploadedCount = summary.Uploaded,
+                            SkippedCount = summary.Skipped,
+                            ErrorCount = summary.Errors,
+                            StatusMessage = $"Sin cambios: {file.FileName}"
+                        });
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Full sync or incremental check disabled: compute hash for post-upload persistence.
+                    uploadFileInfo = new FileInfo(file.FilePath);
+                    currentHash = ComputeSha256(file.FilePath);
+                    file.Hash = currentHash;
                 }
 
                 // 2. Upload file to Google Drive
@@ -257,7 +301,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         throw new Exception("Google Apps Script no confirmó el identificador del archivo creado (fileId).");
                     }
 
-                    SaveKnownHash(file.HashKey, file.Hash);
+                    SaveKnownHash(file.HashKey, file.Hash, uploadFileInfo);
                     summary.Uploaded++;
 
                     // Throttle between uploads to avoid Google Apps Script burst rate-limits
@@ -741,7 +785,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                                 FileName = fileInfo.Name,
                                 RelativePath = Path.GetRelativePath(rootFolderPath, file),
                                 FileSize = fileInfo.Length,
-                                Hash = ComputeSha256(file)
+                                // Hash is intentionally deferred: computed lazily in the sync loop
+                                // via the fast-path cache to avoid reading every file on disk up-front.
+                                Hash = string.Empty
                             });
                         }
                     }
@@ -844,7 +890,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                             FileName = fileInfo.Name,
                             RelativePath = destination,
                             FileSize = fileInfo.Length,
-                            Hash = ComputeSha256(path),
+                            // Hash is intentionally deferred: computed lazily in the sync loop
+                            // via the fast-path cache to avoid reading every file on disk up-front.
+                            Hash = string.Empty,
                             // The destination, not just its prefix, is part of the key: a file already
                             // uploaded under a different name has not been uploaded to where it belongs.
                             HashKey = $"{destination}|{path}"
@@ -888,19 +936,62 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         SyncProgressChanged?.Invoke(this, report);
     }
 
-    private string? GetKnownHash(string filePath)
+    /// <summary>
+    /// Returns the raw cached hash string for the given key, or <c>null</c> if no entry exists.
+    /// Does NOT validate file metadata — callers that need fast-path confirmation must use
+    /// <see cref="IsMetadataConfirmed"/> separately. This separation keeps each method
+    /// single-responsibility and avoids duplicate <see cref="FileInfo"/> disk reads.
+    /// </summary>
+    private string? GetKnownHash(string hashKey)
     {
         lock (_hashLock)
         {
-            return _hashIndex.TryGetValue(filePath, out var hash) ? hash : null;
+            return _hashIndex.TryGetValue(hashKey, out var entry) ? entry.Hash : null;
         }
     }
 
-    private void SaveKnownHash(string filePath, string hash)
+    /// <summary>
+    /// Returns <c>true</c> when the cached entry for <paramref name="hashKey"/> has valid
+    /// metadata (<see cref="HashCacheEntry.LastWriteTimeUtcTicks"/> and
+    /// <see cref="HashCacheEntry.FileSize"/> match the file on disk and the file is at
+    /// least 1 KB), confirming the fast-path skip is safe.
+    /// </summary>
+    private bool IsMetadataConfirmed(string hashKey, string filePath, long scannedFileSize)
     {
         lock (_hashLock)
         {
-            _hashIndex[filePath] = hash;
+            if (!_hashIndex.TryGetValue(hashKey, out var entry))
+                return false;
+
+            // Fast-path guard: entries with ticks=0 are legacy migrations not yet re-hashed
+            if (entry.LastWriteTimeUtcTicks == 0L || entry.FileSize < 1024)
+                return false;
+
+            try
+            {
+                var fi = new FileInfo(filePath);
+                return fi.Exists &&
+                       fi.LastWriteTimeUtc.Ticks == entry.LastWriteTimeUtcTicks &&
+                       fi.Length == entry.FileSize &&
+                       scannedFileSize == entry.FileSize;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+
+    private void SaveKnownHash(string hashKey, string hash, FileInfo? fileInfo = null)
+    {
+        lock (_hashLock)
+        {
+            _hashIndex[hashKey] = new HashCacheEntry
+            {
+                Hash = hash,
+                LastWriteTimeUtcTicks = fileInfo != null ? fileInfo.LastWriteTimeUtc.Ticks : 0L,
+                FileSize = fileInfo?.Length ?? 0L
+            };
             SaveHashIndex();
         }
     }
@@ -911,16 +1002,44 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         {
             try
             {
-                if (File.Exists(HashIndexFile))
+                if (!File.Exists(HashIndexFile))
+                    return;
+
+                var json = File.ReadAllText(HashIndexFile);
+                var doc = JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json);
+
+                var newIndex = new Dictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
+
+                if (doc.ValueKind == System.Text.Json.JsonValueKind.Object)
                 {
-                    var json = File.ReadAllText(HashIndexFile);
-                    _hashIndex = JsonSerializer.Deserialize<Dictionary<string, string>>(json) 
-                                 ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var prop in doc.EnumerateObject())
+                    {
+                        if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            // Legacy format: {"key": "sha256hash"} — migrate to HashCacheEntry with
+                            // zero timestamps so the fast-path is bypassed until the file is re-hashed.
+                            newIndex[prop.Name] = new HashCacheEntry
+                            {
+                                Hash = prop.Value.GetString() ?? string.Empty,
+                                LastWriteTimeUtcTicks = 0L,
+                                FileSize = 0L
+                            };
+                        }
+                        else if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.Object)
+                        {
+                            // New format: {"key": {"Hash": "...", "LastWriteTimeUtcTicks": N, "FileSize": N}}
+                            var entry = JsonSerializer.Deserialize<HashCacheEntry>(prop.Value.GetRawText());
+                            if (entry != null)
+                                newIndex[prop.Name] = entry;
+                        }
+                    }
                 }
+
+                _hashIndex = newIndex;
             }
             catch
             {
-                _hashIndex = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                _hashIndex = new Dictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
             }
         }
     }

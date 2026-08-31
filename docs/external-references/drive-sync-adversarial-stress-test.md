@@ -1,5 +1,5 @@
 > **Created:** 2026-08-27
-> **Last Updated:** 2026-08-27
+> **Last Updated:** 2026-08-31
 
 # Adversarial Stress-Test: Respaldo en Google Drive vía Apps Script Bridge ☁️💣
 
@@ -108,3 +108,5 @@ flowchart TD
 | **State Drift (Huérfanos en Drive)** | 🟠 Mayor | Crear comando de reconciliación / escaneo de huérfanos. |
 | **Endpoint Apps Script Abierto** | 🟠 Mayor | Implementar Token Secreto compartido (`authToken`). |
 | **Edge cases de Git** | 🟡 Menor | Manejo explícito de archivos ignorados (`git check-ignore`). |
+
+> **Implementation Status (2026-08-31):** The incremental scanning fast-path is now live. `sync_hashes.json` stores `{ Hash, LastWriteTimeUtcTicks, FileSize }` via `HashCacheEntry`. Files ≥ 1 KB with matching metadata bypass SHA-256 entirely via the `IsMetadataConfirmed` helper. The old `Dictionary<string, string>` format is auto-migrated on first load. The `LockService` invariant (`SemaphoreSlim(1,1)` + 300 ms inter-upload throttle) is preserved.

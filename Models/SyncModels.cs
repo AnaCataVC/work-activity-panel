@@ -122,6 +122,23 @@ public class SyncFilterOptions
 }
 
 /// <summary>
+/// Cache entry stored in sync_hashes.json that pairs a SHA-256 hash with the file
+/// metadata that was current when it was computed. When both <see cref="LastWriteTimeUtcTicks"/>
+/// and <see cref="FileSize"/> still match the file on disk the hash can be reused
+/// without re-reading the file, eliminating unnecessary disk I/O on unchanged files.
+/// </summary>
+public class HashCacheEntry
+{
+    public string Hash { get; set; } = string.Empty;
+
+    /// <summary>UTC ticks of <see cref="FileInfo.LastWriteTimeUtc"/> when the hash was computed.</summary>
+    public long LastWriteTimeUtcTicks { get; set; }
+
+    /// <summary>File size in bytes when the hash was computed.</summary>
+    public long FileSize { get; set; }
+}
+
+/// <summary>
 /// Real-time progress report during synchronization.
 /// </summary>
 public class SyncProgressReport
