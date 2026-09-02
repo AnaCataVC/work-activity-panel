@@ -107,6 +107,7 @@ public partial class DashboardViewModel : ObservableObject
 
     public ObservableCollection<CalendarEvent> TodayMeetings { get; } = new();
     private readonly List<CalendarEvent> _allTodayEvents = new();
+    private bool _isRefreshingCalendar;
 
     // Google Drive Backup / Sync Properties
     [ObservableProperty]
@@ -675,21 +676,43 @@ public partial class DashboardViewModel : ObservableObject
         // Filter out past events (keep active/in-progress and upcoming events)
         var activeAndUpcoming = _allTodayEvents.Where(ev => ev.EndTime > now).ToList();
 
-        bool changed = TodayMeetings.Count != activeAndUpcoming.Count;
-        if (!changed)
+        if (TodayMeetings.Count == activeAndUpcoming.Count)
         {
+            // First check if order of event IDs is preserved
+            bool orderPreserved = true;
             for (int i = 0; i < activeAndUpcoming.Count; i++)
             {
                 if (TodayMeetings[i].Id != activeAndUpcoming[i].Id)
                 {
-                    changed = true;
+                    orderPreserved = false;
                     break;
                 }
             }
-        }
 
-        if (changed)
+            if (orderPreserved)
+            {
+                // In-place reconciliation: update only elements whose data changed to avoid UI flicker
+                for (int i = 0; i < activeAndUpcoming.Count; i++)
+                {
+                    if (!TodayMeetings[i].Matches(activeAndUpcoming[i]))
+                    {
+                        TodayMeetings[i] = activeAndUpcoming[i];
+                    }
+                }
+            }
+            else
+            {
+                // Events were reordered; rebuild the list
+                TodayMeetings.Clear();
+                foreach (var ev in activeAndUpcoming)
+                {
+                    TodayMeetings.Add(ev);
+                }
+            }
+        }
+        else
         {
+            // Event count changed; rebuild the list
             TodayMeetings.Clear();
             foreach (var ev in activeAndUpcoming)
             {
@@ -738,6 +761,9 @@ public partial class DashboardViewModel : ObservableObject
 
     private async Task RefreshGoogleDataAsync()
     {
+        if (_isRefreshingCalendar) return;
+        _isRefreshingCalendar = true;
+
         try
         {
             IsGoogleConnected = _googleCalendarService.IsConfigured;
@@ -759,6 +785,10 @@ public partial class DashboardViewModel : ObservableObject
         catch
         {
             // Ignore background sync errors
+        }
+        finally
+        {
+            _isRefreshingCalendar = false;
         }
     }
 

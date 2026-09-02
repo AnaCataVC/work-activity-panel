@@ -102,6 +102,13 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
     private HttpClient CreateConfiguredHttpClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        client.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue
+        {
+            NoCache = true,
+            NoStore = true,
+            MustRevalidate = true
+        };
+        client.DefaultRequestHeaders.Pragma.Add(new NameValueHeaderValue("no-cache"));
 
         if (!string.IsNullOrWhiteSpace(_iCalKey))
         {

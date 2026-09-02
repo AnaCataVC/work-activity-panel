@@ -86,4 +86,21 @@ public class CalendarEvent
             return OpensGranola ? "Granola se abrirá 5 min antes" : "Solo en calendario";
         }
     }
+
+    /// <summary>
+    /// Determines whether this event has matching structural and schedule data to another event.
+    /// </summary>
+    public bool Matches(CalendarEvent? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return Id == other.Id &&
+               StartTime == other.StartTime &&
+               EndTime == other.EndTime &&
+               Title == other.Title &&
+               MeetingLink == other.MeetingLink &&
+               OpensGranola == other.OpensGranola &&
+               IsAllDay == other.IsAllDay;
+    }
 }

@@ -59,6 +59,8 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
     - Zero-wait `SemaphoreSlim` dialog anti-collision, `Task.Run` UI offloading, `Interlocked` atomic sync guards, and safe `DispatcherQueue` UI thread marshalling.
 11. **[Drive Sync Fast-Path Hash Cache Optimization](learning/drive-sync-fast-path-hash-cache.md)**
     - Disk I/O reduction using metadata-first validation (`LastWriteTimeUtcTicks` + `FileSize`), lazy SHA-256 hashing, 1 KB fast-path threshold, seamless JSON schema migration, and thread-safe `IsMetadataConfirmed` design.
+12. **[Calendar Event Mutation Detection & In-Place Collection Reconciliation](learning/calendar-event-mutation-and-inplace-reconciliation.md)**
+    - Resolving stale meeting displays when event times are rescheduled in iCal feeds (`UID` immutability trap), value-based equality matching, flicker-free in-place WinUI 3 collection reconciliation, and anti-cache HTTP headers.
 
 ---
 

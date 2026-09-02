@@ -129,4 +129,93 @@ public class CalendarEventTests
 
         Assert.Equal(expectedInPreWindow, inPreWindow);
     }
+
+    [Fact]
+    public void CalendarEvent_Matches_IdenticalProperties_ShouldReturnTrue()
+    {
+        var start = DateTime.Today.AddHours(10);
+        var end = start.AddMinutes(30);
+
+        var event1 = new CalendarEvent
+        {
+            Id = "meeting-1",
+            Title = "Sync Cata / Jose",
+            StartTime = start,
+            EndTime = end,
+            MeetingLink = "https://meet.google.com/abc",
+            OpensGranola = true,
+            IsAllDay = false
+        };
+
+        var event2 = new CalendarEvent
+        {
+            Id = "meeting-1",
+            Title = "Sync Cata / Jose",
+            StartTime = start,
+            EndTime = end,
+            MeetingLink = "https://meet.google.com/abc",
+            OpensGranola = true,
+            IsAllDay = false
+        };
+
+        Assert.True(event1.Matches(event2));
+        Assert.True(event2.Matches(event1));
+    }
+
+    [Fact]
+    public void CalendarEvent_Matches_SameIdDifferentTime_ShouldReturnFalse()
+    {
+        var baseDate = DateTime.Today;
+
+        var oldEvent = new CalendarEvent
+        {
+            Id = "sync-cata-jose",
+            Title = "Sync Cata / Jose",
+            StartTime = baseDate.AddHours(11).AddMinutes(30),
+            EndTime = baseDate.AddHours(12),
+            MeetingLink = "https://meet.google.com/abc",
+            OpensGranola = true,
+            IsAllDay = false
+        };
+
+        var rescheduledEvent = new CalendarEvent
+        {
+            Id = "sync-cata-jose",
+            Title = "Sync Cata / Jose",
+            StartTime = baseDate.AddHours(12).AddMinutes(30), // Rescheduled from 11:30 to 12:30
+            EndTime = baseDate.AddHours(13),
+            MeetingLink = "https://meet.google.com/abc",
+            OpensGranola = true,
+            IsAllDay = false
+        };
+
+        Assert.False(oldEvent.Matches(rescheduledEvent));
+        Assert.False(rescheduledEvent.Matches(oldEvent));
+    }
+
+    [Fact]
+    public void CalendarEvent_Matches_DifferentPropertiesOrNull_ShouldReturnFalse()
+    {
+        var evt = new CalendarEvent
+        {
+            Id = "event-test",
+            Title = "Status Update",
+            StartTime = DateTime.Today.AddHours(9),
+            EndTime = DateTime.Today.AddHours(10),
+            MeetingLink = "https://meet.google.com/abc",
+            OpensGranola = true,
+            IsAllDay = false
+        };
+
+        Assert.False(evt.Matches(null));
+
+        var diffId = new CalendarEvent { Id = "other-id", Title = evt.Title, StartTime = evt.StartTime, EndTime = evt.EndTime, MeetingLink = evt.MeetingLink, OpensGranola = evt.OpensGranola, IsAllDay = evt.IsAllDay };
+        Assert.False(evt.Matches(diffId));
+
+        var diffTitle = new CalendarEvent { Id = evt.Id, Title = "New Title", StartTime = evt.StartTime, EndTime = evt.EndTime, MeetingLink = evt.MeetingLink, OpensGranola = evt.OpensGranola, IsAllDay = evt.IsAllDay };
+        Assert.False(evt.Matches(diffTitle));
+
+        var diffLink = new CalendarEvent { Id = evt.Id, Title = evt.Title, StartTime = evt.StartTime, EndTime = evt.EndTime, MeetingLink = "https://meet.google.com/xyz", OpensGranola = evt.OpensGranola, IsAllDay = evt.IsAllDay };
+        Assert.False(evt.Matches(diffLink));
+    }
 }
