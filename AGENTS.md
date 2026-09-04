@@ -32,15 +32,17 @@ work-activity-panel/
 │   └── SettingsViewModel.cs        # Settings persistence, schedule configuration, iCal/Drive settings, autostart
 ├── Models/
 │   ├── CalendarEvent.cs            # Meeting model (summary, start/end, meeting URL, status)
+│   ├── ClaudeMaintenanceModels.cs  # Store reports, retention settings, and cleanup results for local Claude caches
 │   ├── DriveSyncSettings.cs        # Google Apps Script URL, auth token, local folder, filters
 │   ├── GitHubAccountInfo.cs        # GitHub CLI active/available accounts data model
 │   ├── SyncModels.cs               # File metadata, SHA-256 index, upload requests/responses
 │   ├── UpdateInfo.cs               # GitHub Releases update check & download metadata
 │   └── WorkSchedule.cs             # Work hours, active days, lunch break, vacation state
 ├── Services/
-│   ├── Interfaces/                 # Service contracts (IScheduleService, IAppLauncherService, IGitHubAuthService, etc.)
+│   ├── Interfaces/                 # Service contracts (IScheduleService, IClaudeMaintenanceService, etc.)
 │   ├── AppLauncherService.cs       # Process launcher (Slack, Granola, browser meeting URLs)
 │   ├── ClaudeConfigDiscovery.cs    # Untracked CLAUDE.md & references discovery, git batching & secret filtering
+│   ├── ClaudeMaintenanceService.cs # On-demand disk footprint analysis, stale transcript pruning, and desktop session archiving
 │   ├── DriveSyncService.cs         # Streaming SHA-256 hashing, filtering, Google Apps Script HTTP client
 │   ├── GitHubAuthService.cs        # GitHub CLI integration (hosts.yml parsing, gh auth switch)
 │   ├── GoogleCalendarService.cs    # iCal feed fetcher, parser integration, caching, deduplication
@@ -51,7 +53,7 @@ work-activity-panel/
 │   ├── Converters.cs               # XAML value converters (status colors, visibility, date formatting)
 │   ├── ICalParser.cs               # RFC 5545 parser (unfolding, timezone normalization, meeting links)
 │   └── LocalSettingsHelper.cs      # JSON persistence in %LOCALAPPDATA%\WorkActivityPanel
-├── WorkActivityPanel.Tests/        # xUnit unit test suite for services, models, and parsers
+├── WorkActivityPanel.Tests/        # xUnit unit test suite for services, models, parsers, and Claude maintenance
 ├── docs/                           # Setup guides, architecture, and learning documentation
 │   ├── README.md                   # Documentation catalog and architectural index
 │   └── learning/                   # Engineering learnings & post-implementation case studies
@@ -157,6 +159,19 @@ Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "
 ### 4.9 Desktop Icon Assets & Shell Cache Reliability
 - `Assets/AppIcon.ico` must include native uncompressed 32-bit DIB bitmaps (BITMAPINFOHEADER + BGRA) for resolutions <= 128x128 and PNG for 256x256 to ensure full compatibility with `AppWindow.SetIcon()`, `H.NotifyIcon`, and Inno Setup shortcut binding.
 - After updating icon assets or executable binaries locally, ensure any running instances are terminated before overwriting, and restart `explorer.exe` (`Stop-Process -Name explorer -Force`) if the taskbar icon cache does not flush immediately.
+
+### 4.10 Local Claude Sessions & Transcripts Maintenance Architecture
+- **Contract & Separation of Concerns:** Defined via `IClaudeMaintenanceService` and implemented in `ClaudeMaintenanceService.cs`, using models in `ClaudeMaintenanceModels.cs` (`ClaudeMaintenanceSettings`, `ClaudeStoreReport`, `ClaudeMaintenanceReport`, `ClaudeCleanupResult`).
+- **Target Stores & Dynamic Path Discovery:**
+  - Transcripts Store: `%USERPROFILE%\.claude\projects\` (recursive `*.jsonl`).
+  - Desktop Sessions Store: `%APPDATA%\Claude\claude-code-sessions\` (`*.json`).
+  - Strict privacy rule: NEVER hardcode or log absolute user directory paths. Always resolve dynamically via `Environment.SpecialFolder.UserProfile` and `Environment.SpecialFolder.ApplicationData`.
+- **Core Invariants & Safety Guardrails:**
+  1. **Strictly Manual / On-Demand (Zero Side-Effects):** Operations never run on automatic timers, background recurring intervals, or as side effects of scanning. Every cleanup action requires an explicit user trigger in the UI.
+  2. **Active Session 24-Hour Grace Guard:** In `DeleteStaleTranscriptsAsync`, any transcript file modified within the last 24 hours (`ActiveSessionGrace = TimeSpan.FromHours(24)`) is unconditionally preserved, regardless of configured retention threshold (even if `TranscriptRetentionDays = 0`), protecting currently active or recently resumed sessions.
+  3. **Process Guard for Desktop Session Archival:** In `ArchiveStaleSessionsAsync`, execution is strictly refused (`result.Skipped = true`) if the `claude` process is running (`_isClaudeRunning()`). Claude Desktop maintains session objects in memory and would overwrite on-disk changes on flush/exit. Transcripts deletion remains safe while Claude is running due to the 24h grace guard.
+  4. **Irreversible Permanent Deletion via UI Confirmation Dialog:** Transcripts deletion is irreversible and actually reclaims physical disk space (`ReclaimsDiskSpace = true`). It MUST be guarded by an explicit user confirmation dialog (`ContentDialog`) in the UI that explains data loss before execution.
+  5. **Session Archiving without Disk Space Reclaim:** Archiving desktop sessions isolates the first 1,000 characters (`SessionHeaderChars`) and flips `"isArchived": false` to `"isArchived": true`. This removes sessions from the Claude Desktop session list but reclaims zero bytes on disk (`ReclaimsDiskSpace = false`), which is clearly reported to the user. Original `LastWriteTime` timestamps are preserved and file updates use atomic `.tmp` swapping.
 
 ---
 

@@ -21,6 +21,8 @@
     <Compile Include="..\Services\Interfaces\IScheduleService.cs" Link="Services\Interfaces\IScheduleService.cs" />
     <Compile Include="..\Services\GitHubAuthService.cs" Link="Services\GitHubAuthService.cs" />
     <Compile Include="..\Services\Interfaces\IGitHubAuthService.cs" Link="Services\Interfaces\IGitHubAuthService.cs" />
+    <Compile Include="..\Services\ClaudeMaintenanceService.cs" Link="Services\ClaudeMaintenanceService.cs" />
+    <Compile Include="..\Services\Interfaces\IClaudeMaintenanceService.cs" Link="Services\Interfaces\IClaudeMaintenanceService.cs" />
     <Compile Include="..\Services\UpdateService.cs" Link="Services\UpdateService.cs" />
     <Compile Include="..\Services\Interfaces\IUpdateService.cs" Link="Services\Interfaces\IUpdateService.cs" />
   </ItemGroup>

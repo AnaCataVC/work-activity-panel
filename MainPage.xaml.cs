@@ -82,6 +82,45 @@ public sealed partial class MainPage : Page
         return this.XamlRoot ?? App.Window?.Content?.XamlRoot;
     }
 
+    /// <summary>
+    /// Deleting transcripts is irreversible, so the confirmation is mandatory and the dialog
+    /// states exactly what is lost. The view model command runs only after an explicit accept.
+    /// </summary>
+    private async void DeleteClaudeTranscripts_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await _dialogLock.WaitAsync(0))
+        {
+            return;
+        }
+
+        try
+        {
+            var xamlRoot = GetEffectiveXamlRoot();
+            if (xamlRoot == null) return;
+
+            var dialog = new ContentDialog
+            {
+                Title = "Borrar transcripts antiguos",
+                Content = $"{ViewModel.ClaudeMaintenanceDetailText}\n\n" +
+                          "Se eliminan de forma permanente y esas conversaciones dejan de poder reanudarse. " +
+                          "Las sesiones modificadas en las últimas 24 horas nunca se tocan.",
+                PrimaryButtonText = "Borrar",
+                CloseButtonText = "Cancelar",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = xamlRoot
+            };
+
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                await ViewModel.DeleteClaudeTranscriptsCommand.ExecuteAsync(null);
+            }
+        }
+        finally
+        {
+            _dialogLock.Release();
+        }
+    }
+
     private async void ShowSyncHistoryDialog_Click(object sender, RoutedEventArgs e)
     {
         if (!await _dialogLock.WaitAsync(0))

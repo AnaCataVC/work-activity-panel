@@ -61,6 +61,8 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
     - Disk I/O reduction using metadata-first validation (`LastWriteTimeUtcTicks` + `FileSize`), lazy SHA-256 hashing, 1 KB fast-path threshold, seamless JSON schema migration, and thread-safe `IsMetadataConfirmed` design.
 12. **[Calendar Event Mutation Detection & In-Place Collection Reconciliation](learning/calendar-event-mutation-and-inplace-reconciliation.md)**
     - Resolving stale meeting displays when event times are rescheduled in iCal feeds (`UID` immutability trap), value-based equality matching, flicker-free in-place WinUI 3 collection reconciliation, and anti-cache HTTP headers.
+13. **[Safe Local Maintenance of Claude CLI Transcripts & Desktop Sessions](learning/claude-local-session-and-transcript-maintenance.md)**
+    - Dual storage architecture (`%USERPROFILE%\.claude\projects` vs `%APPDATA%\Claude\claude-code-sessions`), 24-hour live session grace guard, active process collision prevention, defensive streaming scans, atomic file updates with timestamp preservation, and safe JSON header flag flipping without whole-file rewrites.
 
 ---
 
