@@ -66,20 +66,4 @@ public class DriveSyncSettings
 
     /// <summary>Every folder to synchronize. All of them land side by side in Drive.</summary>
     public List<SyncSource> Sources { get; set; } = new();
-
-    /// <summary>
-    /// Collect the agent instruction files (CLAUDE.md) scattered across the user profile
-    /// that no git repository is tracking. Those are the ones nothing else backs up: a
-    /// tracked one already lives in its repo's history.
-    /// </summary>
-    public bool SyncUnversionedClaudeMarkdown { get; set; }
-
-    /// <summary>Destination subfolder for the files found by the sweep above.</summary>
-    public string ClaudeMarkdownDestinationPrefix { get; set; } = "claude-md-unversioned";
-
-    /// <summary>
-    /// How deep under the user profile to look. The sweep walks directories, so an
-    /// unbounded depth on a profile holding large data folders costs real time.
-    /// </summary>
-    public int ClaudeMarkdownScanDepth { get; set; } = 6;
 }

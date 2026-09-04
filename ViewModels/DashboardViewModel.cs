@@ -27,7 +27,6 @@ public partial class DashboardViewModel : ObservableObject
     private readonly IDriveSyncService _driveSyncService;
     private readonly IGitHubAuthService _gitHubAuthService;
     private readonly IUpdateService _updateService;
-    private readonly IClaudeMaintenanceService _claudeMaintenanceService;
     private readonly DispatcherTimer _timer;
 
     // Application Update Properties
@@ -111,24 +110,6 @@ public partial class DashboardViewModel : ObservableObject
     private bool _isRefreshingCalendar;
 
     // Google Drive Backup / Sync Properties
-    [ObservableProperty]
-    private bool _isClaudeMaintenanceBusy;
-
-    [ObservableProperty]
-    private bool _hasClaudeReport;
-
-    [ObservableProperty]
-    private bool _hasReclaimableTranscripts;
-
-    [ObservableProperty]
-    private string _claudeTranscriptsSummary = "Sin analizar";
-
-    [ObservableProperty]
-    private string _claudeSessionsSummary = "Sin analizar";
-
-    [ObservableProperty]
-    private string _claudeMaintenanceDetailText = "Analiza para ver cuánto ocupan las sesiones locales de Claude.";
-
     [ObservableProperty]
     private bool _isDriveSyncConfigured;
 
@@ -216,8 +197,7 @@ public partial class DashboardViewModel : ObservableObject
         IGoogleCalendarService googleCalendarService,
         IDriveSyncService driveSyncService,
         IGitHubAuthService gitHubAuthService,
-        IUpdateService updateService,
-        IClaudeMaintenanceService claudeMaintenanceService)
+        IUpdateService updateService)
     {
         _scheduleService = scheduleService;
         _appLauncherService = appLauncherService;
@@ -225,7 +205,6 @@ public partial class DashboardViewModel : ObservableObject
         _driveSyncService = driveSyncService;
         _gitHubAuthService = gitHubAuthService;
         _updateService = updateService;
-        _claudeMaintenanceService = claudeMaintenanceService;
 
         _scheduleService.WorkStarted += OnWorkStarted;
         _scheduleService.WorkEnded += OnWorkEnded;
@@ -515,80 +494,6 @@ public partial class DashboardViewModel : ObservableObject
             DriveSyncStatusText = "Al día";
             DriveSyncStatusColor = new SolidColorBrush(Microsoft.UI.Colors.ForestGreen);
         }
-    }
-
-    [RelayCommand]
-    private async Task ScanClaudeMaintenance()
-    {
-        IsClaudeMaintenanceBusy = true;
-        try
-        {
-            ApplyClaudeReport(await _claudeMaintenanceService.ScanAsync());
-        }
-        catch (Exception ex)
-        {
-            ClaudeMaintenanceDetailText = $"Error al analizar: {ex.Message}";
-        }
-        finally
-        {
-            IsClaudeMaintenanceBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Deletes transcripts past the retention. The confirmation lives in the view, so this
-    /// command must only ever be reached after the user has accepted the dialog.
-    /// </summary>
-    [RelayCommand]
-    private async Task DeleteClaudeTranscripts()
-    {
-        IsClaudeMaintenanceBusy = true;
-        try
-        {
-            var result = await _claudeMaintenanceService.DeleteStaleTranscriptsAsync();
-            ApplyClaudeReport(await _claudeMaintenanceService.ScanAsync());
-            ClaudeMaintenanceDetailText = result.Message;
-        }
-        catch (Exception ex)
-        {
-            ClaudeMaintenanceDetailText = $"Error al borrar: {ex.Message}";
-        }
-        finally
-        {
-            IsClaudeMaintenanceBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task ArchiveClaudeSessions()
-    {
-        IsClaudeMaintenanceBusy = true;
-        try
-        {
-            var result = await _claudeMaintenanceService.ArchiveStaleSessionsAsync();
-            ApplyClaudeReport(await _claudeMaintenanceService.ScanAsync());
-            ClaudeMaintenanceDetailText = result.Message;
-        }
-        catch (Exception ex)
-        {
-            ClaudeMaintenanceDetailText = $"Error al archivar: {ex.Message}";
-        }
-        finally
-        {
-            IsClaudeMaintenanceBusy = false;
-        }
-    }
-
-    private void ApplyClaudeReport(ClaudeMaintenanceReport report)
-    {
-        ClaudeTranscriptsSummary = report.Transcripts.Summary;
-        ClaudeSessionsSummary = report.Sessions.Summary;
-        HasReclaimableTranscripts = report.Transcripts.HasStaleFiles;
-        HasClaudeReport = true;
-
-        ClaudeMaintenanceDetailText = report.Transcripts.HasStaleFiles
-            ? $"Se recuperan {report.TotalReclaimableDisplay} borrando transcripts de más de {_claudeMaintenanceService.Settings.TranscriptRetentionDays} días."
-            : "No hay transcripts fuera de la retención.";
     }
 
     [RelayCommand]

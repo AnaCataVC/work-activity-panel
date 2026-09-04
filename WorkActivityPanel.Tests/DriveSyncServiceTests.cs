@@ -43,15 +43,15 @@ public class DriveSyncServiceTests : IDisposable
     [Theory]
     [InlineData("", "notes.md", "notes.md")]
     [InlineData(null, "sub\\notes.md", "sub/notes.md")]
-    [InlineData("claude-md", "notes.md", "claude-md/notes.md")]
-    [InlineData("/claude-md/", "sub\\notes.md", "claude-md/sub/notes.md")]
+    [InlineData("work-docs", "notes.md", "work-docs/notes.md")]
+    [InlineData("/work-docs/", "sub\\notes.md", "work-docs/sub/notes.md")]
     public void CombineDestination_ShouldProduceForwardSlashPaths(string? prefix, string relativePath, string expected)
     {
         Assert.Equal(expected, DriveSyncService.CombineDestination(prefix, relativePath));
     }
 
     [Theory]
-    [InlineData(@"C:\Users\me\.claude\CLAUDE.md", "claude-md/.claude/CLAUDE.md", "CLAUDE.md")]
+    [InlineData(@"C:\Users\me\Documents\report.pdf", "work-docs/Documents/report.pdf", "report.pdf")]
     [InlineData(@"C:\docs\notes.md", "sub/notes.md", "notes.md")]
     [InlineData(@"C:\docs\notes.md", "", "notes.md")]
     public void ResolveUploadName_ShouldUseTheDestinationSegment(string filePath, string relativePath, string expected)
@@ -297,23 +297,21 @@ public class DriveSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public void UpdateSettings_ShouldInvalidatePrefixHashes_WhenPrefixChanges()
+    public void UpdateSettings_ShouldUpdateWebAppUrl_AndClearHashesWhenChanged()
     {
         var settings1 = new DriveSyncSettings
         {
-            ClaudeMarkdownDestinationPrefix = "old-prefix",
-            WebAppUrl = "https://script.google.com/macros/s/test/exec"
+            WebAppUrl = "https://script.google.com/macros/s/test1/exec"
         };
         _service.UpdateSettings(settings1);
 
         var settings2 = new DriveSyncSettings
         {
-            ClaudeMarkdownDestinationPrefix = "new-prefix",
-            WebAppUrl = "https://script.google.com/macros/s/test/exec"
+            WebAppUrl = "https://script.google.com/macros/s/test2/exec"
         };
         _service.UpdateSettings(settings2);
 
-        Assert.Equal("new-prefix", _service.Settings.ClaudeMarkdownDestinationPrefix);
+        Assert.Equal("https://script.google.com/macros/s/test2/exec", _service.Settings.WebAppUrl);
     }
 
     [Fact]

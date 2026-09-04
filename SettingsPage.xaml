@@ -228,32 +228,6 @@
                                 </Button>
                             </StackPanel>
 
-                            <!-- Agent Instructions CLAUDE.md & References Sweep -->
-                            <Expander Header="Instrucciones de Agentes (CLAUDE.md y Referencias sin versionar)" HorizontalAlignment="Stretch" Margin="0,8,0,0">
-                                <StackPanel Spacing="14" Padding="0,12,0,0">
-                                    <ToggleSwitch Header="Respaldar archivos CLAUDE.md y carpetas references/ no versionadas"
-                                                  IsOn="{x:Bind ViewModel.DriveSyncUnversionedClaudeMarkdown, Mode=TwoWay}" />
-                                    <TextBlock Text="Rastrea automáticamente en tu perfil de usuario archivos CLAUDE.md, .claude/references y carpetas references/*.md no trackeados en Git para respaldarlos en Google Drive de forma segura."
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               Margin="0,-8,0,0"
-                                               TextWrapping="Wrap" />
-
-                                    <Grid ColumnSpacing="12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="140" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Prefijo de destino en Drive"
-                                                 Text="{x:Bind ViewModel.DriveClaudeMarkdownDestinationPrefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 PlaceholderText="claude-md-unversioned" />
-                                        <NumberBox Grid.Column="1" Header="Profundidad"
-                                                   Value="{x:Bind ViewModel.DriveClaudeMarkdownScanDepth, Mode=TwoWay}"
-                                                   Minimum="1" Maximum="15" SpinButtonPlacementMode="Inline" />
-                                    </Grid>
-                                </StackPanel>
-                            </Expander>
-
                             <!-- Filters & AutoSync Options -->
                             <Expander Header="Filtros y opciones avanzadas de sincronización" HorizontalAlignment="Stretch" Margin="0,8,0,0">
                                 <StackPanel Spacing="14" Padding="0,12,0,0">

@@ -53,16 +53,12 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
    - Two-tier inspection (`hosts.yml` YAML parser + `gh auth status` fallback) and safe delegated account switching.
 8. **[Lightweight RFC 5545 iCalendar Parsing & Meeting Link Extraction](learning/rfc5545-icalendar-parsing-and-meeting-extraction.md)**
    - Line unfolding, timezone normalization, cancellation filtering, and multi-platform meeting link extraction.
-9. **[High-Performance Unversioned AI Context Discovery & Infrastructure Secret Scanning](learning/unversioned-ai-context-discovery-and-secret-filtering.md)**
-   - Breadth-first walk for AI instructions, batched `git ls-files` verification, and multi-layer secret protection.
-10. **[WinUI 3 Async Offloading, ContentDialog Lifecycle & Concurrency Hardening](learning/winui3-async-offloading-and-contentdialog-concurrency.md)**
-    - Zero-wait `SemaphoreSlim` dialog anti-collision, `Task.Run` UI offloading, `Interlocked` atomic sync guards, and safe `DispatcherQueue` UI thread marshalling.
-11. **[Drive Sync Fast-Path Hash Cache Optimization](learning/drive-sync-fast-path-hash-cache.md)**
+9. **[WinUI 3 Async Offloading, ContentDialog Lifecycle & Concurrency Hardening](learning/winui3-async-offloading-and-contentdialog-concurrency.md)**
+   - Zero-wait `SemaphoreSlim` dialog anti-collision, `Task.Run` UI offloading, `Interlocked` atomic sync guards, and safe `DispatcherQueue` UI thread marshalling.
+10. **[Drive Sync Fast-Path Hash Cache Optimization](learning/drive-sync-fast-path-hash-cache.md)**
     - Disk I/O reduction using metadata-first validation (`LastWriteTimeUtcTicks` + `FileSize`), lazy SHA-256 hashing, 1 KB fast-path threshold, seamless JSON schema migration, and thread-safe `IsMetadataConfirmed` design.
-12. **[Calendar Event Mutation Detection & In-Place Collection Reconciliation](learning/calendar-event-mutation-and-inplace-reconciliation.md)**
+11. **[Calendar Event Mutation Detection & In-Place Collection Reconciliation](learning/calendar-event-mutation-and-inplace-reconciliation.md)**
     - Resolving stale meeting displays when event times are rescheduled in iCal feeds (`UID` immutability trap), value-based equality matching, flicker-free in-place WinUI 3 collection reconciliation, and anti-cache HTTP headers.
-13. **[Safe Local Maintenance of Claude CLI Transcripts & Desktop Sessions](learning/claude-local-session-and-transcript-maintenance.md)**
-    - Dual storage architecture (`%USERPROFILE%\.claude\projects` vs `%APPDATA%\Claude\claude-code-sessions`), 24-hour live session grace guard, active process collision prevention, defensive streaming scans, atomic file updates with timestamp preservation, and safe JSON header flag flipping without whole-file rewrites.
 
 ---
 

@@ -28,7 +28,6 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly IScheduleService _scheduleService;
-    private readonly ClaudeConfigDiscovery _claudeConfigDiscovery = new();
     private readonly SemaphoreSlim _uploadSemaphore = new(1, 1);
     private readonly object _hashLock = new();
     private readonly object _errorLock = new();
@@ -43,7 +42,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     public DriveSyncSettings Settings => _settings;
     public bool IsSyncing => Volatile.Read(ref _isSyncing) == 1;
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_settings.WebAppUrl)
-                                && (EnumerateSources().Any() || _settings.SyncUnversionedClaudeMarkdown);
+                                && EnumerateSources().Any();
 
     public IReadOnlyList<SyncErrorItem> LastSyncErrors
     {
@@ -93,12 +92,6 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     public void UpdateSettings(DriveSyncSettings settings)
     {
-        // Invalidation Guard: If the Claude destination prefix changed, invalidate cached hashes for it
-        if (!string.Equals(_settings.ClaudeMarkdownDestinationPrefix, settings.ClaudeMarkdownDestinationPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            InvalidateHashesByPrefix(_settings.ClaudeMarkdownDestinationPrefix);
-        }
-
         // Invalidation Guard: If WebAppUrl changed, clear all hashes to force fresh sync to new target
         if (!string.Equals(_settings.WebAppUrl, settings.WebAppUrl, StringComparison.OrdinalIgnoreCase))
         {
@@ -820,14 +813,14 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     }
 
     /// <summary>
-    /// Scans every source plus, when enabled, the unversioned instruction-file sweep, and
-    /// returns the files to upload with their destination paths already resolved.
+    /// Scans every configured source folder and returns the files to upload with their
+    /// destination paths already resolved.
     /// </summary>
     private async Task<List<LocalFileMetadata>> CollectFilesAsync(
         IProgress<SyncProgressReport>? progress,
         CancellationToken token)
     {
-        return await Task.Run(async () =>
+        return await Task.Run(() =>
         {
             var collected = new List<LocalFileMetadata>();
 
@@ -853,55 +846,6 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                     file.RelativePath = CombineDestination(prefix, file.RelativePath);
                     file.HashKey = $"{prefix}|{file.FilePath}";
                     collected.Add(file);
-                }
-            }
-
-            if (_settings.SyncUnversionedClaudeMarkdown)
-            {
-                ReportProgress(progress, new SyncProgressReport
-                {
-                    StatusMessage = "Buscando CLAUDE.md y referencias sin versionar..."
-                });
-
-                var profileRoot = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                var unversioned = await _claudeConfigDiscovery.FindUnversionedAsync(
-                    profileRoot,
-                    _settings.ClaudeMarkdownScanDepth,
-                    token);
-
-                foreach (var path in unversioned)
-                {
-                    try
-                    {
-                        if (!File.Exists(path))
-                            continue;
-
-                        var fileInfo = new FileInfo(path);
-                        // The path under the user profile is kept as a path, so the bridge
-                        // recreates the folder tree instead of dropping a tree of files all
-                        // called CLAUDE.md into one folder, where they would overwrite each other.
-                        var destination = CombineDestination(
-                            _settings.ClaudeMarkdownDestinationPrefix,
-                            Path.GetRelativePath(profileRoot, path));
-
-                        collected.Add(new LocalFileMetadata
-                        {
-                            FilePath = path,
-                            FileName = fileInfo.Name,
-                            RelativePath = destination,
-                            FileSize = fileInfo.Length,
-                            // Hash is intentionally deferred: computed lazily in the sync loop
-                            // via the fast-path cache to avoid reading every file on disk up-front.
-                            Hash = string.Empty,
-                            // The destination, not just its prefix, is part of the key: a file already
-                            // uploaded under a different name has not been uploaded to where it belongs.
-                            HashKey = $"{destination}|{path}"
-                        });
-                    }
-                    catch
-                    {
-                        // Skip files that cannot be read or are locked
-                    }
                 }
             }
 

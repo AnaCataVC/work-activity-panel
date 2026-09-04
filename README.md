@@ -27,15 +27,7 @@
   - Lightweight Google Apps Script Web App endpoint (no complex Google Cloud project or third-party client required).
   - SHA-256 hash incremental change detection (only uploads new or modified files).
   - Multi-criteria filtering (whitelist/blacklist extensions, folder exclusion, file size limits).
-  - **AI Agent Context & Instruction Sync:** Automatic background sweep for unversioned `CLAUDE.md`, `.claude/references/`, and `references/*.md` context files.
-  - **Batched Git Verification & Secret Protection:** Batched `git ls-files` verification and regex content scanning against sensitive infrastructure secrets (SSH keys, AWS keys, GitHub PATs, Slack tokens).
-  - Optional automatic sync at the end of your workday (`AutoSyncOnWorkEnd`).
   - Step-by-step setup guide: [Google Drive Setup Guide](docs/google-setup-guide.md).
-- 🧹 **Local Claude Session & Transcript Maintenance:**
-  - Automated scanning and on-demand maintenance of local Claude CLI and Desktop caches (`%USERPROFILE%\.claude\projects` and `%APPDATA%\Claude\claude-code-sessions`).
-  - Transparent reporting of disk footprint and reclaimable space with configurable retention windows.
-  - Safe transcript pruning with a hard 24-hour live session guard and mandatory UI confirmation dialog before permanent deletion.
-  - In-place desktop session archiving that cleanly hides stale sessions from the Claude desktop launcher without disk mutation risk (strictly gated when Claude is running).
 - 💻 **Fluent Design & System Tray:** Native Windows 11 Mica backdrop, dark/light theme support, and minimize-to-system-tray capability.
 - ⚡ **Event-Driven Efficiency:** Zero continuous polling overhead; uses precision scheduled timers.
 - 📊 **Resource & Performance Profiling:** Verified 0.0% idle CPU and optimized memory architecture: [Resource Consumption & Performance Profiling Guide](docs/performance-and-resource-profiling.md).
@@ -49,15 +41,13 @@
 - **CLI & Auth Tooling:** GitHub CLI (`gh`) integration with YAML configuration parsing (`hosts.yml`)
 - **Calendar Parsing:** RFC 5545 iCalendar (`.ics`) lightweight parser with cancellation filtering & deduplication
 - **Cloud Storage:** Google Apps Script Web App endpoint (`DriveApp` API)
-- **AI Store & Cache Maintenance:** Local Claude CLI transcript pruner & Desktop session archiving engine (`ClaudeMaintenanceService`)
 - **Installer & Updates:** Inno Setup 6 Wizard & GitHub Releases API client
-- **Unit Testing:** `xUnit` & `Moq` test suite (139 unit tests)
+- **Unit Testing:** `xUnit` & `Moq` test suite (110 unit tests)
 
 ### 4. Key Learnings
 - Building native unpackaged WinUI 3 desktop applications with custom multi-resolution assets and Mica backdrops.
 - Designing an RFC 5545 iCalendar parsing engine with line unfolding and video conference link extraction: [iCalendar Engine Learning](docs/learning/rfc5545-icalendar-parsing-and-meeting-extraction.md).
 - Building a lightweight cloud synchronization bridge using Google Apps Script Web Apps with streaming SHA-256 hash indexing.
-- Implementing high-performance unversioned AI context discovery with batched Git checking and multi-layer infrastructure secret scanning: [Unversioned AI Context Discovery Learning](docs/learning/unversioned-ai-context-discovery-and-secret-filtering.md).
 - Multi-account profile switching and configuration discovery via GitHub CLI: [GitHub CLI Multi-Account Learning](docs/learning/github-cli-multi-account-management.md).
 - Implementing zero-infrastructure desktop auto-updaters via GitHub Releases with progress reporting: [Auto-Updater Architecture Learning](docs/learning/github-releases-auto-updater-architecture.md).
 - Handling companion Electron process discovery and URI protocol handlers: [Electron App Launcher Learning](docs/learning/granola-windows-electron-launcher.md).
@@ -66,7 +56,6 @@
 - Handling `InfoBar.ActionButton` compilation constraints and layout whitespace in WinUI 3: [InfoBar Layout Constraints Learning](docs/learning/winui3-infobar-layout-and-actionbutton.md).
 - Implementing standalone single-file Windows installers and clean uninstallation scripts using Inno Setup 6: [Inno Setup Lifecycle & Persistence Learning](docs/learning/inno-setup-persistence-and-clean-uninstall.md).
 - Hardening WinUI 3 concurrency with async offloading, `ContentDialog` anti-collision locking, and thread-safe cancellation management: [WinUI 3 Concurrency & ContentDialog Learning](docs/learning/winui3-async-offloading-and-contentdialog-concurrency.md).
-- Safe local storage maintenance for Claude CLI transcripts and Desktop sessions with 24-hour active session guards and process collision prevention: [Claude Maintenance Learning](docs/learning/claude-local-session-and-transcript-maintenance.md).
 
 ### 5. Local Setup Instructions
 
@@ -113,15 +102,7 @@ For detailed architecture specifications, setup guides, and engineering learning
   - Endpoint ligero mediante Google Apps Script Web App (sin proyectos complejos de GCP ni clientes pesados de terceros).
   - Detección incremental de cambios por hash SHA-256 (solo sube archivos nuevos o modificados).
   - Filtrado multi-criterio (extensiones permitidas/ignoradas, exclusión de carpetas del sistema, límite de MB).
-  - **Sincronización de Contexto e Instrucciones de IA:** Detección automática de archivos `CLAUDE.md`, `.claude/references/` y `references/*.md` no versionados.
-  - **Verificación Git por Lotes y Protección de Secretos:** Verificación masiva mediante `git ls-files` y escaneo regex contra credenciales críticas (claves SSH, claves AWS, PATs de GitHub, tokens de Slack).
-  - Respaldo automático opcional al finalizar la jornada laboral (`AutoSyncOnWorkEnd`).
   - Guía paso a paso: [Guía de Configuración de Google Drive](docs/google-setup-guide.md).
-- 🧹 **Mantenimiento Local de Sesiones y Transcripts de Claude:**
-  - Análisis y mantenimiento bajo demanda de los almacenes locales de Claude CLI y Desktop (`%USERPROFILE%\.claude\projects` y `%APPDATA%\Claude\claude-code-sessions`).
-  - Reporte transparente del espacio ocupado en disco y espacio recuperable con umbrales de retención configurables.
-  - Eliminación segura de transcripts con guarda inviolable de 24 horas para sesiones activas y diálogo de confirmación obligatorio antes del borrado permanente.
-  - Archivado en caliente de sesiones de escritorio que oculta sesiones antiguas de la lista de Claude Desktop sin riesgos de mutación (bloqueado estrictamente si Claude está en ejecución).
 - 💻 **Diseño Fluent y Bandeja del Sistema:** Efecto Mica nativo de Windows 11, soporte para temas claro/oscuro y minimizado a la bandeja del sistema (System Tray).
 - ⚡ **Eficiencia Basada en Eventos:** Cero sobrecarga de sondeo (polling continuo); utiliza temporizadores programados precisos.
 - 📊 **Perfilado de Rendimiento y Recursos:** 0.0% CPU en reposo y arquitectura de memoria optimizada: [Guía de Rendimiento y Consumo de Recursos](docs/performance-and-resource-profiling.md).
@@ -135,15 +116,13 @@ For detailed architecture specifications, setup guides, and engineering learning
 - **Herramientas CLI:** Integración con GitHub CLI (`gh`) y parsing YAML de credenciales (`hosts.yml`)
 - **Motor iCal:** Parser ligero RFC 5545 (`.ics`) con filtrado de reuniones canceladas y deduplicación
 - **Almacenamiento Cloud:** Google Apps Script Web App (`DriveApp` API)
-- **Mantenimiento de Caché de IA:** Motor de limpieza de transcripts y archivado de sesiones de Claude Desktop (`ClaudeMaintenanceService`)
 - **Instalador y Actualizador:** Asistente Inno Setup 6 y cliente GitHub Releases API
-- **Pruebas Unitarias:** Suite `xUnit` y `Moq` (139 pruebas unitarias)
+- **Pruebas Unitarias:** Suite `xUnit` y `Moq` (110 pruebas unitarias)
 
 ### 4. Aprendizajes Clave
 - Desarrollo de aplicaciones de escritorio nativas WinUI 3 con assets multirresolución e integración de Mica.
 - Creación de un motor de parsing RFC 5545 para iCalendar con normalización horaria y extracción de videollamadas: [Aprendizaje de Motor iCalendar](docs/learning/rfc5545-icalendar-parsing-and-meeting-extraction.md).
 - Diseño de una arquitectura puente de sincronización con Google Apps Script y persistencia liviana de hashes SHA-256.
-- Descubrimiento de alto rendimiento de contexto de IA no versionado con verificación Git por lotes y escaneo de secretos de infraestructura: [Aprendizaje de Descubrimiento de Contexto de IA](docs/learning/unversioned-ai-context-discovery-and-secret-filtering.md).
 - Conmutación rápida de perfiles de cuenta y lectura YAML mediante GitHub CLI: [Aprendizaje de Conmutador GitHub CLI](docs/learning/github-cli-multi-account-management.md).
 - Implementación de auto-actualizadores de escritorio sin servidores dedicados usando GitHub Releases: [Aprendizaje de Auto-Actualización](docs/learning/github-releases-auto-updater-architecture.md).
 - Descubrimiento de procesos auxiliares Electron y esquemas de protocolo URI en Windows: [Aprendizaje de Lanzador de Apps](docs/learning/granola-windows-electron-launcher.md).
@@ -152,7 +131,6 @@ For detailed architecture specifications, setup guides, and engineering learning
 - Gestión de restricciones en `InfoBar.ActionButton` y espaciado de layout en WinUI 3: [Aprendizaje de Restricciones en InfoBar](docs/learning/winui3-infobar-layout-and-actionbutton.md).
 - Creación de asistentes de instalación limpios con desinstalación completa en Inno Setup 6: [Aprendizaje de Ciclo de Vida Inno Setup](docs/learning/inno-setup-persistence-and-clean-uninstall.md).
 - Blindaje de concurrencia en WinUI 3 con desacoplamiento asíncrono, exclusión mutua en `ContentDialog` y gestión segura de cancelaciones: [Aprendizaje de Concurrencia y ContentDialog en WinUI 3](docs/learning/winui3-async-offloading-and-contentdialog-concurrency.md).
-- Mantenimiento seguro de almacenes locales de Claude CLI y Desktop con guardas de 24 horas y prevención de colisiones por procesos activos: [Aprendizaje de Mantenimiento de Claude](docs/learning/claude-local-session-and-transcript-maintenance.md).
 
 ### 5. Instrucciones de Instalación y Ejecución
 

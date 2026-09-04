@@ -47,7 +47,6 @@ public partial class App : Application
                     services.AddSingleton<IDriveSyncService, DriveSyncService>();
                     services.AddSingleton<IGitHubAuthService, GitHubAuthService>();
                     services.AddSingleton<IUpdateService, UpdateService>();
-                    services.AddSingleton<IClaudeMaintenanceService, ClaudeMaintenanceService>();
                     
                     // ViewModels
                     services.AddSingleton<DashboardViewModel>();

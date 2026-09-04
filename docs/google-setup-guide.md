@@ -25,30 +25,9 @@ This guide provides step-by-step instructions for configuring your Google Drive 
 [Destination Folder in Google Drive]
   ├── Subfolder 1/
   │    └── file1.pdf (overwritten if modified)
-  ├── Subfolder 2/
-  │    └── data.xlsx
-  └── claude-md-unversioned/
-       └── Repos/
-            └── my-project/
-                 ├── CLAUDE.md
-                 └── .claude/
-                      └── references/
-                           └── architecture.md
+  └── Subfolder 2/
+       └── data.xlsx
 ```
-
----
-
-### 🤖 AI Agent Context & Instruction Sync (CLAUDE.md & References)
-
-When working across multiple software projects, developers frequently maintain local AI agent steering instructions (`CLAUDE.md`), architecture notes, and reference files (`.claude/references/*.md`, `references/*.md`). Often, these files are kept local or gitignored to avoid repository bloat, leaving them vulnerable to machine loss.
-
-**Work Activity Panel** provides automated, secure discovery and backup for these files:
-- **Extended Discovery Scope:** Recursively scans the user profile up to a configurable depth (`ClaudeMarkdownScanDepth`, default 6) to detect `CLAUDE.md`, `.claude/**/*.md` (up to 3 levels deep), and `references/*.md`.
-- **Git Tracking Verification:** Candidate files are evaluated against Git. Only untracked or unversioned files are backed up—files already committed to Git are skipped since their history is safely preserved in their respective repositories. To eliminate process latency, Git tracking checks are batched in chunks of 50 files per query.
-- **Multi-Layer Secret Filtering:**
-  - Automatically skips files matching sensitive name patterns (`id_rsa`, `id_ed25519`, `credentials`, `auth_token`, `api_key`).
-  - Pre-scans the initial 64 KB of file contents using regex signatures to prevent uploading private SSH keys, AWS access keys, GitHub PATs, and Slack tokens.
-- **Folder Tree Preservation:** Files are uploaded to Google Drive under a dedicated destination prefix (`claude-md-unversioned`), faithfully recreating their relative path under the user profile so files with identical names never overwrite one another.
 
 ---
 
@@ -201,30 +180,9 @@ Esta guía proporciona instrucciones paso a paso para configurar tu destino en G
 [Carpeta Destino en tu Google Drive]
   ├── Subcarpeta 1/
   │    └── archivo1.pdf (sobrescrito si está modificado)
-  ├── Subcarpeta 2/
-  │    └── datos.xlsx
-  └── claude-md-unversioned/
-       └── Repos/
-            └── mi-proyecto/
-                 ├── CLAUDE.md
-                 └── .claude/
-                      └── references/
-                           └── arquitectura.md
+  └── Subcarpeta 2/
+       └── datos.xlsx
 ```
-
----
-
-### 🤖 Sincronización de Contexto e Instrucciones de IA (CLAUDE.md y Referencias)
-
-Al desarrollar en múltiples proyectos, es común mantener archivos locales de instrucciones para agentes de IA (`CLAUDE.md`), notas de arquitectura y referencias (`.claude/references/*.md`, `references/*.md`). Con frecuencia, estos archivos permanecen ignorados en Git o sin versionar para no ensuciar el repositorio, quedando expuestos a pérdidas ante cualquier fallo del equipo.
-
-**Work Activity Panel** incluye un motor de descubrimiento y respaldo automatizado y seguro para estos archivos:
-- **Descubrimiento Extendido:** Explora el perfil de usuario hasta la profundidad configurada (`ClaudeMarkdownScanDepth`, por defecto 6) detectando `CLAUDE.md`, `.claude/**/*.md` (hasta 3 niveles) y `references/*.md`.
-- **Verificación Git por Lotes:** Compara los candidatos contra Git para respaldar únicamente archivos sin versionar o no rastreados (los archivos ya rastreados en Git se omiten puesto que su historial vive en el repositorio). Las consultas a Git se realizan en bloques masivos de 50 archivos para anular el retardo de procesos.
-- **Filtrado de Seguridad Multi-Capa:**
-  - Omite automáticamente archivos con nombres sensibles (`id_rsa`, `id_ed25519`, `credentials`, `auth_token`, `api_key`).
-  - Pre-escanea los primeros 64 KB de cada archivo con expresiones regulares para impedir la subida de claves privadas SSH, claves de AWS, PATs de GitHub o tokens de Slack.
-- **Preservación del Árbol de Carpetas:** Los archivos se cargan bajo un prefijo dedicado (`claude-md-unversioned`), recreando su ruta relativa en el perfil para evitar colisiones entre archivos homónimos de distintos proyectos.
 
 ---
 

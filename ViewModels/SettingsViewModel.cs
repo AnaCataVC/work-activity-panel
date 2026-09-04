@@ -145,15 +145,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _driveAutoSyncOnWorkEnd = true;
 
-    [ObservableProperty]
-    private bool _driveSyncUnversionedClaudeMarkdown;
-
-    [ObservableProperty]
-    private string _driveClaudeMarkdownDestinationPrefix = "claude-md-unversioned";
-
-    [ObservableProperty]
-    private double _driveClaudeMarkdownScanDepth = 6;
-
     public ObservableCollection<SyncSource> DriveSyncSources { get; } = new();
 
     [ObservableProperty]
@@ -233,13 +224,6 @@ public partial class SettingsViewModel : ObservableObject
         DriveMaxFileSizeMb = driveSettings.MaxFileSizeMb > 0 ? driveSettings.MaxFileSizeMb : 20;
         DriveOnlyModifiedOrNew = driveSettings.OnlyModifiedOrNew;
         DriveAutoSyncOnWorkEnd = driveSettings.AutoSyncOnWorkEnd;
-        DriveSyncUnversionedClaudeMarkdown = driveSettings.SyncUnversionedClaudeMarkdown;
-        DriveClaudeMarkdownDestinationPrefix = !string.IsNullOrWhiteSpace(driveSettings.ClaudeMarkdownDestinationPrefix)
-            ? driveSettings.ClaudeMarkdownDestinationPrefix
-            : "claude-md-unversioned";
-        DriveClaudeMarkdownScanDepth = driveSettings.ClaudeMarkdownScanDepth > 0
-            ? driveSettings.ClaudeMarkdownScanDepth
-            : 6;
 
         DriveSyncSources.Clear();
         if (driveSettings.Sources != null)
@@ -420,9 +404,6 @@ public partial class SettingsViewModel : ObservableObject
         settings.MaxFileSizeMb = DriveMaxFileSizeMb > 0 ? DriveMaxFileSizeMb : 20;
         settings.OnlyModifiedOrNew = DriveOnlyModifiedOrNew;
         settings.AutoSyncOnWorkEnd = DriveAutoSyncOnWorkEnd;
-        settings.SyncUnversionedClaudeMarkdown = DriveSyncUnversionedClaudeMarkdown;
-        settings.ClaudeMarkdownDestinationPrefix = DriveClaudeMarkdownDestinationPrefix?.Trim() ?? "claude-md-unversioned";
-        settings.ClaudeMarkdownScanDepth = !double.IsNaN(DriveClaudeMarkdownScanDepth) && DriveClaudeMarkdownScanDepth > 0 ? (int)DriveClaudeMarkdownScanDepth : 6;
         settings.Sources = DriveSyncSources.ToList();
 
         _driveSyncService.UpdateSettings(settings);
