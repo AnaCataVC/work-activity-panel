@@ -1,8 +1,10 @@
 # Engineering Learning: Safe Local Maintenance of Claude CLI Transcripts & Desktop Sessions
 
+> [!NOTE]
+> **Archived Document:** This functionality has been decoupled from `work-activity-panel` and migrated to the dedicated `claude-desktop-tools` repository.
 > **Date:** 2026-09-04  
-> **Status:** Implemented in `WorkActivityPanel.Services.ClaudeMaintenanceService` & `MainPage`  
-> **Target Framework:** .NET 9 (`net9.0-windows10.0.26100.0`)
+> **Status:** Archived / Migrated to `claude-desktop-tools`  
+> **Target Framework:** .NET 9 (`net9.0`)
 
 ---
 
@@ -105,7 +107,7 @@ No personal username paths or machine-specific directories are hardcoded in sour
 
 ## 4. Verification & Testing Strategy
 
-The test suite in [`WorkActivityPanel.Tests/ClaudeMaintenanceServiceTests.cs`](file:///c:/Users/anaca/Repos/work-activity-panel/WorkActivityPanel.Tests/ClaudeMaintenanceServiceTests.cs) validates the invariants with isolated temporary directories and mock delegates:
+The test suite in `WorkActivityPanel.Tests/ClaudeMaintenanceServiceTests.cs` validates the invariants with isolated temporary directories and mock delegates:
 1. `ScanAsync_SeparatesStaleFilesFromTheTotal`: Validates classification of stale vs total files based on retention days.
 2. `ScanAsync_ReportsAMissingStoreInsteadOfThrowing`: Confirms graceful behavior on workstations without Claude installed.
 3. `DeleteStaleTranscriptsAsync_KeepsFilesInsideTheRetention`: Proves unexpired transcripts are preserved.

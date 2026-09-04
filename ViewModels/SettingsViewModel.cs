@@ -137,7 +137,7 @@ public partial class SettingsViewModel : ObservableObject
     private string _driveExcludedFolders = "node_modules, .git, bin, obj, .vs, temp";
 
     [ObservableProperty]
-    private long _driveMaxFileSizeMb = 50;
+    private long _driveMaxFileSizeMb = 20;
 
     [ObservableProperty]
     private bool _driveOnlyModifiedOrNew = true;

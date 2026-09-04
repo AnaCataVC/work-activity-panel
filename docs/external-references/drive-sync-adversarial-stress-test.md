@@ -93,7 +93,7 @@ flowchart TD
 ### 5. [Minor] Falsos Negativos y Falsos Positivos de Git
 * **El Supuesto Frágil:** *"`git ls-files --error-unmatch` siempre da la verdad absoluta sobre si un archivo debe respaldarse"*.
 * **Casos Borde no cubiertos:**
-  - **Archivos en `.gitignore`:** Si un archivo `CLAUDE.md` dentro de un repositorio de trabajo está en `.gitignore`, `git ls-files` falla con código 1. La app asume que es "huérfano" y lo sube a Drive. Si contenía notas confidenciales locales que no debían salir de la máquina, se respaldará sin aviso.
+  - **Archivos en `.gitignore`:** Si un archivo de notas dentro de un repositorio de trabajo está en `.gitignore`, `git ls-files` falla con código 1. La app asumiría que es "huérfano" si se usara comprobación de Git. La arquitectura actual desacopla la sincronización a carpetas explícitas para evitar este problema.
   - **Repositorios desconectados o sin commit inicial:** Un repo recién hecho (`git init`) sin commits provocará que `git ls-files` falle, subiéndolo todo a Drive.
   - **Fallo de proceso `git.exe`:** Si `git` se congela o no está en PATH en un entorno alternativo, el fallback asume `false` y sube todo indiscriminadamente.
 

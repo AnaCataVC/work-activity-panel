@@ -3,7 +3,7 @@
 [![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3.0-0078D4?logo=windows&logoColor=white)](https://learn.microsoft.com/windows/apps/winui/winui3/)
 [![Windows App SDK](https://img.shields.io/badge/Windows_App_SDK-2.4-00A4EF?logo=windows11&logoColor=white)](https://github.com/microsoft/WindowsAppSDK)
-[![Tests](https://img.shields.io/badge/Tests-xUnit%20(46%2F46%20Passed)-4EBA6F?logo=xunit&logoColor=white)](https://xunit.net/)
+[![Tests](https://img.shields.io/badge/Tests-xUnit%20(110%2F110%20Passed)-4EBA6F?logo=xunit&logoColor=white)](https://xunit.net/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 *Read this in [English](#english) | Léelo en [Español](#español)*

@@ -1,8 +1,10 @@
 # Engineering Learning: High-Performance Unversioned AI Context Discovery & Infrastructure Secret Scanning
 
+> [!NOTE]
+> **Archived Document:** This functionality has been decoupled from `work-activity-panel` and migrated to the dedicated `claude-desktop-tools` repository.
 > **Date:** 2026-08-28  
-> **Status:** Implemented in `WorkActivityPanel.Services.ClaudeConfigDiscovery` & `DriveSyncService`  
-> **Target Framework:** .NET 9 (`net9.0-windows10.0.26100.0`)
+> **Status:** Archived / Migrated to `claude-desktop-tools`  
+> **Target Framework:** .NET 9 (`net9.0`)
 
 ---
 
