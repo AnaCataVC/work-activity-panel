@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using WorkActivityPanel.Models;
 using WorkActivityPanel.Services;
 using Xunit;
@@ -64,6 +65,15 @@ public class UpdateServiceTests
     {
         var service = new UpdateService();
         Assert.Equal("2.0.0", service.CurrentAppVersion);
+    }
+
+    [Fact]
+    public async Task DownloadAndInstallAsync_ThrowsWhenUpdateHasNoDownloadUrl()
+    {
+        var service = new UpdateService();
+        var update = new UpdateInfo { CurrentVersion = "1.0.0" };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.DownloadAndInstallAsync(update));
     }
 }
 

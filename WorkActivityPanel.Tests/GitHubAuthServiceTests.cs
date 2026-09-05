@@ -172,41 +172,28 @@ public class GitHubAuthServiceTests
     [Fact]
     public void UpdateSettings_PersistsAndTriggersEvent()
     {
-        // Arrange
-        var tempFile = Path.Combine(Path.GetTempPath(), $"test_gh_settings_{Guid.NewGuid():N}.json");
-        LocalSettingsHelper.SettingsFilePath = tempFile;
+        using var _ = new TempSettingsFileScope();
 
-        try
+        bool eventTriggered = false;
+        _service.SettingsChanged += (s, e) => eventTriggered = true;
+
+        var newSettings = new GitHubSettings
         {
-            bool eventTriggered = false;
-            _service.SettingsChanged += (s, e) => eventTriggered = true;
+            WorkAccount = "CataVillalobosC",
+            PersonalAccount = "AnaCataVC",
+            AutoSwitchOnWorkStart = true,
+            AutoSwitchOnWorkEnd = false
+        };
 
-            var newSettings = new GitHubSettings
-            {
-                WorkAccount = "CataVillalobosC",
-                PersonalAccount = "AnaCataVC",
-                AutoSwitchOnWorkStart = true,
-                AutoSwitchOnWorkEnd = false
-            };
+        // Act
+        _service.UpdateSettings(newSettings);
 
-            // Act
-            _service.UpdateSettings(newSettings);
-
-            // Assert
-            Assert.True(eventTriggered);
-            Assert.Equal("CataVillalobosC", _service.Settings.WorkAccount);
-            Assert.Equal("AnaCataVC", _service.Settings.PersonalAccount);
-            Assert.True(_service.Settings.AutoSwitchOnWorkStart);
-            Assert.False(_service.Settings.AutoSwitchOnWorkEnd);
-        }
-        finally
-        {
-            LocalSettingsHelper.ResetToDefaultPath();
-            if (File.Exists(tempFile))
-            {
-                try { File.Delete(tempFile); } catch { }
-            }
-        }
+        // Assert
+        Assert.True(eventTriggered);
+        Assert.Equal("CataVillalobosC", _service.Settings.WorkAccount);
+        Assert.Equal("AnaCataVC", _service.Settings.PersonalAccount);
+        Assert.True(_service.Settings.AutoSwitchOnWorkStart);
+        Assert.False(_service.Settings.AutoSwitchOnWorkEnd);
     }
 
     [Fact]
