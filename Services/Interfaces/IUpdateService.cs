@@ -33,4 +33,10 @@ public interface IUpdateService
     /// Launches the downloaded installer executable to start the in-place upgrade.
     /// </summary>
     void LaunchInstaller(string installerPath);
+
+    /// <summary>
+    /// Downloads <paramref name="update"/>'s installer with progress reporting and launches it.
+    /// </summary>
+    /// <param name="onBeforeLaunch">Invoked right after the download completes, before the installer starts.</param>
+    Task DownloadAndInstallAsync(UpdateInfo update, IProgress<double>? progress = null, Action? onBeforeLaunch = null);
 }

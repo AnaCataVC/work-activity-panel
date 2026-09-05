@@ -1,4 +1,3 @@
-using System.Text.Json;
 using WorkActivityPanel.Helpers;
 using WorkActivityPanel.Models;
 using WorkActivityPanel.Services.Interfaces;
@@ -177,39 +176,9 @@ public class ScheduleService : IScheduleService, IDisposable
         ScheduleWorkStart();
     }
 
-    private WorkSchedule LoadSchedule()
-    {
-        try
-        {
-            var jsonString = LocalSettingsHelper.Get(ScheduleSettingsKey);
-            if (!string.IsNullOrEmpty(jsonString))
-            {
-                var schedule = JsonSerializer.Deserialize<WorkSchedule>(jsonString);
-                if (schedule != null)
-                {
-                    return schedule;
-                }
-            }
-        }
-        catch
-        {
-            // Fallback to default
-        }
-        return new WorkSchedule();
-    }
+    private static WorkSchedule LoadSchedule() => LocalSettingsHelper.LoadJson<WorkSchedule>(ScheduleSettingsKey);
 
-    private void SaveSchedule(WorkSchedule schedule)
-    {
-        try
-        {
-            var jsonString = JsonSerializer.Serialize(schedule);
-            LocalSettingsHelper.Set(ScheduleSettingsKey, jsonString);
-        }
-        catch
-        {
-            // Ignore saving errors
-        }
-    }
+    private static void SaveSchedule(WorkSchedule schedule) => LocalSettingsHelper.SaveJson(ScheduleSettingsKey, schedule);
 
     public void Dispose()
     {

@@ -39,4 +39,10 @@ public interface IAppLauncherService
     /// Resolves the absolute path to the Granola executable if installed on the system.
     /// </summary>
     string? GetGranolaExecutablePath();
+
+    /// <summary>
+    /// Opens a URL or file path with the OS-registered shell handler, ignoring a null or blank
+    /// value and swallowing any launch failure.
+    /// </summary>
+    void OpenUrl(string? url);
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using WorkActivityPanel.Helpers;
 using WorkActivityPanel.Services.Interfaces;
 
 namespace WorkActivityPanel.Services;
@@ -80,16 +81,12 @@ public class AppLauncherService : IAppLauncherService
         string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
 
-        string[] candidatePaths =
-        [
+        return PathHelpers.FindFirstExisting(
             Path.Combine(localAppData, "Programs", "@granolaelectron", "Granola.exe"),
             Path.Combine(localAppData, "Programs", "Granola", "Granola.exe"),
             Path.Combine(localAppData, "Granola", "Granola.exe"),
             Path.Combine(programFiles, "Granola", "Granola.exe"),
-            Path.Combine(programFilesX86, "Granola", "Granola.exe")
-        ];
-
-        return candidatePaths.FirstOrDefault(File.Exists);
+            Path.Combine(programFilesX86, "Granola", "Granola.exe"));
     }
 
     /// <inheritdoc />
@@ -137,6 +134,25 @@ public class AppLauncherService : IAppLauncherService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to launch Granola.");
+        }
+    }
+
+    /// <inheritdoc />
+    public void OpenUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to open URL {Url}.", url);
         }
     }
 }

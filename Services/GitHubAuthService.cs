@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -310,14 +309,10 @@ public class GitHubAuthService : IGitHubAuthService
         string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-        string[] candidateFiles =
-        [
+        return PathHelpers.FindFirstExisting(
             Path.Combine(appData, "GitHub CLI", "hosts.yml"),
             Path.Combine(userProfile, ".config", "gh", "hosts.yml"),
-            Path.Combine(localAppData, "GitHub CLI", "hosts.yml")
-        ];
-
-        return candidateFiles.FirstOrDefault(File.Exists);
+            Path.Combine(localAppData, "GitHub CLI", "hosts.yml"));
     }
 
     private static string? FindGhExecutable()
@@ -326,48 +321,14 @@ public class GitHubAuthService : IGitHubAuthService
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
 
-        string[] candidates =
-        [
+        // Fall back to "gh" so the OS resolves it via PATH if not found in any known install location.
+        return PathHelpers.FindFirstExisting(
             Path.Combine(programFiles, "GitHub CLI", "gh.exe"),
             Path.Combine(localAppData, "Programs", "GitHub CLI", "gh.exe"),
-            Path.Combine(programFilesX86, "GitHub CLI", "gh.exe")
-        ];
-
-        foreach (var path in candidates)
-        {
-            if (File.Exists(path))
-            {
-                return path;
-            }
-        }
-
-        // Test if "gh" is in PATH by attempting a silent resolve
-        return "gh";
+            Path.Combine(programFilesX86, "GitHub CLI", "gh.exe")) ?? "gh";
     }
 
-    private GitHubSettings LoadSettings()
-    {
-        try
-        {
-            var json = LocalSettingsHelper.Get(SettingsKey);
-            if (!string.IsNullOrEmpty(json))
-            {
-                var settings = JsonSerializer.Deserialize<GitHubSettings>(json);
-                if (settings != null) return settings;
-            }
-        }
-        catch { }
+    private static GitHubSettings LoadSettings() => LocalSettingsHelper.LoadJson<GitHubSettings>(SettingsKey);
 
-        return new GitHubSettings();
-    }
-
-    private void SaveSettings()
-    {
-        try
-        {
-            var json = JsonSerializer.Serialize(_settings);
-            LocalSettingsHelper.Set(SettingsKey, json);
-        }
-        catch { }
-    }
+    private void SaveSettings() => LocalSettingsHelper.SaveJson(SettingsKey, _settings);
 }

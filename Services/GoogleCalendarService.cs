@@ -99,6 +99,15 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
         _logger.LogInformation("Calendar filter settings updated.");
     }
 
+    /// <summary>Builds the Basic Authorization header for the iCal feed's optional key/app password.</summary>
+    private static AuthenticationHeaderValue? BuildBasicAuthHeader(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return null;
+
+        var authBytes = Encoding.UTF8.GetBytes($"calendar:{key.Trim()}");
+        return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+    }
+
     private HttpClient CreateConfiguredHttpClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
@@ -110,11 +119,10 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
         };
         client.DefaultRequestHeaders.Pragma.Add(new NameValueHeaderValue("no-cache"));
 
-        if (!string.IsNullOrWhiteSpace(_iCalKey))
+        var authHeader = BuildBasicAuthHeader(_iCalKey);
+        if (authHeader != null)
         {
-            // If a key or app password is provided, attach Basic Authorization
-            var authBytes = Encoding.UTF8.GetBytes($"calendar:{_iCalKey}");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+            client.DefaultRequestHeaders.Authorization = authHeader;
         }
 
         return client;
@@ -138,10 +146,10 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            if (!string.IsNullOrWhiteSpace(key))
+            var authHeader = BuildBasicAuthHeader(key);
+            if (authHeader != null)
             {
-                var authBytes = Encoding.UTF8.GetBytes($"calendar:{key.Trim()}");
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+                client.DefaultRequestHeaders.Authorization = authHeader;
             }
 
             var response = await client.GetStringAsync(url);

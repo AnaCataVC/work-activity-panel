@@ -96,6 +96,42 @@ public static class LocalSettingsHelper
         }
     }
 
+    /// <summary>
+    /// Deserializes the JSON stored under <paramref name="key"/>, or a fresh <typeparamref name="T"/>
+    /// if the key is missing or the stored value is malformed.
+    /// </summary>
+    public static T LoadJson<T>(string key) where T : new()
+    {
+        try
+        {
+            var json = Get(key);
+            if (!string.IsNullOrEmpty(json))
+            {
+                var value = JsonSerializer.Deserialize<T>(json);
+                if (value != null) return value;
+            }
+        }
+        catch
+        {
+            // Fallback to a fresh instance
+        }
+
+        return new T();
+    }
+
+    /// <summary>Serializes <paramref name="value"/> to JSON and stores it under <paramref name="key"/>.</summary>
+    public static void SaveJson<T>(string key, T value)
+    {
+        try
+        {
+            Set(key, JsonSerializer.Serialize(value));
+        }
+        catch
+        {
+            // Ignore serialization/save errors
+        }
+    }
+
     private static void Save()
     {
         try

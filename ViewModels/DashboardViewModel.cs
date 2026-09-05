@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -646,15 +645,7 @@ public partial class DashboardViewModel : ObservableObject
             url = "https://drive.google.com/drive/my-drive";
         }
 
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        _appLauncherService.OpenUrl(url);
     }
 
 
@@ -795,18 +786,7 @@ public partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private void OpenMeetingLink(CalendarEvent? meeting)
     {
-        if (meeting != null && !string.IsNullOrWhiteSpace(meeting.MeetingLink))
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = meeting.MeetingLink,
-                    UseShellExecute = true
-                });
-            }
-            catch { }
-        }
+        _appLauncherService.OpenUrl(meeting?.MeetingLink);
     }
 
     [RelayCommand]
@@ -999,15 +979,7 @@ public partial class DashboardViewModel : ObservableObject
             ? $"https://github.com/{ActiveGitHubAccount}"
             : "https://github.com";
 
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        _appLauncherService.OpenUrl(url);
     }
 
     private async Task CheckForUpdatesInBackgroundAsync()
@@ -1055,13 +1027,10 @@ public partial class DashboardViewModel : ObservableObject
                 });
             });
 
-            var installerPath = await _updateService.DownloadUpdateAsync(
-                _latestUpdateInfo.DownloadUrl,
-                _latestUpdateInfo.InstallerFileName,
-                progress);
-
-            UpdateDownloadStatusText = "Iniciando instalador...";
-            _updateService.LaunchInstaller(installerPath);
+            await _updateService.DownloadAndInstallAsync(
+                _latestUpdateInfo,
+                progress,
+                onBeforeLaunch: () => UpdateDownloadStatusText = "Iniciando instalador...");
         }
         catch (Exception ex)
         {
@@ -1076,18 +1045,7 @@ public partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private void OpenReleaseNotes()
     {
-        if (!string.IsNullOrEmpty(_latestUpdateInfo?.ReleaseHtmlUrl))
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = _latestUpdateInfo.ReleaseHtmlUrl,
-                    UseShellExecute = true
-                });
-            }
-            catch { }
-        }
+        _appLauncherService.OpenUrl(_latestUpdateInfo?.ReleaseHtmlUrl);
     }
 
     [RelayCommand]

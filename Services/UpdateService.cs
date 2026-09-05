@@ -204,6 +204,19 @@ public class UpdateService : IUpdateService, IDisposable
         });
     }
 
+    /// <inheritdoc />
+    public async Task DownloadAndInstallAsync(UpdateInfo update, IProgress<double>? progress = null, Action? onBeforeLaunch = null)
+    {
+        if (string.IsNullOrWhiteSpace(update.DownloadUrl))
+        {
+            throw new ArgumentException("Update has no download URL.", nameof(update));
+        }
+
+        var installerPath = await DownloadUpdateAsync(update.DownloadUrl, update.InstallerFileName, progress);
+        onBeforeLaunch?.Invoke();
+        LaunchInstaller(installerPath);
+    }
+
     public static string NormalizeVersionString(string rawVersion)
     {
         if (string.IsNullOrWhiteSpace(rawVersion)) return "0.0.0";
