@@ -32,7 +32,7 @@ work-activity-panel/
 │   └── SettingsViewModel.cs        # Settings persistence, schedule configuration, iCal/Drive settings, autostart
 ├── Models/
 │   ├── CalendarEvent.cs            # Meeting model (summary, start/end, meeting URL, status)
-│   ├── DriveSyncSettings.cs        # Google Apps Script URL, auth token, local folder, filters
+│   ├── DriveSyncSettings.cs        # Google Apps Script URL, auth token, list of local folder Sources, filters
 │   ├── GitHubAccountInfo.cs        # GitHub CLI active/available accounts data model
 │   ├── SyncModels.cs               # File metadata, SHA-256 index, upload requests/responses
 │   ├── UpdateInfo.cs               # GitHub Releases update check & download metadata
@@ -49,7 +49,8 @@ work-activity-panel/
 │   ├── AutostartHelper.cs          # Windows registry startup configuration
 │   ├── Converters.cs               # XAML value converters (status colors, visibility, date formatting)
 │   ├── ICalParser.cs               # RFC 5545 parser (unfolding, timezone normalization, meeting links)
-│   └── LocalSettingsHelper.cs      # JSON persistence in %LOCALAPPDATA%\WorkActivityPanel
+│   ├── LocalSettingsHelper.cs      # JSON persistence in %LOCALAPPDATA%\WorkActivityPanel (incl. generic LoadJson/SaveJson<T>)
+│   └── PathHelpers.cs              # Shared "find first existing candidate path" lookup
 ├── WorkActivityPanel.Tests/        # xUnit unit test suite for services, models, and parsers
 ├── docs/                           # Setup guides, architecture, and learning documentation
 │   ├── README.md                   # Documentation catalog and architectural index
@@ -120,6 +121,7 @@ Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "
 - Hashing must use streaming SHA-256 (`SHA256.Create()`) to avoid loading large files fully into memory.
 - Multi-criteria filtering (extension whitelist/blacklist, system folder exclusions, maximum file size in MB) must be strictly enforced before generating upload requests.
 - All HTTP requests to Google Apps Script Web Apps must follow redirects (`HttpClientHandler.AllowAutoRedirect = true`) and carry the configured authentication token in the request header or payload.
+- Sync targets are a list of `SyncSource` entries (`DriveSyncSettings.Sources`), each a local folder paired with its own Drive destination subfolder; all sources land side by side in Drive, never nested inside one another. `DriveSyncService.RunSyncAsync` takes an optional `onlySource` to sync a single configured folder instead of all of them — used by the per-row "sync this folder" action in Settings — while omitting it keeps the full-sync behavior.
 
 ### 4.5 Settings & Local Persistence
 - Configuration files are stored as serialized JSON under `%LOCALAPPDATA%\WorkActivityPanel\` via `LocalSettingsHelper.cs`.

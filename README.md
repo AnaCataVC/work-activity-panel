@@ -27,6 +27,7 @@
   - Lightweight Google Apps Script Web App endpoint (no complex Google Cloud project or third-party client required).
   - SHA-256 hash incremental change detection (only uploads new or modified files).
   - Multi-criteria filtering (whitelist/blacklist extensions, folder exclusion, file size limits).
+  - Configure any number of local folders as sync sources, each with its own Drive subfolder; sync all of them at once or just one at a time.
   - Step-by-step setup guide: [Google Drive Setup Guide](docs/google-setup-guide.md).
 - 💻 **Fluent Design & System Tray:** Native Windows 11 Mica backdrop, dark/light theme support, and minimize-to-system-tray capability.
 - ⚡ **Event-Driven Efficiency:** Zero continuous polling overhead; uses precision scheduled timers.
@@ -102,6 +103,7 @@ For detailed architecture specifications, setup guides, and engineering learning
   - Endpoint ligero mediante Google Apps Script Web App (sin proyectos complejos de GCP ni clientes pesados de terceros).
   - Detección incremental de cambios por hash SHA-256 (solo sube archivos nuevos o modificados).
   - Filtrado multi-criterio (extensiones permitidas/ignoradas, exclusión de carpetas del sistema, límite de MB).
+  - Configura cualquier cantidad de carpetas locales como origen, cada una con su propia subcarpeta en Drive; sincroniza todas a la vez o solo una puntual.
   - Guía paso a paso: [Guía de Configuración de Google Drive](docs/google-setup-guide.md).
 - 💻 **Diseño Fluent y Bandeja del Sistema:** Efecto Mica nativo de Windows 11, soporte para temas claro/oscuro y minimizado a la bandeja del sistema (System Tray).
 - ⚡ **Eficiencia Basada en Eventos:** Cero sobrecarga de sondeo (polling continuo); utiliza temporizadores programados precisos.

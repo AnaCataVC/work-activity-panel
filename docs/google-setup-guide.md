@@ -153,9 +153,9 @@ function doPost(e) {
 2. In the **Google Drive Backup** section:
    - Paste the **Web App URL** copied from Step 3.
    - Click **Test Connection** to verify response.
-   - Select your local working directory to back up.
+   - Under **Folders to sync**, add each local folder you want to back up and name the Drive subfolder it should land in. All of them sit side by side in Drive — add as many as you need.
    - Save your configuration.
-3. You can trigger synchronization anytime from the dashboard or enable automatic end-of-workday syncing.
+3. Sync everything at once from the dashboard's **Sync Now** button, or sync just one folder from its own row in Settings (the ⟳ icon next to it) — handy for testing a single folder's config without waiting on the rest. You can also enable automatic end-of-workday syncing.
 
 ---
 
@@ -310,10 +310,10 @@ function doPost(e) {
 2. En la sección **Copia de Seguridad en Google Drive**:
    - Pega la **URL de la Web App** copiada en el paso anterior.
    - Haz clic en **Probar Conexión** para verificar que responde correctamente.
-   - Agrega en **Carpetas a sincronizar** cada carpeta local que deseas respaldar e indica el nombre de la subcarpeta que tendrá en Drive. Todas quedan al mismo nivel dentro de la carpeta del respaldo.
+   - Agrega en **Carpetas a sincronizar** cada carpeta local que deseas respaldar e indica el nombre de la subcarpeta que tendrá en Drive. Todas quedan al mismo nivel dentro de la carpeta del respaldo — agrega las que necesites.
    - Opcionalmente pega la **URL de la carpeta de Google Drive** para que el botón **Abrir Drive** del panel principal la abra directamente.
    - Guarda los cambios.
-3. ¡Listo! Puedes sincronizar en cualquier momento desde el panel principal o dejar que se sincronice automáticamente al terminar tu jornada laboral.
+3. ¡Listo! Puedes sincronizar todo de una vez desde el botón **Sincronizar Ahora** del panel principal, o sincronizar solo una carpeta puntual desde su propia fila en Ajustes (ícono ⟳) — útil para probar la config de una sola carpeta sin esperar al resto. También puedes dejar que se sincronice automáticamente al terminar tu jornada laboral.
 
 ---
 
