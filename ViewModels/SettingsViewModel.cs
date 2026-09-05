@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,6 +22,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IDriveSyncService _driveSyncService;
     private readonly IGitHubAuthService _gitHubAuthService;
     private readonly IUpdateService _updateService;
+    private readonly IAppLauncherService _appLauncherService;
 
     // About & Update Configuration
     public string AppVersionText => $"Versión {_updateService.CurrentAppVersion}";
@@ -168,13 +168,15 @@ public partial class SettingsViewModel : ObservableObject
         IGoogleCalendarService calendarService,
         IDriveSyncService driveSyncService,
         IGitHubAuthService gitHubAuthService,
-        IUpdateService updateService)
+        IUpdateService updateService,
+        IAppLauncherService appLauncherService)
     {
         _scheduleService = scheduleService;
         _calendarService = calendarService;
         _driveSyncService = driveSyncService;
         _gitHubAuthService = gitHubAuthService;
         _updateService = updateService;
+        _appLauncherService = appLauncherService;
 
         LoadSettings();
     }
@@ -271,6 +273,24 @@ public partial class SettingsViewModel : ObservableObject
         {
             DriveSyncSources.Remove(source);
         }
+    }
+
+    /// <summary>
+    /// Syncs only this one folder instead of every configured source. Saves the current
+    /// settings first so an edit made to this row (destination name, filters) is respected.
+    /// </summary>
+    [RelayCommand]
+    public async Task SyncDriveSource(SyncSource? source)
+    {
+        if (source == null) return;
+
+        SaveDriveSettings();
+
+        var summary = await _driveSyncService.RunSyncAsync(onlySource: source);
+        UpdateDriveStatus();
+
+        SaveConfirmationMessage = summary.Message;
+        ShowSaveConfirmation = true;
     }
 
     [RelayCommand]
@@ -547,13 +567,10 @@ public partial class SettingsViewModel : ObservableObject
                 });
             });
 
-            var installerPath = await _updateService.DownloadUpdateAsync(
-                _latestUpdateInfo.DownloadUrl,
-                _latestUpdateInfo.InstallerFileName,
-                progress);
-
-            UpdateStatusText = "Ejecutando instalador...";
-            _updateService.LaunchInstaller(installerPath);
+            await _updateService.DownloadAndInstallAsync(
+                _latestUpdateInfo,
+                progress,
+                onBeforeLaunch: () => UpdateStatusText = "Ejecutando instalador...");
         }
         catch (Exception ex)
         {
@@ -568,18 +585,7 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void OpenReleaseNotes()
     {
-        if (!string.IsNullOrEmpty(_latestUpdateInfo?.ReleaseHtmlUrl))
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = _latestUpdateInfo.ReleaseHtmlUrl,
-                    UseShellExecute = true
-                });
-            }
-            catch { }
-        }
+        _appLauncherService.OpenUrl(_latestUpdateInfo?.ReleaseHtmlUrl);
     }
 }
 

@@ -13,6 +13,7 @@ namespace WorkActivityPanel.Tests;
 public class DriveSyncServiceTests : IDisposable
 {
     private readonly string _testDir;
+    private readonly TempSettingsFileScope _settingsScope;
     private readonly Mock<IScheduleService> _scheduleMock;
     private readonly DriveSyncService _service;
 
@@ -21,7 +22,7 @@ public class DriveSyncServiceTests : IDisposable
         _testDir = Path.Combine(Path.GetTempPath(), "WorkActivityPanel_SyncTests_" + Guid.NewGuid());
         Directory.CreateDirectory(_testDir);
 
-        LocalSettingsHelper.SettingsFilePath = Path.Combine(_testDir, "test_settings.json");
+        _settingsScope = new TempSettingsFileScope(Path.Combine(_testDir, "test_settings.json"));
 
         _scheduleMock = new Mock<IScheduleService>();
         _scheduleMock.Setup(s => s.CurrentSchedule).Returns(new WorkSchedule());
@@ -33,7 +34,7 @@ public class DriveSyncServiceTests : IDisposable
     public void Dispose()
     {
         _service.Dispose();
-        LocalSettingsHelper.ResetToDefaultPath();
+        _settingsScope.Dispose();
         if (Directory.Exists(_testDir))
         {
             try { Directory.Delete(_testDir, true); } catch { }
@@ -439,6 +440,33 @@ public class DriveSyncServiceTests : IDisposable
 
         // The service should start normally (no exception) — legacy entries are migrated in-memory
         Assert.NotNull(freshService.Settings);
+    }
+
+    [Fact]
+    public async Task RunSyncAsync_ShouldOnlyScanTheGivenSource_WhenOnlySourceIsProvided()
+    {
+        // Arrange: one source has files, the other is empty. If onlySource were ignored,
+        // the non-empty source's files would still be picked up and TotalScanned would be > 0.
+        var folderWithFiles = Path.Combine(_testDir, "with-files");
+        var emptyFolder = Path.Combine(_testDir, "empty");
+        Directory.CreateDirectory(folderWithFiles);
+        Directory.CreateDirectory(emptyFolder);
+        File.WriteAllText(Path.Combine(folderWithFiles, "a.txt"), "content");
+        File.WriteAllText(Path.Combine(folderWithFiles, "b.txt"), "content");
+
+        var emptySource = new SyncSource { LocalFolderPath = emptyFolder };
+        _service.UpdateSettings(new DriveSyncSettings
+        {
+            WebAppUrl = "https://script.google.com/test",
+            Sources = { new SyncSource { LocalFolderPath = folderWithFiles }, emptySource }
+        });
+
+        // Act
+        var summary = await _service.RunSyncAsync(onlySource: emptySource);
+
+        // Assert: zero files scanned proves the other source was skipped, and no upload
+        // (network call) was ever attempted since the file list was empty.
+        Assert.Equal(0, summary.TotalScanned);
     }
 
     [Fact]

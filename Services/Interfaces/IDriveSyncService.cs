@@ -36,10 +36,12 @@ public interface IDriveSyncService
     /// <param name="progress">Progress reporter for UI updates.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="forceFullSync">When true, ignores the local SHA-256 hash index and uploads all files.</param>
+    /// <param name="onlySource">When set, syncs only this configured source instead of all of them.</param>
     Task<SyncResultSummary> RunSyncAsync(
         IProgress<SyncProgressReport>? progress = null,
         CancellationToken cancellationToken = default,
-        bool forceFullSync = false);
+        bool forceFullSync = false,
+        SyncSource? onlySource = null);
 
     /// <summary>
     /// Clears the local SHA-256 hash index so the next sync will re-evaluate and re-upload all files.

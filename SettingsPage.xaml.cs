@@ -47,4 +47,12 @@ public sealed partial class SettingsPage : Page
             ViewModel.RemoveDriveSyncSource(source);
         }
     }
+
+    private async void SyncSourceButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: Models.SyncSource source })
+        {
+            await ViewModel.SyncDriveSource(source);
+        }
+    }
 }

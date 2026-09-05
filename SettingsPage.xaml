@@ -208,12 +208,21 @@
                                                             <TextBox Text="{x:Bind DestinationPrefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Height="32" Padding="6,2" PlaceholderText="ej: mi-proyecto" />
                                                         </StackPanel>
                                                     </StackPanel>
-                                                    <Button Grid.Column="1" ToolTipService.ToolTip="Eliminar carpeta"
-                                                            Tag="{x:Bind}"
-                                                            Click="DeleteSourceButton_Click"
-                                                            VerticalAlignment="Center">
-                                                        <FontIcon Glyph="&#xE74D;" FontSize="14" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                                                    </Button>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                        <Button ToolTipService.ToolTip="Sincronizar solo esta carpeta"
+                                                                AutomationProperties.Name="Sincronizar solo esta carpeta"
+                                                                Tag="{x:Bind}"
+                                                                Click="SyncSourceButton_Click"
+                                                                VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE895;" FontSize="14" />
+                                                        </Button>
+                                                        <Button ToolTipService.ToolTip="Eliminar carpeta"
+                                                                Tag="{x:Bind}"
+                                                                Click="DeleteSourceButton_Click"
+                                                                VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE74D;" FontSize="14" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                        </Button>
+                                                    </StackPanel>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>

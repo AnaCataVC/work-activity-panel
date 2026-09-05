@@ -157,7 +157,8 @@ public class DriveSyncService : IDriveSyncService, IDisposable
     public async Task<SyncResultSummary> RunSyncAsync(
         IProgress<SyncProgressReport>? progress = null,
         CancellationToken cancellationToken = default,
-        bool forceFullSync = false)
+        bool forceFullSync = false,
+        SyncSource? onlySource = null)
     {
         if (Interlocked.CompareExchange(ref _isSyncing, 1, 0) != 0)
         {
@@ -194,7 +195,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                 StatusMessage = "Escaneando archivos locales..."
             });
 
-            var localFiles = await CollectFilesAsync(progress, token);
+            var localFiles = await CollectFilesAsync(progress, token, onlySource);
             summary.TotalScanned = localFiles.Count;
 
             int processed = 0;
@@ -796,9 +797,10 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     /// <summary>
     /// The folders to synchronize. A source repeating another one's folder and destination
-    /// is dropped so it is not uploaded twice.
+    /// is dropped so it is not uploaded twice. When <paramref name="onlySource"/> is given,
+    /// every other configured source is skipped so only that one folder gets synced.
     /// </summary>
-    private IEnumerable<SyncSource> EnumerateSources()
+    private IEnumerable<SyncSource> EnumerateSources(SyncSource? onlySource = null)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -807,18 +809,23 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             if (string.IsNullOrWhiteSpace(source.LocalFolderPath))
                 continue;
 
+            if (onlySource != null &&
+                !string.Equals(source.LocalFolderPath, onlySource.LocalFolderPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             if (seen.Add($"{source.EffectiveDestinationPrefix}|{source.LocalFolderPath}"))
                 yield return source;
         }
     }
 
     /// <summary>
-    /// Scans every configured source folder and returns the files to upload with their
-    /// destination paths already resolved.
+    /// Scans the configured source folders and returns the files to upload with their
+    /// destination paths already resolved. Restricted to <paramref name="onlySource"/> when given.
     /// </summary>
     private async Task<List<LocalFileMetadata>> CollectFilesAsync(
         IProgress<SyncProgressReport>? progress,
-        CancellationToken token)
+        CancellationToken token,
+        SyncSource? onlySource = null)
     {
         return await Task.Run(() =>
         {
@@ -830,7 +837,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                 _settings.ExcludedFolders,
                 _settings.MaxFileSizeMb);
 
-            foreach (var source in EnumerateSources())
+            foreach (var source in EnumerateSources(onlySource))
             {
                 token.ThrowIfCancellationRequested();
 
@@ -1043,18 +1050,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     private DriveSyncSettings LoadSettings()
     {
-        try
-        {
-            var json = LocalSettingsHelper.Get(SettingsKey);
-            if (!string.IsNullOrEmpty(json))
-            {
-                var settings = JsonSerializer.Deserialize<DriveSyncSettings>(json);
-                if (settings != null) return MigrateLegacyMainFolder(settings);
-            }
-        }
-        catch { }
-
-        return new DriveSyncSettings();
+        return MigrateLegacyMainFolder(LocalSettingsHelper.LoadJson<DriveSyncSettings>(SettingsKey));
     }
 
     /// <summary>
@@ -1083,12 +1079,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     private void SaveSettings()
     {
-        try
-        {
-            var json = JsonSerializer.Serialize(_settings);
-            LocalSettingsHelper.Set(SettingsKey, json);
-        }
-        catch { }
+        LocalSettingsHelper.SaveJson(SettingsKey, _settings);
     }
 
     private static string GetMimeType(string fileName)
