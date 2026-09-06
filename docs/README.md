@@ -59,6 +59,8 @@ Architectural postmortems capturing hard-earned lessons, pitfalls, and design pa
     - Disk I/O reduction using metadata-first validation (`LastWriteTimeUtcTicks` + `FileSize`), lazy SHA-256 hashing, 1 KB fast-path threshold, seamless JSON schema migration, and thread-safe `IsMetadataConfirmed` design.
 11. **[Calendar Event Mutation Detection & In-Place Collection Reconciliation](learning/calendar-event-mutation-and-inplace-reconciliation.md)**
     - Resolving stale meeting displays when event times are rescheduled in iCal feeds (`UID` immutability trap), value-based equality matching, flicker-free in-place WinUI 3 collection reconciliation, and anti-cache HTTP headers.
+12. **[Drive Sync: Apps Script Folder-ID Cache](learning/drive-sync-appsscript-folder-id-cache.md)**
+    - Caching resolved Drive folder IDs in `PropertiesService` to skip repeat `getFoldersByName` searches, `getFolderById` self-healing on deleted/moved folders, and the Drive Trash edge case where a cached folder must be checked with `isTrashed()` explicitly.
 
 ---
 

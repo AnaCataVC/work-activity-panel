@@ -50,7 +50,8 @@ work-activity-panel/
 │   ├── Converters.cs               # XAML value converters (status colors, visibility, date formatting)
 │   ├── ICalParser.cs               # RFC 5545 parser (unfolding, timezone normalization, meeting links)
 │   ├── LocalSettingsHelper.cs      # JSON persistence in %LOCALAPPDATA%\WorkActivityPanel (incl. generic LoadJson/SaveJson<T>)
-│   └── PathHelpers.cs              # Shared "find first existing candidate path" lookup
+│   ├── PathHelpers.cs              # Shared "find first existing candidate path" lookup
+│   └── ProcessLaunchHelper.cs      # Shared shell-execute launcher for apps, URLs, and URI schemes
 ├── WorkActivityPanel.Tests/        # xUnit unit test suite for services, models, and parsers
 ├── docs/                           # Setup guides, architecture, and learning documentation
 │   ├── README.md                   # Documentation catalog and architectural index
@@ -122,6 +123,7 @@ Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "
 - Multi-criteria filtering (extension whitelist/blacklist, system folder exclusions, maximum file size in MB) must be strictly enforced before generating upload requests.
 - All HTTP requests to Google Apps Script Web Apps must follow redirects (`HttpClientHandler.AllowAutoRedirect = true`) and carry the configured authentication token in the request header or payload.
 - Sync targets are a list of `SyncSource` entries (`DriveSyncSettings.Sources`), each a local folder paired with its own Drive destination subfolder; all sources land side by side in Drive, never nested inside one another. `DriveSyncService.RunSyncAsync` takes an optional `onlySource` to sync a single configured folder instead of all of them — used by the per-row "sync this folder" action in Settings — while omitting it keeps the full-sync behavior.
+- The `Code.gs` bridge template (`docs/google-setup-guide.md`) caches resolved Drive folder IDs in `PropertiesService` so a repeat upload into an already-seen path does a direct `getFolderById` lookup instead of re-walking the tree with `getFoldersByName` on every call — this is the main defense against sync staying slow once most of a tree is already mirrored. Keep this cache when editing the template; see `docs/learning/drive-sync-appsscript-folder-id-cache.md`.
 
 ### 4.5 Settings & Local Persistence
 - Configuration files are stored as serialized JSON under `%LOCALAPPDATA%\WorkActivityPanel\` via `LocalSettingsHelper.cs`.

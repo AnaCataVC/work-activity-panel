@@ -82,30 +82,54 @@ function doPost(e) {
     var relativePath = e.parameter.relativePath || fileName;
     var mimeType = e.parameter.mimeType || "application/octet-stream";
 
-    // 4. Recreate subfolder hierarchy in Google Drive
+    // 4. Recreate subfolder hierarchy in Google Drive. Resolved folder IDs are cached in
+    //    PropertiesService so a repeat upload into an already-seen folder skips the
+    //    getFoldersByName search (an O(children) Drive query) and goes straight to a
+    //    direct getFolderById lookup instead. Without this, every single file uploaded
+    //    into a deeply nested path re-walks and re-searches the whole chain from the
+    //    root on every sync, which is the main reason uploads stay slow even once most
+    //    of the tree is already mirrored in Drive.
     var pathParts = relativePath.split("/");
     if (pathParts.length > 1) {
+      var folderCache = PropertiesService.getScriptProperties();
+      var cacheKeyParts = [];
       for (var i = 0; i < pathParts.length - 1; i++) {
         var subfolderName = pathParts[i].trim();
         if (subfolderName.length === 0) continue;
+        cacheKeyParts.push(subfolderName);
 
-        var matchingFolders = currentFolder.getFoldersByName(subfolderName);
-        if (matchingFolders.hasNext()) {
-          currentFolder = matchingFolders.next();
-        } else {
-          currentFolder = currentFolder.createFolder(subfolderName);
+        var cacheKey = "folderId:" + cacheKeyParts.join("/");
+        var cachedId = folderCache.getProperty(cacheKey);
+        var resolvedFolder = null;
+
+        if (cachedId) {
+          try {
+            resolvedFolder = DriveApp.getFolderById(cachedId);
+            if (resolvedFolder.isTrashed()) resolvedFolder = null; // getFolderById does not throw on trashed folders
+          } catch (staleIdErr) {
+            // Cached folder was deleted/moved out from under us; fall through and re-resolve.
+            resolvedFolder = null;
+          }
         }
+
+        if (!resolvedFolder) {
+          var matchingFolders = currentFolder.getFoldersByName(subfolderName);
+          resolvedFolder = matchingFolders.hasNext() ? matchingFolders.next() : currentFolder.createFolder(subfolderName);
+          folderCache.setProperty(cacheKey, resolvedFolder.getId());
+        }
+
+        currentFolder = resolvedFolder;
       }
     }
 
-    // 4. Clean overwrite under lock: Trash previous versions of the same file in this folder
+    // 5. Clean overwrite under lock: Trash previous versions of the same file in this folder
     var existingFiles = currentFolder.getFilesByName(fileName);
     while (existingFiles.hasNext()) {
       var oldFile = existingFiles.next();
       oldFile.setTrashed(true);
     }
 
-    // 5. Decode Base64 and save the new file
+    // 6. Decode Base64 and save the new file
     var data = Utilities.base64Decode(e.parameter.data);
     var blob = Utilities.newBlob(data, mimeType, fileName);
     var file = currentFolder.createFile(blob);
@@ -129,6 +153,8 @@ function doPost(e) {
 
 5. Replace `"PASTE_YOUR_FOLDER_ID_HERE"` on line 4 with the Folder ID copied in **Step 1**.
 6. Save the project (`Ctrl+S` or click the save icon).
+
+> **Already have this deployed and syncing feels slow?** Update your `Code.gs` with the version above (it adds folder-ID caching) and follow [Updating the Script in the Future](#-updating-the-script-in-the-future) to redeploy — no changes needed on the Windows app side, and no re-upload of files already in Drive is triggered.
 
 ---
 
@@ -156,6 +182,15 @@ function doPost(e) {
    - Under **Folders to sync**, add each local folder you want to back up and name the Drive subfolder it should land in. All of them sit side by side in Drive — add as many as you need.
    - Save your configuration.
 3. Sync everything at once from the dashboard's **Sync Now** button, or sync just one folder from its own row in Settings (the ⟳ icon next to it) — handy for testing a single folder's config without waiting on the rest. You can also enable automatic end-of-workday syncing.
+
+---
+
+### 🔄 Updating the Script in the Future
+If you modify the code in `Code.gs`:
+1. Click **Deploy** > **Manage deployments**.
+2. Click the pencil icon ✏️ to edit your active deployment.
+3. In the **Version** dropdown, select **New version**.
+4. Click **Deploy**.
 
 ---
 
@@ -237,30 +272,54 @@ function doPost(e) {
     var relativePath = e.parameter.relativePath || fileName;
     var mimeType = e.parameter.mimeType || "application/octet-stream";
 
-    // 4. Recrear la jerarquía de subcarpetas en Google Drive
+    // 4. Recrear la jerarquía de subcarpetas en Google Drive. Los IDs de carpeta resueltos
+    //    se cachean en PropertiesService para que una subida repetida a una carpeta ya vista
+    //    se salte la búsqueda getFoldersByName (una consulta Drive con costo O(hijos)) y vaya
+    //    directo a un getFolderById por ID. Sin esto, cada archivo subido a una ruta anidada
+    //    recorre y vuelve a buscar toda la cadena desde la raíz en cada sincronización, que es
+    //    la razón principal por la que las subidas siguen lentas aunque la mayor parte del
+    //    árbol ya esté reflejada en Drive.
     var pathParts = relativePath.split("/");
     if (pathParts.length > 1) {
+      var folderCache = PropertiesService.getScriptProperties();
+      var cacheKeyParts = [];
       for (var i = 0; i < pathParts.length - 1; i++) {
         var subfolderName = pathParts[i].trim();
         if (subfolderName.length === 0) continue;
+        cacheKeyParts.push(subfolderName);
 
-        var matchingFolders = currentFolder.getFoldersByName(subfolderName);
-        if (matchingFolders.hasNext()) {
-          currentFolder = matchingFolders.next();
-        } else {
-          currentFolder = currentFolder.createFolder(subfolderName);
+        var cacheKey = "folderId:" + cacheKeyParts.join("/");
+        var cachedId = folderCache.getProperty(cacheKey);
+        var resolvedFolder = null;
+
+        if (cachedId) {
+          try {
+            resolvedFolder = DriveApp.getFolderById(cachedId);
+            if (resolvedFolder.isTrashed()) resolvedFolder = null; // getFolderById no lanza error con carpetas en la papelera
+          } catch (staleIdErr) {
+            // La carpeta cacheada fue borrada o movida; sigue de largo y vuelve a resolverla.
+            resolvedFolder = null;
+          }
         }
+
+        if (!resolvedFolder) {
+          var matchingFolders = currentFolder.getFoldersByName(subfolderName);
+          resolvedFolder = matchingFolders.hasNext() ? matchingFolders.next() : currentFolder.createFolder(subfolderName);
+          folderCache.setProperty(cacheKey, resolvedFolder.getId());
+        }
+
+        currentFolder = resolvedFolder;
       }
     }
 
-    // 4. Sobrescritura limpia garantizada bajo lock: papelera a versiones anteriores
+    // 5. Sobrescritura limpia garantizada bajo lock: papelera a versiones anteriores
     var existingFiles = currentFolder.getFilesByName(fileName);
     while (existingFiles.hasNext()) {
       var oldFile = existingFiles.next();
       oldFile.setTrashed(true);
     }
 
-    // 5. Decodificar Base64 y guardar el nuevo archivo
+    // 6. Decodificar Base64 y guardar el nuevo archivo
     var data = Utilities.base64Decode(e.parameter.data);
     var blob = Utilities.newBlob(data, mimeType, fileName);
     var file = currentFolder.createFile(blob);
@@ -284,6 +343,8 @@ function doPost(e) {
 
 5. Reemplaza `"PEGA_AQUI_EL_ID_DE_TU_CARPETA"` en la línea 4 con el ID copiado en el **Paso 1**.
 6. Haz clic en el icono del disco para **Guardar** (o pulsa `Ctrl+S`).
+
+> **¿Ya tienes esto desplegado y la sincronización sigue lenta?** Actualiza tu `Código.gs` con la versión de arriba (agrega caché de IDs de carpeta) y sigue [Actualización del Script en el Futuro](#-actualización-del-script-en-el-futuro) para volver a desplegar — no se necesita ningún cambio en la app de Windows, y no se dispara una nueva subida de los archivos que ya están en Drive.
 
 ---
 
