@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -8,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WorkActivityPanel.Helpers;
 using WorkActivityPanel.Models;
 using WorkActivityPanel.Services.Interfaces;
 
@@ -94,13 +94,9 @@ public class UpdateService : IUpdateService, IDisposable
             var root = doc.RootElement;
 
             string tagName = root.TryGetProperty("tag_name", out var tagProp) ? tagProp.GetString() ?? string.Empty : string.Empty;
-            string releaseTitle = root.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? tagName : tagName;
-            string releaseBody = root.TryGetProperty("body", out var bodyProp) ? bodyProp.GetString() ?? string.Empty : string.Empty;
             string htmlUrl = root.TryGetProperty("html_url", out var urlProp) ? urlProp.GetString() ?? string.Empty : string.Empty;
 
             info.LatestVersion = NormalizeVersionString(tagName);
-            info.ReleaseTitle = releaseTitle;
-            info.ReleaseNotes = releaseBody;
             info.ReleaseHtmlUrl = htmlUrl;
 
             // Search for installer asset (*.exe)
@@ -110,13 +106,11 @@ public class UpdateService : IUpdateService, IDisposable
                 {
                     string assetName = asset.TryGetProperty("name", out var aName) ? aName.GetString() ?? string.Empty : string.Empty;
                     string downloadUrl = asset.TryGetProperty("browser_download_url", out var aUrl) ? aUrl.GetString() ?? string.Empty : string.Empty;
-                    long size = asset.TryGetProperty("size", out var aSize) ? aSize.GetInt64() : 0;
 
                     if (assetName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                     {
                         info.DownloadUrl = downloadUrl;
                         info.InstallerFileName = assetName;
-                        info.InstallerSizeBytes = size;
                         break;
                     }
                 }
@@ -197,11 +191,7 @@ public class UpdateService : IUpdateService, IDisposable
 
         _logger?.LogInformation("Launching update installer {Path}...", installerPath);
 
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = installerPath,
-            UseShellExecute = true
-        });
+        ProcessLaunchHelper.ShellExecute(installerPath);
     }
 
     /// <inheritdoc />

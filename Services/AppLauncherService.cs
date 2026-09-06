@@ -62,11 +62,7 @@ public class AppLauncherService : IAppLauncherService
     {
         try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "slack:",
-                UseShellExecute = true
-            });
+            ProcessLaunchHelper.ShellExecute("slack:");
         }
         catch (Exception ex)
         {
@@ -99,11 +95,7 @@ public class AppLauncherService : IAppLauncherService
             if (!string.IsNullOrEmpty(granolaPath))
             {
                 _logger.LogInformation("Launching Granola from: {Path}", granolaPath);
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = granolaPath,
-                    UseShellExecute = true
-                });
+                ProcessLaunchHelper.ShellExecute(granolaPath);
                 return;
             }
 
@@ -111,11 +103,7 @@ public class AppLauncherService : IAppLauncherService
             _logger.LogInformation("Granola binary not found in standard paths. Attempting to launch via URI scheme 'granola:'...");
             try
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "granola:",
-                    UseShellExecute = true
-                });
+                ProcessLaunchHelper.ShellExecute("granola:");
                 return;
             }
             catch (Exception uriEx)
@@ -125,11 +113,7 @@ public class AppLauncherService : IAppLauncherService
 
             // Fallback 2: Direct executable name in PATH
             _logger.LogInformation("Attempting fallback launch using executable name 'Granola.exe'...");
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "Granola.exe",
-                UseShellExecute = true
-            });
+            ProcessLaunchHelper.ShellExecute("Granola.exe");
         }
         catch (Exception ex)
         {
@@ -144,11 +128,7 @@ public class AppLauncherService : IAppLauncherService
 
         try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
+            ProcessLaunchHelper.ShellExecute(url);
         }
         catch (Exception ex)
         {

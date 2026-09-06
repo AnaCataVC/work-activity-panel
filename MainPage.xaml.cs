@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using WorkActivityPanel.Helpers;
 using WorkActivityPanel.ViewModels;
 
 namespace WorkActivityPanel;
@@ -46,11 +47,7 @@ public sealed partial class MainPage : Page
         {
             try
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = url,
-                    UseShellExecute = true
-                });
+                ProcessLaunchHelper.ShellExecute(url);
             }
             catch { }
         }
