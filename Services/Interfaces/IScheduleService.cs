@@ -71,9 +71,4 @@ public interface IScheduleService
     /// Starts the schedule timers.
     /// </summary>
     void Start();
-
-    /// <summary>
-    /// Stops the schedule timers.
-    /// </summary>
-    void Stop();
 }

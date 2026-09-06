@@ -23,11 +23,6 @@ public class GitHubAccountInfo
     public List<string> AvailableAccounts { get; set; } = new();
 
     /// <summary>
-    /// Status or diagnostic message.
-    /// </summary>
-    public string? StatusMessage { get; set; }
-
-    /// <summary>
     /// The configured work GitHub account username.
     /// </summary>
     public string? WorkAccount { get; set; }

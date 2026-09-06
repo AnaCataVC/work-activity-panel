@@ -134,8 +134,7 @@ public class ScheduleService : IScheduleService, IDisposable
         }
     }
 
-    /// <inheritdoc />
-    public void Stop()
+    private void Stop()
     {
         _timer?.Change(Timeout.Infinite, Timeout.Infinite);
         _timer?.Dispose();

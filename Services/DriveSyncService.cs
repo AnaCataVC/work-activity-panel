@@ -112,30 +112,6 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         }
     }
 
-    private void InvalidateHashesByPrefix(string? prefix)
-    {
-        if (string.IsNullOrWhiteSpace(prefix)) return;
-
-        lock (_hashLock)
-        {
-            var prefixNormalized = prefix.Replace('\\', '/').Trim('/');
-            var keysToRemove = _hashIndex.Keys
-                .Where(k => k.StartsWith(prefixNormalized + "/", StringComparison.OrdinalIgnoreCase) ||
-                            k.StartsWith(prefixNormalized + "|", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            foreach (var key in keysToRemove)
-            {
-                _hashIndex.Remove(key);
-            }
-
-            if (keysToRemove.Count > 0)
-            {
-                SaveHashIndex();
-            }
-        }
-    }
-
     public void CancelSync()
     {
         lock (_ctsLock)
@@ -947,83 +923,100 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         }
     }
 
+    /// <summary>Reads the whole file as text, or <c>null</c> if it does not exist or cannot be read.</summary>
+    private static string? TryReadFileText(string path)
+    {
+        try
+        {
+            return File.Exists(path) ? File.ReadAllText(path) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Serializes <paramref name="value"/> as compact JSON and writes it to <paramref name="path"/>, ignoring write failures.</summary>
+    private static void SaveJsonFile<T>(string path, T value)
+    {
+        try
+        {
+            Directory.CreateDirectory(DataDirectory);
+            File.WriteAllText(path, JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = false }));
+        }
+        catch
+        {
+            // Ignore file save errors
+        }
+    }
+
     private void LoadHashIndex()
     {
         lock (_hashLock)
         {
-            try
+            var newIndex = new Dictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
+            var json = TryReadFileText(HashIndexFile);
+
+            if (json != null)
             {
-                if (!File.Exists(HashIndexFile))
-                    return;
-
-                var json = File.ReadAllText(HashIndexFile);
-                var doc = JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json);
-
-                var newIndex = new Dictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
-
-                if (doc.ValueKind == System.Text.Json.JsonValueKind.Object)
+                try
                 {
-                    foreach (var prop in doc.EnumerateObject())
+                    var doc = JsonSerializer.Deserialize<JsonElement>(json);
+
+                    if (doc.ValueKind == JsonValueKind.Object)
                     {
-                        if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        foreach (var prop in doc.EnumerateObject())
                         {
-                            // Legacy format: {"key": "sha256hash"} — migrate to HashCacheEntry with
-                            // zero timestamps so the fast-path is bypassed until the file is re-hashed.
-                            newIndex[prop.Name] = new HashCacheEntry
+                            if (prop.Value.ValueKind == JsonValueKind.String)
                             {
-                                Hash = prop.Value.GetString() ?? string.Empty,
-                                LastWriteTimeUtcTicks = 0L,
-                                FileSize = 0L
-                            };
-                        }
-                        else if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.Object)
-                        {
-                            // New format: {"key": {"Hash": "...", "LastWriteTimeUtcTicks": N, "FileSize": N}}
-                            var entry = JsonSerializer.Deserialize<HashCacheEntry>(prop.Value.GetRawText());
-                            if (entry != null)
-                                newIndex[prop.Name] = entry;
+                                // Legacy format: {"key": "sha256hash"} — migrate to HashCacheEntry with
+                                // zero timestamps so the fast-path is bypassed until the file is re-hashed.
+                                newIndex[prop.Name] = new HashCacheEntry
+                                {
+                                    Hash = prop.Value.GetString() ?? string.Empty,
+                                    LastWriteTimeUtcTicks = 0L,
+                                    FileSize = 0L
+                                };
+                            }
+                            else if (prop.Value.ValueKind == JsonValueKind.Object)
+                            {
+                                // New format: {"key": {"Hash": "...", "LastWriteTimeUtcTicks": N, "FileSize": N}}
+                                var entry = JsonSerializer.Deserialize<HashCacheEntry>(prop.Value.GetRawText());
+                                if (entry != null)
+                                    newIndex[prop.Name] = entry;
+                            }
                         }
                     }
                 }
+                catch
+                {
+                    newIndex.Clear();
+                }
+            }
 
-                _hashIndex = newIndex;
-            }
-            catch
-            {
-                _hashIndex = new Dictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
-            }
+            _hashIndex = newIndex;
         }
     }
 
     private void SaveHashIndex()
     {
-        try
-        {
-            Directory.CreateDirectory(DataDirectory);
-            var json = JsonSerializer.Serialize(_hashIndex, new JsonSerializerOptions { WriteIndented = false });
-            File.WriteAllText(HashIndexFile, json);
-        }
-        catch
-        {
-            // Ignore index save errors
-        }
+        SaveJsonFile(HashIndexFile, _hashIndex);
     }
 
     private void LoadSyncErrors()
     {
         lock (_errorLock)
         {
+            var json = TryReadFileText(ErrorsFile);
+            if (json == null) return;
+
             try
             {
-                if (File.Exists(ErrorsFile))
+                var list = JsonSerializer.Deserialize<List<SyncErrorItem>>(json);
+                if (list != null)
                 {
-                    var json = File.ReadAllText(ErrorsFile);
-                    var list = JsonSerializer.Deserialize<List<SyncErrorItem>>(json);
-                    if (list != null)
-                    {
-                        _lastSyncErrors.Clear();
-                        _lastSyncErrors.AddRange(list);
-                    }
+                    _lastSyncErrors.Clear();
+                    _lastSyncErrors.AddRange(list);
                 }
             }
             catch
@@ -1035,16 +1028,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
     private void SaveSyncErrors()
     {
-        try
-        {
-            Directory.CreateDirectory(DataDirectory);
-            var json = JsonSerializer.Serialize(_lastSyncErrors, new JsonSerializerOptions { WriteIndented = false });
-            File.WriteAllText(ErrorsFile, json);
-        }
-        catch
-        {
-            // Ignore error log save errors
-        }
+        SaveJsonFile(ErrorsFile, _lastSyncErrors);
     }
 
 

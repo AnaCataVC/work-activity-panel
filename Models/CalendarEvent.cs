@@ -74,15 +74,8 @@ public class CalendarEvent
     {
         get
         {
-            var now = DateTime.Now;
-            if (now >= StartTime && now <= EndTime)
-            {
-                return "En curso";
-            }
-            if (now > EndTime)
-            {
-                return "Finalizada";
-            }
+            if (IsInProgress) return "En curso";
+            if (IsPast) return "Finalizada";
             return OpensGranola ? "Granola se abrirá 5 min antes" : "Solo en calendario";
         }
     }

@@ -91,9 +91,6 @@ public partial class SettingsViewModel : ObservableObject
     private bool _gitHubAutoSwitchOnWorkEnd = true;
 
     [ObservableProperty]
-    private bool _isGitHubInstalled;
-
-    [ObservableProperty]
     private string _gitHubSettingsStatus = string.Empty;
 
     public ObservableCollection<string> AvailableGitHubAccounts { get; } = new();
@@ -146,9 +143,6 @@ public partial class SettingsViewModel : ObservableObject
     private bool _driveAutoSyncOnWorkEnd = true;
 
     public ObservableCollection<SyncSource> DriveSyncSources { get; } = new();
-
-    [ObservableProperty]
-    private bool _isDriveConnected;
 
     [ObservableProperty]
     private string _driveConnectionStatus = "No configurado";
@@ -249,8 +243,7 @@ public partial class SettingsViewModel : ObservableObject
 
     private void UpdateDriveStatus()
     {
-        IsDriveConnected = _driveSyncService.IsConfigured;
-        DriveConnectionStatus = IsDriveConnected
+        DriveConnectionStatus = _driveSyncService.IsConfigured
             ? "Configurado y listo"
             : "Falta configurar la URL o agregar carpetas";
     }
@@ -353,7 +346,6 @@ public partial class SettingsViewModel : ObservableObject
             DriveConnectionStatus = string.IsNullOrEmpty(fileId)
                 ? "Conexión recibida pero sin ID de archivo."
                 : $"¡Conexión exitosa! Archivo de prueba creado en Google Drive (ID: {fileId[..Math.Min(8, fileId.Length)]}...)";
-            IsDriveConnected = true;
         }
         catch (Exception ex)
         {
@@ -370,7 +362,6 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             var info = await _gitHubAuthService.GetAccountsStatusAsync();
-            IsGitHubInstalled = info.IsGhInstalled;
             AvailableGitHubAccounts.Clear();
             foreach (var account in info.AvailableAccounts)
             {

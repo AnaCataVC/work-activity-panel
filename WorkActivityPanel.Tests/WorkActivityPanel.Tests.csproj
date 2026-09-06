@@ -14,6 +14,7 @@
     <Compile Include="..\Helpers\ICalParser.cs" Link="Helpers\ICalParser.cs" />
     <Compile Include="..\Helpers\LocalSettingsHelper.cs" Link="Helpers\LocalSettingsHelper.cs" />
     <Compile Include="..\Helpers\PathHelpers.cs" Link="Helpers\PathHelpers.cs" />
+    <Compile Include="..\Helpers\ProcessLaunchHelper.cs" Link="Helpers\ProcessLaunchHelper.cs" />
     <Compile Include="..\Services\AppLauncherService.cs" Link="Services\AppLauncherService.cs" />
     <Compile Include="..\Services\Interfaces\IAppLauncherService.cs" Link="Services\Interfaces\IAppLauncherService.cs" />
     <Compile Include="..\Services\DriveSyncService.cs" Link="Services\DriveSyncService.cs" />

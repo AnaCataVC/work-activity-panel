@@ -63,9 +63,6 @@ public class GitHubAuthService : IGitHubAuthService
                     var parsed = ParseHostsYaml(content);
                     info.ActiveAccount = parsed.ActiveAccount;
                     info.AvailableAccounts = parsed.AvailableAccounts;
-                    info.StatusMessage = !string.IsNullOrEmpty(info.ActiveAccount)
-                        ? $"Cuenta activa: {info.ActiveAccount}"
-                        : "Cuentas detectadas en hosts.yml";
 
                     if (info.IsAuthenticated)
                     {
@@ -99,19 +96,6 @@ public class GitHubAuthService : IGitHubAuthService
                 }
             }
 
-            if (!info.IsGhInstalled)
-            {
-                info.StatusMessage = "GitHub CLI no detectado en el sistema.";
-            }
-            else if (!info.IsAuthenticated)
-            {
-                info.StatusMessage = "No hay cuentas activas en GitHub CLI.";
-            }
-            else
-            {
-                info.StatusMessage = $"Cuenta activa: {info.ActiveAccount}";
-            }
-
             return info;
         });
     }
@@ -132,15 +116,7 @@ public class GitHubAuthService : IGitHubAuthService
 
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = ghPath,
-                Arguments = $"auth switch -u {username.Trim()} --hostname github.com",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var startInfo = BuildGhProcessStartInfo(ghPath, $"auth switch -u {username.Trim()} --hostname github.com");
 
             using var process = new Process { StartInfo = startInfo };
             process.Start();
@@ -247,19 +223,21 @@ public class GitHubAuthService : IGitHubAuthService
         return info;
     }
 
+    private static ProcessStartInfo BuildGhProcessStartInfo(string ghPath, string arguments) => new()
+    {
+        FileName = ghPath,
+        Arguments = arguments,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+    };
+
     private GitHubAccountInfo QueryGhAuthStatus(string ghPath)
     {
         var info = new GitHubAccountInfo { IsGhInstalled = true };
 
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = ghPath,
-            Arguments = "auth status",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var startInfo = BuildGhProcessStartInfo(ghPath, "auth status");
 
         using var process = new Process { StartInfo = startInfo };
         process.Start();

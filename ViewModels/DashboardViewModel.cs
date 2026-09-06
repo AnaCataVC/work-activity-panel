@@ -180,9 +180,6 @@ public partial class DashboardViewModel : ObservableObject
     private bool _isWorkAccountConfigured;
 
     [ObservableProperty]
-    private string _gitHubAccountRoleBadge = "Activa";
-
-    [ObservableProperty]
     private string _gitHubStatusText = "Consultando...";
 
     [ObservableProperty]
@@ -591,13 +588,6 @@ public partial class DashboardViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ClearAllSyncErrors()
-    {
-        _driveSyncService.ClearSyncErrors();
-        RefreshDriveSyncStatus();
-    }
-
-    [RelayCommand]
     private void CopySyncErrorsReport()
     {
         if (SyncErrorsList.Count == 0) return;
@@ -783,18 +773,6 @@ public partial class DashboardViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private void OpenMeetingLink(CalendarEvent? meeting)
-    {
-        _appLauncherService.OpenUrl(meeting?.MeetingLink);
-    }
-
-    [RelayCommand]
-    private void ToggleVacationMode()
-    {
-        IsVacationMode = !IsVacationMode;
-    }
-
     private void OnGitHubActiveAccountChanged(object? sender, string? newAccount)
     {
         App.DispatcherQueue.TryEnqueue(async () =>
@@ -818,19 +796,6 @@ public partial class DashboardViewModel : ObservableObject
             IsActiveAccountWorkAccount = info.IsActiveAccountWorkAccount;
             IsActiveAccountPersonalAccount = info.IsActiveAccountPersonalAccount;
             IsWorkAccountConfigured = !string.IsNullOrEmpty(info.WorkAccount);
-
-            if (IsActiveAccountWorkAccount)
-            {
-                GitHubAccountRoleBadge = "Cuenta Laboral";
-            }
-            else if (IsActiveAccountPersonalAccount)
-            {
-                GitHubAccountRoleBadge = "Cuenta Personal";
-            }
-            else
-            {
-                GitHubAccountRoleBadge = "Activa";
-            }
 
             AvailableGitHubAccounts.Clear();
             foreach (var account in info.AvailableAccounts)
@@ -1046,12 +1011,6 @@ public partial class DashboardViewModel : ObservableObject
     private void OpenReleaseNotes()
     {
         _appLauncherService.OpenUrl(_latestUpdateInfo?.ReleaseHtmlUrl);
-    }
-
-    [RelayCommand]
-    private void DismissUpdateBanner()
-    {
-        ShowUpdateBanner = false;
     }
 }
 
