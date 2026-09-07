@@ -94,5 +94,32 @@ if (val.EndsWith("Z", StringComparison.OrdinalIgnoreCase))
 }
 ```
 
+### 4. Recurrence Rule Evaluation (`RRULE`, `EXDATE`, and `RECURRENCE-ID`)
+Google Calendar exports recurring events by defining a master `VEVENT` with `DTSTART` (the series inception date) and an `RRULE` property (e.g., `FREQ=WEEKLY;WKST=SU;BYDAY=MO,TH`), rather than emitting daily duplicate entries. Without recurring rule evaluation, any recurring event whose series started on a previous date is ignored when filtering for today's date.
+
+Instead of generating an unbounded stream of future dates (which consumes substantial memory and CPU), `ICalParser` evaluates occurrences targeting specifically the requested date (`targetDate`):
+1. **Pass 1 - Exclusion & Override Indexing**:
+   - Collect all `EXDATE` entries to exclude cancelled dates in a recurring series.
+   - Collect all `RECURRENCE-ID` entries. If an instance was cancelled (`STATUS:CANCELLED`), it suppresses the master series for that date. If rescheduled or modified, the override takes precedence over the master rule.
+2. **Pass 2 - Target Date Evaluation**:
+   - **Single Events**: Validates whether `DTSTART` matches `targetDate` (or spans it for all-day events).
+   - **Overrides (`RECURRENCE-ID`)**: Directly renders the overridden instance if active on `targetDate`.
+   - **Recurring Masters (`RRULE`)**: Evaluates frequency patterns:
+     - `WEEKLY`: Validates day of week against `BYDAY` (e.g. `MO,TH`) and calculates week index relative to `WKST` and `INTERVAL`.
+     - `DAILY`: Validates `dayDiff % INTERVAL == 0` and optional weekday constraints.
+     - `MONTHLY`: Validates either exact month day (`BYMONTHDAY`) or ordinal weekday (`BYDAY=1MO`, `2FR`, `-1FR`).
+     - `YEARLY`: Validates matching month and day across `INTERVAL` years.
+     - Enforces `UNTIL` and `COUNT` termination criteria.
+
+```csharp
+if (MatchesRecurrenceRule(ev.RRule, ev.DtStart.Value, targetDate))
+{
+    var start = ev.IsAllDay ? targetDate.Date : targetDate.Date + ev.DtStart.Value.TimeOfDay;
+    var duration = (ev.DtEnd ?? ...) - ev.DtStart.Value;
+    var end = start + duration;
+    // Map event for today preserving meeting links and title
+}
+```
+
 ## Key Takeaway
-A specialized, lightweight RFC 5545 parser avoids heavy external dependencies while delivering sub-millisecond execution and deterministic meeting extraction for desktop productivity tools.
+A specialized, lightweight RFC 5545 parser with native targeted `RRULE` expansion avoids heavy external dependencies while delivering sub-millisecond execution and deterministic meeting extraction for desktop productivity tools.

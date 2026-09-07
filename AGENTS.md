@@ -116,7 +116,7 @@ Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "
   ```
 
 ### 4.3 Calendar Engine & RFC 5545 Parsing
-- `ICalParser.cs` handles raw `.ics` data. All line-unfolding (CRLF + space/tab), timezone adjustments (`DTSTART`, `DTEND`), cancellation status checks (`STATUS:CANCELLED`), and video conference URL extraction (Google Meet, Zoom, Teams, Webex) must maintain backwards-compatible unit test coverage in `WorkActivityPanel.Tests/ICalParserTests.cs`.
+- `ICalParser.cs` handles raw `.ics` data. All line-unfolding (CRLF + space/tab), recurrence expansion (`RRULE`: `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`, `BYDAY`, `INTERVAL`, `UNTIL`, `COUNT`, `WKST`), exclusion dates (`EXDATE`), modified or cancelled series instances (`RECURRENCE-ID`), timezone adjustments (`DTSTART`, `DTEND`), cancellation status checks (`STATUS:CANCELLED`), and video conference URL extraction (Google Meet, Zoom, Teams, Webex) must maintain backwards-compatible unit test coverage in `WorkActivityPanel.Tests/ICalParserTests.cs`.
 
 ### 4.4 Google Drive Sync Engine
 - Hashing must use streaming SHA-256 (`SHA256.Create()`) to avoid loading large files fully into memory.
