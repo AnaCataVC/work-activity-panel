@@ -125,6 +125,25 @@
 
                                     <ToggleSwitch Header="Solo abrir si tiene enlace de videollamada (Meet, Teams, Zoom, Webex)" 
                                                   IsOn="{x:Bind ViewModel.CalendarRequireMeetingLink, Mode=TwoWay}" />
+
+                                    <!-- Meeting popup alert offset -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Alerta emergente de reunión"
+                                                   Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                        <TextBlock Text="Cuando una reunión con enlace esté por comenzar, aparecerá una ventana en el centro de la pantalla. Configura cuántos minutos antes quieres verla (0 = justo a la hora)."
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                   TextWrapping="Wrap" />
+                                        <NumberBox Header="Mostrar alerta (minutos antes de la reunión)"
+                                                   Value="{x:Bind ViewModel.MeetingAlertOffsetMinutes, Mode=TwoWay}"
+                                                   Minimum="0"
+                                                   Maximum="60"
+                                                   SmallChange="1"
+                                                   LargeChange="5"
+                                                   SpinButtonPlacementMode="Inline"
+                                                   Width="260"
+                                                   HorizontalAlignment="Left" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Expander>
 

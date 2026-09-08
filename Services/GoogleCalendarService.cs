@@ -25,6 +25,8 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
     private const string CalendarIgnoreAllDayEventsKey = "CalendarIgnoreAllDayEvents";
     private const string CalendarRequireMeetingLinkKey = "CalendarRequireMeetingLink";
 
+    private const string CalendarAlertOffsetMinutesKey = "CalendarAlertOffsetMinutes";
+
     private readonly IAppLauncherService _appLauncherService;
     private readonly ILogger<GoogleCalendarService> _logger;
     private readonly ConcurrentBag<Timer> _activeTimers = new();
@@ -47,6 +49,9 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
     /// <inheritdoc />
     public event EventHandler<CalendarEvent>? UpcomingMeetingDetected;
+
+    /// <inheritdoc />
+    public event EventHandler<CalendarEvent>? MeetingStartingNow;
 
     public GoogleCalendarService(
         IAppLauncherService appLauncherService,
@@ -82,6 +87,12 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
             {
                 _filterSettings.RequireMeetingLink = requireLink;
             }
+
+            var alertOffsetStr = LocalSettingsHelper.Get(CalendarAlertOffsetMinutesKey);
+            if (int.TryParse(alertOffsetStr, out var alertOffset))
+            {
+                _filterSettings.MeetingAlertOffsetMinutes = Math.Max(0, Math.Min(60, alertOffset));
+            }
         }
         catch (Exception ex)
         {
@@ -96,6 +107,7 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
         LocalSettingsHelper.Set(CalendarExcludedKeywordsKey, _filterSettings.ExcludedKeywords);
         LocalSettingsHelper.Set(CalendarIgnoreAllDayEventsKey, _filterSettings.IgnoreAllDayEvents.ToString());
         LocalSettingsHelper.Set(CalendarRequireMeetingLinkKey, _filterSettings.RequireMeetingLink.ToString());
+        LocalSettingsHelper.Set(CalendarAlertOffsetMinutesKey, _filterSettings.MeetingAlertOffsetMinutes.ToString());
         _logger.LogInformation("Calendar filter settings updated.");
     }
 
@@ -237,42 +249,69 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
         foreach (var meeting in events)
         {
-            // Only schedule alerts if meeting qualifies for Granola auto-open
-            if (!meeting.OpensGranola)
+            // ── Granola timer (unchanged): fires 5 min before qualifying meetings ──
+            if (meeting.OpensGranola)
+            {
+                var granolaAlertTime = meeting.StartTime.AddMinutes(-5);
+                var granolaDelay = granolaAlertTime - now;
+
+                if (granolaDelay > TimeSpan.Zero)
+                {
+                    _logger.LogInformation(
+                        "Scheduling Granola alert for '{Title}' at {AlertTime} (in {DelayMinutes:F1} min).",
+                        meeting.Title, granolaAlertTime, granolaDelay.TotalMinutes);
+
+                    var granolaTimer = new Timer(_ =>
+                    {
+                        _logger.LogInformation("Upcoming meeting alert fired for '{Title}'. Ensuring Granola is open...", meeting.Title);
+                        UpcomingMeetingDetected?.Invoke(this, meeting);
+                        _appLauncherService.EnsureGranolaRunning();
+                    }, null, granolaDelay, Timeout.InfiniteTimeSpan);
+
+                    _activeTimers.Add(granolaTimer);
+                }
+                else if (now >= meeting.StartTime.AddMinutes(-5) && now < meeting.StartTime)
+                {
+                    // Already in the 5-minute window — fire immediately
+                    _logger.LogInformation("Meeting '{Title}' is in less than 5 minutes. Ensuring Granola immediately.", meeting.Title);
+                    UpcomingMeetingDetected?.Invoke(this, meeting);
+                    _appLauncherService.EnsureGranolaRunning();
+                }
+            }
+            else
             {
                 _logger.LogInformation("Skipping Granola auto-launch alert for excluded event: '{Title}'.", meeting.Title);
+            }
+
+            // ── Popup alert timer: fires at the user-configured offset before meetings with a link ──
+            if (string.IsNullOrEmpty(meeting.MeetingLink))
+            {
                 continue;
             }
 
-            // Trigger 5 minutes before the meeting start
-            var alertTime = meeting.StartTime.AddMinutes(-5);
-            var delay = alertTime - now;
+            var offsetMinutes = _filterSettings.MeetingAlertOffsetMinutes;
+            var popupAlertTime = meeting.StartTime.AddMinutes(-offsetMinutes);
+            var popupDelay = popupAlertTime - now;
 
-            if (delay > TimeSpan.Zero)
+            if (popupDelay > TimeSpan.Zero)
             {
-                _logger.LogInformation("Scheduling meeting alert for '{Title}' at {AlertTime} (in {DelayMinutes:F1} min).", 
-                    meeting.Title, alertTime, delay.TotalMinutes);
+                _logger.LogInformation(
+                    "Scheduling popup alert for '{Title}' at {AlertTime} (offset={Offset} min, in {DelayMinutes:F1} min).",
+                    meeting.Title, popupAlertTime, offsetMinutes, popupDelay.TotalMinutes);
 
-                var timer = new Timer(_ =>
+                var popupTimer = new Timer(_ =>
                 {
-                    _logger.LogInformation("Upcoming meeting alert fired for '{Title}'. Ensuring Granola is open...", meeting.Title);
-                    
-                    // Fire event
-                    UpcomingMeetingDetected?.Invoke(this, meeting);
+                    _logger.LogInformation("Popup meeting alert fired for '{Title}'.", meeting.Title);
+                    MeetingStartingNow?.Invoke(this, meeting);
+                }, null, popupDelay, Timeout.InfiniteTimeSpan);
 
-                    // Ensure Granola is running
-                    _appLauncherService.EnsureGranolaRunning();
-
-                }, null, delay, Timeout.InfiniteTimeSpan);
-
-                _activeTimers.Add(timer);
+                _activeTimers.Add(popupTimer);
             }
-            else if (now >= meeting.StartTime.AddMinutes(-5) && now < meeting.StartTime)
+            else if (now >= popupAlertTime && now < meeting.StartTime)
             {
-                // If meeting is already within the 5-minute window right now
-                _logger.LogInformation("Meeting '{Title}' is in less than 5 minutes. Ensuring Granola immediately.", meeting.Title);
-                UpcomingMeetingDetected?.Invoke(this, meeting);
-                _appLauncherService.EnsureGranolaRunning();
+                // Already inside the popup window right now — fire immediately
+                _logger.LogInformation("Meeting '{Title}' popup window active. Firing immediately.", meeting.Title);
+                MeetingStartingNow?.Invoke(this, meeting);
             }
         }
     }

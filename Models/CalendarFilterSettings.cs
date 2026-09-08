@@ -26,6 +26,12 @@ public class CalendarFilterSettings
     public bool RequireMeetingLink { get; set; }
 
     /// <summary>
+    /// Gets or sets how many minutes before a meeting's start time the full-screen alert popup should appear.
+    /// A value of 0 means the popup fires exactly at the meeting start time.
+    /// </summary>
+    public int MeetingAlertOffsetMinutes { get; set; } = 0;
+
+    /// <summary>
     /// Evaluates a calendar event against the current filter rules to determine if Granola should be automatically opened.
     /// </summary>
     /// <param name="calendarEvent">The calendar event to evaluate.</param>

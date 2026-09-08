@@ -3,7 +3,7 @@
 [![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3.0-0078D4?logo=windows&logoColor=white)](https://learn.microsoft.com/windows/apps/winui/winui3/)
 [![Windows App SDK](https://img.shields.io/badge/Windows_App_SDK-2.4-00A4EF?logo=windows11&logoColor=white)](https://github.com/microsoft/WindowsAppSDK)
-[![Tests](https://img.shields.io/badge/Tests-xUnit%20(110%2F110%20Passed)-4EBA6F?logo=xunit&logoColor=white)](https://xunit.net/)
+[![Tests](https://img.shields.io/badge/Tests-xUnit%20(118%2F118%20Passed)-4EBA6F?logo=xunit&logoColor=white)](https://xunit.net/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 *Read this in [English](#english) | Léelo en [Español](#español)*
@@ -14,12 +14,13 @@
 ## English
 
 ### 1. Project Description
-**Work Activity Panel** is a native Windows 11 desktop application designed to streamline daily work routines. It automatically manages work applications based on your configurable schedule, seamlessly syncs with **Google Calendar** via private iCal feeds, automates meeting preparedness by auto-launching **Granola** 5 minutes prior to any scheduled meeting, ensures **Slack** is open at the start of your workday, enables instant 1-click **GitHub CLI Account Switching**, and automatically backs up and syncs your local work files to **Google Drive** using a lightweight Google Apps Script Web App bridge.
+**Work Activity Panel** is a native Windows 11 desktop application designed to streamline daily work routines. It automatically manages work applications based on your configurable schedule, seamlessly syncs with **Google Calendar** via private iCal feeds, automates meeting preparedness by auto-launching **Granola** 5 minutes prior to any scheduled meeting, ensures **Slack** is open at the start of your workday, enables instant 1-click **GitHub CLI Account Switching**, provides centered always-on-top meeting alert popups for video calls, and automatically backs up and syncs your local work files to **Google Drive** using a lightweight Google Apps Script Web App bridge.
 
 ### 2. Key Features
 - ⏰ **Schedule-Aware & Vacation Mode:** Configurable work days and hours. Automatically pauses background triggers when Vacation Mode is enabled.
 - 💬 **Slack Integration:** Automatically ensures Slack is running upon the start of your work hours.
 - 🥑 **Granola Pre-Meeting Automation:** Programmatically detects approaching Google Calendar meetings and launches Granola 5 minutes before they begin.
+- 🎯 **Centered Meeting Alert Popups:** Displays a borderless, always-on-top popup window in the center of the screen when a meeting with a video link is starting, with direct join button, auto-close timer, and configurable advance lead time.
 - 📅 **Private Google Calendar Sync:** Live view of today's scheduled meetings with 1-click meeting join links (Google Meet, Zoom, Microsoft Teams, Webex).
 - 🔄 **GitHub Account Switcher:** Instant 1-click switching between personal and work GitHub CLI accounts (`gh auth switch` integration). See [GitHub Account Switching Guide](docs/github-account-switching-guide.md).
 - 🚀 **In-App Auto-Updates:** Automated update detection via GitHub Releases API with real-time download progress and in-place Inno Setup execution.
@@ -43,7 +44,7 @@
 - **Calendar Parsing:** RFC 5545 iCalendar (`.ics`) lightweight parser with cancellation filtering & deduplication
 - **Cloud Storage:** Google Apps Script Web App endpoint (`DriveApp` API)
 - **Installer & Updates:** Inno Setup 6 Wizard & GitHub Releases API client
-- **Unit Testing:** `xUnit` & `Moq` test suite (110 unit tests)
+- **Unit Testing:** `xUnit` & `Moq` test suite (118 unit tests)
 
 ### 4. Key Learnings
 - Building native unpackaged WinUI 3 desktop applications with custom multi-resolution assets and Mica backdrops.
@@ -90,12 +91,13 @@ For detailed architecture specifications, setup guides, and engineering learning
 ## Español
 
 ### 1. Descripción del Proyecto
-**Work Activity Panel** es una aplicación de escritorio nativa para Windows 11 diseñada para optimizar tu jornada laboral. Gestiona automáticamente tus herramientas de trabajo según tu horario configurado, se sincroniza con **Google Calendar** mediante un enlace iCal privado, automatiza la preparación de reuniones abriendo **Granola** 5 minutos antes de cada reunión agendada, asegura que **Slack** esté abierto al inicio de tu jornada, facilita el **Cambio Rápido de Cuentas de GitHub CLI** en 1 clic y respalda tus archivos de trabajo en **Google Drive** de forma automática y ligera mediante un puente de Google Apps Script.
+**Work Activity Panel** es una aplicación de escritorio nativa para Windows 11 diseñada para optimizar tu jornada laboral. Gestiona automáticamente tus herramientas de trabajo según tu horario configurado, se sincroniza con **Google Calendar** mediante un enlace iCal privado, automatiza la preparación de reuniones abriendo **Granola** 5 minutos antes de cada reunión agendada, asegura que **Slack** esté abierto al inicio de tu jornada, facilita el **Cambio Rápido de Cuentas de GitHub CLI** en 1 clic, presenta alertas emergentes centradas en pantalla para reuniones con videollamada y respalda tus archivos de trabajo en **Google Drive** de forma automática y ligera mediante un puente de Google Apps Script.
 
 ### 2. Funcionalidades Principales
 - ⏰ **Control de Horario y Modo Vacaciones:** Configuración flexible de días y horas de trabajo. Pausa todas las automatizaciones cuando el Modo Vacaciones está activo.
 - 💬 **Gestión de Slack:** Verifica y abre Slack automáticamente al inicio del horario laboral.
 - 🥑 **Automatización de Granola:** Detecta reuniones de Google Calendar y abre Granola 5 minutos antes de que comiencen.
+- 🎯 **Ventana Emergente de Alerta de Reuniones:** Ventana flotante centrada en pantalla (always-on-top) que avisa cuando una reunión con enlace está por comenzar, con botón directo para unirse, contador de auto-cierre y tiempo de aviso configurable.
 - 📅 **Sincronización con Google Calendar:** Lista en tiempo real de las reuniones del día con botón directo para unirse (Google Meet, Zoom, Microsoft Teams, Webex).
 - 🔄 **Conmutador de Cuentas de GitHub:** Alternancia instantánea en 1 clic entre cuentas personales y laborales de GitHub CLI (`gh auth switch`). Ver [Guía de Cambio de Cuentas GitHub](docs/github-account-switching-guide.md).
 - 🚀 **Auto-Actualizaciones en Vivo:** Detección automática de nuevas versiones en GitHub Releases con barra de progreso de descarga e instalador Inno Setup integrado.
@@ -119,7 +121,7 @@ For detailed architecture specifications, setup guides, and engineering learning
 - **Motor iCal:** Parser ligero RFC 5545 (`.ics`) con filtrado de reuniones canceladas y deduplicación
 - **Almacenamiento Cloud:** Google Apps Script Web App (`DriveApp` API)
 - **Instalador y Actualizador:** Asistente Inno Setup 6 y cliente GitHub Releases API
-- **Pruebas Unitarias:** Suite `xUnit` y `Moq` (110 pruebas unitarias)
+- **Pruebas Unitarias:** Suite `xUnit` y `Moq` (118 pruebas unitarias)
 
 ### 4. Aprendizajes Clave
 - Desarrollo de aplicaciones de escritorio nativas WinUI 3 con assets multirresolución e integración de Mica.

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="WorkActivityPanel.MeetingAlertWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Background="Transparent">
+
+        <!-- Dimmed full-area background -->
+        <Rectangle Fill="#CC000000" />
+
+        <!-- Centered card -->
+        <Border
+            MaxWidth="480"
+            MinWidth="380"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="32,28,32,28"
+            Shadow="{ThemeResource SharedShadow16}">
+
+            <StackPanel Spacing="20">
+
+                <!-- Header: icon + "Reunión" label -->
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                    <FontIcon
+                        Glyph="&#xE909;"
+                        FontSize="28"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock
+                        Text="Reunión por comenzar"
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                </StackPanel>
+
+                <!-- Meeting title -->
+                <TextBlock
+                    x:Name="MeetingTitleText"
+                    Style="{StaticResource TitleTextBlockStyle}"
+                    TextWrapping="WrapWholeWords"
+                    HorizontalTextAlignment="Center"
+                    MaxLines="3" />
+
+                <!-- Meeting time -->
+                <TextBlock
+                    x:Name="MeetingTimeText"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    HorizontalTextAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <!-- Auto-close countdown -->
+                <TextBlock
+                    x:Name="CountdownText"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    HorizontalTextAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                <!-- Action buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+
+                    <Button
+                        x:Name="JoinButton"
+                        Content="Unirse"
+                        Style="{StaticResource AccentButtonStyle}"
+                        MinWidth="140"
+                        Click="OnJoinClick">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE774;" FontSize="14" />
+                                    <TextBlock Text="Unirse a la reunión" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+
+                    <Button
+                        x:Name="DismissButton"
+                        Content="Ignorar"
+                        MinWidth="120"
+                        Click="OnDismissClick" />
+
+                </StackPanel>
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

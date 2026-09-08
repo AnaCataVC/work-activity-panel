@@ -207,6 +207,7 @@ public partial class DashboardViewModel : ObservableObject
         _scheduleService.VacationModeChanged += OnVacationModeChanged;
         _scheduleService.ScheduleChanged += OnScheduleChanged;
         _googleCalendarService.UpcomingMeetingDetected += OnUpcomingMeetingDetected;
+        _googleCalendarService.MeetingStartingNow += OnMeetingStartingNow;
 
         _driveSyncService.SyncProgressChanged += OnDriveSyncProgressChanged;
         _driveSyncService.SyncCompleted += OnDriveSyncCompleted;
@@ -363,6 +364,14 @@ public partial class DashboardViewModel : ObservableObject
             UpcomingMeetingTitle = $"{meeting.Title} ({meeting.FormattedStartTime})";
             ShowUpcomingMeetingBanner = true;
         });
+    }
+
+    private void OnMeetingStartingNow(object? sender, CalendarEvent meeting)
+    {
+        if (IsVacationMode) return;
+
+        // App.ShowMeetingAlert dispatches to the UI thread and prevents duplicate popups internally
+        App.ShowMeetingAlert(meeting);
     }
 
     private void OnDriveSyncProgressChanged(object? sender, SyncProgressReport report)

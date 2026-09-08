@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
+using WorkActivityPanel.Models;
 using WorkActivityPanel.Services;
 using WorkActivityPanel.Services.Interfaces;
 using WorkActivityPanel.ViewModels;
@@ -14,6 +15,10 @@ public partial class App : Application
     public static nint WindowHandle => WinRT.Interop.WindowNative.GetWindowHandle(Window);
     
     private static IHost? _host;
+
+    // Tracks the currently visible meeting alert popup to avoid duplicates
+    private static WeakReference<MeetingAlertWindow>? _activeMeetingAlert;
+    private static string? _activeMeetingAlertId;
 
     public App()
     {
@@ -66,6 +71,41 @@ public partial class App : Application
     {
         return _host!.Services.GetRequiredService<T>();
     }
+
+    /// <summary>
+    /// Shows the meeting alert popup window on the UI thread.
+    /// If a popup for the same meeting is already visible, the call is ignored.
+    /// </summary>
+    public static void ShowMeetingAlert(CalendarEvent meeting)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            // Prevent duplicate popup for the same meeting
+            if (_activeMeetingAlertId == meeting.Id &&
+                _activeMeetingAlert != null &&
+                _activeMeetingAlert.TryGetTarget(out var existing))
+            {
+                existing.Activate();
+                return;
+            }
+
+            var alertWindow = new MeetingAlertWindow(meeting);
+
+            // Clear reference when the window closes
+            alertWindow.Closed += (_, _) =>
+            {
+                if (_activeMeetingAlertId == meeting.Id)
+                {
+                    _activeMeetingAlertId = null;
+                    _activeMeetingAlert = null;
+                }
+            };
+
+            _activeMeetingAlert = new WeakReference<MeetingAlertWindow>(alertWindow);
+            _activeMeetingAlertId = meeting.Id;
+        });
+    }
+
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
