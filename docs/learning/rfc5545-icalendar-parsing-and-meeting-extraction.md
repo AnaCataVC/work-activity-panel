@@ -83,16 +83,45 @@ private static partial Regex MeetingLinkRegex();
 ```
 
 ### 3. Timezone Normalization
-Parses both UTC markers (`Z` suffix) and local dates using invariant culture ISO formats:
-```csharp
-if (val.EndsWith("Z", StringComparison.OrdinalIgnoreCase))
-{
-    if (DateTime.TryParseExact(val, "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var utcDt))
-    {
-        return utcDt.ToLocalTime();
-    }
-}
+
+iCal date-time properties come in three forms (RFC 5545 §3.3.5):
+
+| Form | Example | Semantics |
+|---|---|---|
+| UTC | `20260910T160000Z` | Always UTC; `Z` suffix |
+| TZID-qualified | `DTSTART;TZID=America/New_York:20260910T110000` | Local time in the named zone |
+| Floating | `DTSTART:20260910T110000` | No timezone; treated as machine local |
+
+#### Old approach (UTC-only) — bug
+The original `ParseDateTime()` used `DateTimeStyles.AssumeLocal` for any value without a `Z` suffix. This silently ignored the `TZID` parameter, so an event at `11:00 America/New_York` (UTC-4 = 15:00 UTC) would display as `11:00` in the local machine timezone instead of the correctly converted `12:00 UTC-3`.
+
+#### New pipeline — TZID-aware
+
 ```
+keyPart: "DTSTART;TZID=America/New_York"
+              │
+              ▼ ExtractTzid(keyPart)
+         "America/New_York"
+              │
+valPart: "20260910T110000"
+              │
+              ▼ ParseDateTimeWithTzid(valPart, tzid)
+         1. EndsWith('Z')? → ParseDateTime (UTC path, no change)
+         2. tzid == null?  → floating local (RFC 5545 §3.3.5)
+         3. TimeZoneInfo.FindSystemTimeZoneById(tzid)
+              └─ TimeZoneNotFoundException → TryResolveIanaTimeZone(tzid)
+                   (IANA→Windows fallback table: ~50 common zones)
+         4. TimeZoneInfo.ConvertTimeToUtc(parsedDt, tz).ToLocalTime()
+              │
+              ▼
+         DateTime in local machine time ✅
+```
+
+Key properties:
+- **UTC values always bypass TZID**: a `Z` suffix takes priority regardless of what `TZID` is present.
+- **Graceful fallback**: unknown or unsupported TZID IDs (rare, exotic zones) fall back to floating-local — the same behaviour as before the fix — preventing crashes.
+- **Windows compatibility**: .NET 6+ on Windows can resolve IANA IDs via ICU; `TryResolveIanaTimeZone` provides an explicit IANA→Windows dictionary as a reliable secondary fallback for the most common 50 zones.
+- **All TZID-bearing properties handled**: `DTSTART`, `DTEND`, `RECURRENCE-ID`, and `EXDATE` all go through `ParseDateTimeWithTzid`.
 
 ### 4. Recurrence Rule Evaluation (`RRULE`, `EXDATE`, and `RECURRENCE-ID`)
 Google Calendar exports recurring events by defining a master `VEVENT` with `DTSTART` (the series inception date) and an `RRULE` property (e.g., `FREQ=WEEKLY;WKST=SU;BYDAY=MO,TH`), rather than emitting daily duplicate entries. Without recurring rule evaluation, any recurring event whose series started on a previous date is ignored when filtering for today's date.

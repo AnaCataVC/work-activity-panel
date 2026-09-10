@@ -138,14 +138,15 @@ public static partial class ICalParser
             }
             else if (keyPart.StartsWith("RECURRENCE-ID", StringComparison.OrdinalIgnoreCase))
             {
-                currentEvent.RecurrenceId = ParseDateTime(valPart);
+                currentEvent.RecurrenceId = ParseDateTimeWithTzid(valPart, ExtractTzid(keyPart));
             }
             else if (keyPart.StartsWith("EXDATE", StringComparison.OrdinalIgnoreCase))
             {
+                var tzid = ExtractTzid(keyPart);
                 var tokens = valPart.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 foreach (var token in tokens)
                 {
-                    var exDt = ParseDateTime(token);
+                    var exDt = ParseDateTimeWithTzid(token, tzid);
                     if (exDt.HasValue)
                     {
                         currentEvent.ExDates.Add(exDt.Value);
@@ -158,7 +159,7 @@ public static partial class ICalParser
                 {
                     currentEvent.IsAllDay = true;
                 }
-                currentEvent.DtStart = ParseDateTime(valPart);
+                currentEvent.DtStart = ParseDateTimeWithTzid(valPart, ExtractTzid(keyPart));
             }
             else if (keyPart.StartsWith("DTEND", StringComparison.OrdinalIgnoreCase))
             {
@@ -166,7 +167,7 @@ public static partial class ICalParser
                 {
                     currentEvent.IsAllDay = true;
                 }
-                currentEvent.DtEnd = ParseDateTime(valPart);
+                currentEvent.DtEnd = ParseDateTimeWithTzid(valPart, ExtractTzid(keyPart));
             }
         }
 
@@ -610,4 +611,156 @@ public static partial class ICalParser
         var match = MeetingLinkRegex().Match(combined);
         return match.Success ? match.Value : null;
     }
+
+    /// <summary>
+    /// Extracts the TZID parameter value from an iCal property key part.
+    /// For example: "DTSTART;TZID=America/New_York" → "America/New_York".
+    /// Returns null if no TZID parameter is present.
+    /// </summary>
+    internal static string? ExtractTzid(string keyPart)
+    {
+        // keyPart may contain multiple semicolon-separated parameters, e.g.:
+        // DTSTART;TZID=America/Santiago or DTSTART;VALUE=DATE;TZID=America/Santiago
+        var parts = keyPart.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var part in parts)
+        {
+            if (part.StartsWith("TZID=", StringComparison.OrdinalIgnoreCase))
+            {
+                return part[5..].Trim();
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Parses an iCal datetime value string, applying TZID-based timezone conversion when available.
+    /// UTC values (ending in 'Z') are always converted to local time regardless of tzid.
+    /// TZID values are resolved via TimeZoneInfo; if the TZID is unrecognised on this system,
+    /// the value is parsed as local time (same safe fallback as before).
+    /// </summary>
+    internal static DateTime? ParseDateTimeWithTzid(string value, string? tzid)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        // UTC values are unambiguous — timezone parameter is irrelevant.
+        if (value.EndsWith('Z'))
+        {
+            return ParseDateTime(value);
+        }
+
+        string[] formats =
+        {
+            "yyyyMMddTHHmmss",
+            "yyyyMMddTHHmm",
+            "yyyyMMdd"
+        };
+
+        if (!DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var parsedDt))
+        {
+            return null;
+        }
+
+        // No TZID → treat as floating local time (RFC 5545 §3.3.5 "local" form).
+        if (string.IsNullOrWhiteSpace(tzid))
+        {
+            return parsedDt;
+        }
+
+        // Attempt to resolve the IANA/Windows timezone.
+        TimeZoneInfo? tz = null;
+        try
+        {
+            tz = TimeZoneInfo.FindSystemTimeZoneById(tzid);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            // IANA id on Windows? Try a lightweight mapping of the most common ones.
+            tz = TryResolveIanaTimeZone(tzid);
+        }
+
+        if (tz == null)
+        {
+            // Unknown TZID — safe fallback: treat as local time.
+            return parsedDt;
+        }
+
+        // Convert from the event's timezone to local machine time.
+        return TimeZoneInfo.ConvertTimeToUtc(parsedDt, tz).ToLocalTime();
+    }
+
+    /// <summary>
+    /// Best-effort mapping of the most common IANA timezone IDs to Windows timezone IDs
+    /// for systems where only Windows IDs are registered (TimeZoneInfo on .NET 6+ supports
+    /// IANA natively on Linux/macOS; on Windows the runtime auto-maps, but some obscure IDs may fail).
+    /// </summary>
+    private static TimeZoneInfo? TryResolveIanaTimeZone(string ianaId)
+    {
+        // .NET 6+ on Windows can often resolve IANA IDs directly via the ICU library.
+        // This table covers the most frequently encountered cases as a reliable fallback.
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Americas
+            { "America/New_York",       "Eastern Standard Time" },
+            { "America/Chicago",        "Central Standard Time" },
+            { "America/Denver",         "Mountain Standard Time" },
+            { "America/Los_Angeles",    "Pacific Standard Time" },
+            { "America/Phoenix",        "US Mountain Standard Time" },
+            { "America/Anchorage",      "Alaskan Standard Time" },
+            { "America/Honolulu",       "Hawaiian Standard Time" },
+            { "America/Toronto",        "Eastern Standard Time" },
+            { "America/Vancouver",      "Pacific Standard Time" },
+            { "America/Sao_Paulo",      "E. South America Standard Time" },
+            { "America/Argentina/Buenos_Aires", "Argentina Standard Time" },
+            { "America/Santiago",       "Pacific SA Standard Time" },
+            { "America/Bogota",         "SA Pacific Standard Time" },
+            { "America/Lima",           "SA Pacific Standard Time" },
+            { "America/Mexico_City",    "Central Standard Time (Mexico)" },
+            // Europe
+            { "Europe/London",          "GMT Standard Time" },
+            { "Europe/Dublin",          "GMT Standard Time" },
+            { "Europe/Paris",           "Romance Standard Time" },
+            { "Europe/Berlin",          "W. Europe Standard Time" },
+            { "Europe/Rome",            "W. Europe Standard Time" },
+            { "Europe/Madrid",          "Romance Standard Time" },
+            { "Europe/Amsterdam",       "W. Europe Standard Time" },
+            { "Europe/Brussels",        "Romance Standard Time" },
+            { "Europe/Zurich",          "W. Europe Standard Time" },
+            { "Europe/Warsaw",          "Central European Standard Time" },
+            { "Europe/Stockholm",       "W. Europe Standard Time" },
+            { "Europe/Helsinki",        "FLE Standard Time" },
+            { "Europe/Athens",          "GTB Standard Time" },
+            { "Europe/Bucharest",       "GTB Standard Time" },
+            { "Europe/Kiev",            "FLE Standard Time" },
+            { "Europe/Moscow",          "Russian Standard Time" },
+            { "Europe/Istanbul",        "Turkey Standard Time" },
+            // Asia / Pacific
+            { "Asia/Tokyo",             "Tokyo Standard Time" },
+            { "Asia/Shanghai",          "China Standard Time" },
+            { "Asia/Hong_Kong",         "China Standard Time" },
+            { "Asia/Seoul",             "Korea Standard Time" },
+            { "Asia/Singapore",         "Singapore Standard Time" },
+            { "Asia/Kolkata",           "India Standard Time" },
+            { "Asia/Dubai",             "Arabian Standard Time" },
+            { "Asia/Riyadh",            "Arab Standard Time" },
+            { "Asia/Bangkok",           "SE Asia Standard Time" },
+            { "Asia/Jakarta",           "SE Asia Standard Time" },
+            { "Australia/Sydney",       "AUS Eastern Standard Time" },
+            { "Australia/Melbourne",    "AUS Eastern Standard Time" },
+            { "Pacific/Auckland",       "New Zealand Standard Time" },
+            // Africa / UTC
+            { "Africa/Johannesburg",    "South Africa Standard Time" },
+            { "Africa/Cairo",           "Egypt Standard Time" },
+            { "UTC",                    "UTC" },
+        };
+
+        if (map.TryGetValue(ianaId, out var windowsId))
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(windowsId); }
+            catch { /* ignore */ }
+        }
+
+        return null;
+    }
 }
+

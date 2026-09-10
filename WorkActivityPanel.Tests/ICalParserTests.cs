@@ -298,4 +298,70 @@ END:VCALENDAR";
         Assert.Single(eventsWeek2);
         Assert.Equal("Bi-weekly Sprint Review", eventsWeek2[0].Title);
     }
+
+    // ── TZID timezone handling ─────────────────────────────────────────────
+
+    [Fact]
+    public void ExtractTzid_ShouldReturnNullWhenAbsent()
+    {
+        Assert.Null(ICalParser.ExtractTzid("DTSTART"));
+        Assert.Null(ICalParser.ExtractTzid("DTSTART;VALUE=DATE"));
+    }
+
+    [Fact]
+    public void ExtractTzid_ShouldReturnTzidValue()
+    {
+        Assert.Equal("America/New_York", ICalParser.ExtractTzid("DTSTART;TZID=America/New_York"));
+        Assert.Equal("America/Santiago", ICalParser.ExtractTzid("DTSTART;VALUE=DATE;TZID=America/Santiago"));
+    }
+
+    [Fact]
+    public void ParseDateTimeWithTzid_UtcSuffix_AlwaysConvertsFromUtc()
+    {
+        // 20260910T160000Z = 16:00 UTC, regardless of tzid arg
+        var result = ICalParser.ParseDateTimeWithTzid("20260910T160000Z", "America/New_York");
+        Assert.NotNull(result);
+
+        var expectedUtc = new DateTime(2026, 9, 10, 16, 0, 0, DateTimeKind.Utc);
+        Assert.Equal(expectedUtc.ToLocalTime(), result!.Value);
+    }
+
+    [Fact]
+    public void ParseDateTimeWithTzid_NoTzid_ReturnsParsedAsFloatingLocal()
+    {
+        var result = ICalParser.ParseDateTimeWithTzid("20260910T110000", null);
+        Assert.NotNull(result);
+        Assert.Equal(new DateTime(2026, 9, 10, 11, 0, 0), result!.Value);
+    }
+
+    [Fact]
+    public void ParseEventsForDate_ShouldHandleDtStartWithTzidParameter()
+    {
+        // Event stored in America/New_York (EDT = UTC-4).
+        // DTSTART;TZID=America/New_York:20260910T110000
+        // → UTC 15:00 → local time varies by machine; we verify start is in expected UTC range.
+        var today = new DateTime(2026, 9, 10);
+
+        string ics = @"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:data-talk-tzid@google.com
+DTSTART;TZID=America/New_York:20260910T110000
+DTEND;TZID=America/New_York:20260910T120000
+SUMMARY:Data Talk
+LOCATION:https://meet.google.com/xyz-data-talk
+END:VEVENT
+END:VCALENDAR";
+
+        var events = ICalParser.ParseEventsForDate(ics, today);
+
+        Assert.Single(events);
+        Assert.Equal("Data Talk", events[0].Title);
+
+        // The parsed StartTime should correspond to 11:00 AM EDT = 15:00 UTC.
+        // Verify it equals 15:00 UTC expressed in local time.
+        var expectedUtc = new DateTime(2026, 9, 10, 15, 0, 0, DateTimeKind.Utc);
+        Assert.Equal(expectedUtc.ToLocalTime(), events[0].StartTime);
+    }
 }
+
