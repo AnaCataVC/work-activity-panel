@@ -53,6 +53,9 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
     /// <inheritdoc />
     public event EventHandler<CalendarEvent>? MeetingStartingNow;
 
+    /// <inheritdoc />
+    public event EventHandler<CalendarEvent>? MeetingAlertInvalidUrl;
+
     public GoogleCalendarService(
         IAppLauncherService appLauncherService,
         ILogger<GoogleCalendarService> logger)
@@ -301,8 +304,18 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
                 var popupTimer = new Timer(_ =>
                 {
-                    _logger.LogInformation("Popup meeting alert fired for '{Title}'.", meeting.Title);
-                    MeetingStartingNow?.Invoke(this, meeting);
+                    _logger.LogInformation(
+                        "Popup meeting alert fired for '{Title}'.",
+                        meeting.Title);
+                    // Validate meeting link before raising popup event
+                    if (Uri.IsWellFormedUriString(meeting.MeetingLink, UriKind.Absolute))
+                    {
+                        MeetingStartingNow?.Invoke(this, meeting);
+                    }
+                    else
+                    {
+                        MeetingAlertInvalidUrl?.Invoke(this, meeting);
+                    }
                 }, null, popupDelay, Timeout.InfiniteTimeSpan);
 
                 _activeTimers.Add(popupTimer);
@@ -311,7 +324,14 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
             {
                 // Already inside the popup window right now — fire immediately
                 _logger.LogInformation("Meeting '{Title}' popup window active. Firing immediately.", meeting.Title);
-                MeetingStartingNow?.Invoke(this, meeting);
+                if (Uri.IsWellFormedUriString(meeting.MeetingLink, UriKind.Absolute))
+                {
+                    MeetingStartingNow?.Invoke(this, meeting);
+                }
+                else
+                {
+                    MeetingAlertInvalidUrl?.Invoke(this, meeting);
+                }
             }
         }
     }

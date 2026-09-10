@@ -36,6 +36,11 @@ public interface IGoogleCalendarService
     event EventHandler<CalendarEvent>? MeetingStartingNow;
 
     /// <summary>
+    /// Event triggered when a meeting alert has an invalid conference URL.
+    /// </summary>
+    event EventHandler<CalendarEvent>? MeetingAlertInvalidUrl;
+
+    /// <summary>
     /// Gets the current filter settings for Granola triggers.
     /// </summary>
     CalendarFilterSettings FilterSettings { get; }

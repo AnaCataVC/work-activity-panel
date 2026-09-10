@@ -24,6 +24,8 @@
     <Compile Include="..\Services\Interfaces\IGitHubAuthService.cs" Link="Services\Interfaces\IGitHubAuthService.cs" />
     <Compile Include="..\Services\UpdateService.cs" Link="Services\UpdateService.cs" />
     <Compile Include="..\Services\Interfaces\IUpdateService.cs" Link="Services\Interfaces\IUpdateService.cs" />
+    <Compile Include="..\Services\GoogleCalendarService.cs" Link="Services\GoogleCalendarService.cs" />
+    <Compile Include="..\Services\Interfaces\IGoogleCalendarService.cs" Link="Services\Interfaces\IGoogleCalendarService.cs" />
   </ItemGroup>
 
   <ItemGroup>

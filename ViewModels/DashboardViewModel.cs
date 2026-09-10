@@ -208,6 +208,7 @@ public partial class DashboardViewModel : ObservableObject
         _scheduleService.ScheduleChanged += OnScheduleChanged;
         _googleCalendarService.UpcomingMeetingDetected += OnUpcomingMeetingDetected;
         _googleCalendarService.MeetingStartingNow += OnMeetingStartingNow;
+        _googleCalendarService.MeetingAlertInvalidUrl += OnMeetingAlertInvalidUrl;
 
         _driveSyncService.SyncProgressChanged += OnDriveSyncProgressChanged;
         _driveSyncService.SyncCompleted += OnDriveSyncCompleted;
@@ -372,6 +373,15 @@ public partial class DashboardViewModel : ObservableObject
 
         // App.ShowMeetingAlert dispatches to the UI thread and prevents duplicate popups internally
         App.ShowMeetingAlert(meeting);
+    }
+
+    private void OnMeetingAlertInvalidUrl(object? sender, CalendarEvent meeting)
+    {
+        // Meeting has a non-empty link that is not a well-formed absolute URI.
+        // We intentionally do NOT open the popup to avoid crashing or launching a broken URL.
+        // Log the issue so it's visible during debugging without surfacing noise to the user.
+        System.Diagnostics.Debug.WriteLine(
+            $"[MeetingAlert] Skipped popup for '{meeting.Title}' – invalid conference URL: '{meeting.MeetingLink}'");
     }
 
     private void OnDriveSyncProgressChanged(object? sender, SyncProgressReport report)
