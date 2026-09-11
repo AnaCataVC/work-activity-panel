@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,19 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         "Data");
     private static readonly string HashIndexFile = Path.Combine(DataDirectory, "sync_hashes.json");
     private static readonly string ErrorsFile = Path.Combine(DataDirectory, "sync_errors.json");
+
+    /// <summary>
+    /// Batch upload caps. Multiple files ride in a single JSON POST so the fixed per-call cost
+    /// (Apps Script cold start + LockService acquisition, ~1.5-3s) is paid once per batch instead
+    /// of once per file — this is what actually fixes "uploads are still slow" once the scan and
+    /// folder-resolution fast-paths are already in place (see drive-sync-fast-path-hash-cache.md
+    /// and drive-sync-appsscript-folder-id-cache.md). The byte cap keeps the encoded payload well
+    /// under Google's undocumented ~25-30 MB HTTP body ceiling for Apps Script Web Apps (base64
+    /// expands raw bytes by ~33%, so 9 MB raw becomes ~12 MB encoded — see
+    /// drive-sync-adversarial-stress-test.md, vulnerability #3).
+    /// </summary>
+    private const int MaxBatchFileCount = 8;
+    private const long MaxBatchRawBytes = 9L * 1024 * 1024;
 
     private readonly HttpClient _httpClient;
     private readonly IScheduleService _scheduleService;
@@ -175,7 +189,15 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             summary.TotalScanned = localFiles.Count;
 
             int processed = 0;
+            var pendingUploads = new List<UploadCandidate>();
 
+            // 1. Classification pass: resolve each file's hash lazily with the fast-path cache
+            //    (no network calls here) and split into "skip" vs. "needs upload".
+            //    IsMetadataConfirmed does the single FileInfo stat to check LastWriteTimeUtc + FileSize.
+            //    GetKnownHash is a pure cache lookup (no disk I/O). This avoids duplicate stat calls.
+            //    When metadata matches, the file is skipped with no disk read. When it does not
+            //    (new file, size/mtime changed, legacy entry with ticks=0, or file < 1 KB),
+            //    we fall through to ComputeSha256.
             foreach (var file in localFiles)
             {
                 if (token.IsCancellationRequested)
@@ -186,14 +208,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
                 processed++;
 
-                // 1. Resolve the file hash lazily with the fast-path cache.
-                //    IsMetadataConfirmed does the single FileInfo stat to check LastWriteTimeUtc + FileSize.
-                //    GetKnownHash is a pure cache lookup (no disk I/O). This avoids duplicate stat calls.
-                //    When metadata matches, the file is skipped with no disk read. When it does not
-                //    (new file, size/mtime changed, legacy entry with ticks=0, or file < 1 KB),
-                //    we fall through to ComputeSha256.
-                string currentHash;
-                FileInfo? uploadFileInfo = null;
+                bool skip = false;
+                FileInfo? statFileInfo = null;
+
                 if (!forceFullSync && _settings.OnlyModifiedOrNew)
                 {
                     string? cachedHash = GetKnownHash(file.HashKey);
@@ -204,56 +221,34 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                     if (metadataConfirmed)
                     {
                         // Fast-path: metadata identical, file unchanged, no disk read needed.
-                        summary.Skipped++;
-                        ReportProgress(progress, new SyncProgressReport
-                        {
-                            TotalFiles = summary.TotalScanned,
-                            ProcessedFiles = processed,
-                            CurrentFileName = file.FileName,
-                            UploadedCount = summary.Uploaded,
-                            SkippedCount = summary.Skipped,
-                            ErrorCount = summary.Errors,
-                            StatusMessage = $"Sin cambios: {file.FileName}"
-                        });
-                        continue;
+                        skip = true;
                     }
-
-                    // Metadata changed or unavailable — compute the real hash from disk.
-                    uploadFileInfo = new FileInfo(file.FilePath);
-                    currentHash = ComputeSha256(file.FilePath);
-                    file.Hash = currentHash;
-
-                    if (cachedHash != null &&
-                        string.Equals(cachedHash, currentHash, StringComparison.OrdinalIgnoreCase))
+                    else
                     {
-                        // Hash matches even though metadata mismatched (e.g. git checkout restored mtime,
-                        // or xcopy preserved timestamp). Upgrade the cache entry with fresh metadata.
-                        SaveKnownHash(file.HashKey, currentHash, uploadFileInfo);
-                        summary.Skipped++;
-                        ReportProgress(progress, new SyncProgressReport
+                        // Metadata changed or unavailable — compute the real hash from disk.
+                        statFileInfo = new FileInfo(file.FilePath);
+                        file.Hash = ComputeSha256(file.FilePath);
+
+                        if (cachedHash != null &&
+                            string.Equals(cachedHash, file.Hash, StringComparison.OrdinalIgnoreCase))
                         {
-                            TotalFiles = summary.TotalScanned,
-                            ProcessedFiles = processed,
-                            CurrentFileName = file.FileName,
-                            UploadedCount = summary.Uploaded,
-                            SkippedCount = summary.Skipped,
-                            ErrorCount = summary.Errors,
-                            StatusMessage = $"Sin cambios: {file.FileName}"
-                        });
-                        continue;
+                            // Hash matches even though metadata mismatched (e.g. git checkout restored mtime,
+                            // or xcopy preserved timestamp). Upgrade the cache entry with fresh metadata.
+                            SaveKnownHash(file.HashKey, file.Hash, statFileInfo);
+                            skip = true;
+                        }
                     }
                 }
                 else
                 {
                     // Full sync or incremental check disabled: compute hash for post-upload persistence.
-                    uploadFileInfo = new FileInfo(file.FilePath);
-                    currentHash = ComputeSha256(file.FilePath);
-                    file.Hash = currentHash;
+                    statFileInfo = new FileInfo(file.FilePath);
+                    file.Hash = ComputeSha256(file.FilePath);
                 }
 
-                // 2. Upload file to Google Drive
-                try
+                if (skip)
                 {
+                    summary.Skipped++;
                     ReportProgress(progress, new SyncProgressReport
                     {
                         TotalFiles = summary.TotalScanned,
@@ -262,48 +257,52 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         UploadedCount = summary.Uploaded,
                         SkippedCount = summary.Skipped,
                         ErrorCount = summary.Errors,
-                        StatusMessage = $"Subiendo ({processed}/{summary.TotalScanned}): {file.FileName}..."
+                        StatusMessage = $"Sin cambios: {file.FileName}"
                     });
+                    continue;
+                }
 
-                    var fileId = await UploadSingleFileAsync(file.FilePath, _settings.WebAppUrl, file.RelativePath);
-                    if (string.IsNullOrWhiteSpace(fileId))
+                pendingUploads.Add(new UploadCandidate(
+                    file.FilePath, file.FileName, file.RelativePath, file.HashKey, file.Hash, statFileInfo!));
+            }
+
+            // 2. Upload pass: group pending files into batches so the fixed per-request cost of
+            //    Apps Script (cold start + LockService acquisition, ~1.5-3s) is paid once per
+            //    batch instead of once per file — see the MaxBatchFileCount/MaxBatchRawBytes docs above.
+            if (!token.IsCancellationRequested)
+            {
+                foreach (var batch in BuildBatches(pendingUploads))
+                {
+                    if (token.IsCancellationRequested)
                     {
-                        throw new Exception("Google Apps Script no confirmó el identificador del archivo creado (fileId).");
+                        summary.Message = "Sincronización cancelada por el usuario.";
+                        break;
                     }
 
-                    SaveKnownHash(file.HashKey, file.Hash, uploadFileInfo);
-                    summary.Uploaded++;
-
-                    // Throttle between uploads to avoid Google Apps Script burst rate-limits
-                    await Task.Delay(300, token);
-                }
-                catch (Exception ex)
-                {
-                    summary.Errors++;
-                    var (category, friendlyMsg) = CategorizeError(ex, file.FilePath);
-                    var errorItem = new SyncErrorItem
+                    ReportProgress(progress, new SyncProgressReport
                     {
-                        FileName = file.FileName,
-                        FilePath = file.FilePath,
-                        RelativePath = file.RelativePath,
-                        HashKey = file.HashKey,
-                        Hash = file.Hash,
-                        ErrorMessage = friendlyMsg,
-                        ErrorCategory = category,
-                        Timestamp = DateTime.Now
-                    };
-                    currentRunErrors.Add(errorItem);
-                    summary.FailedFiles.Add(errorItem);
+                        TotalFiles = summary.TotalScanned,
+                        ProcessedFiles = processed,
+                        CurrentFileName = batch.Count == 1 ? batch[0].FileName : $"{batch.Count} archivos",
+                        UploadedCount = summary.Uploaded,
+                        SkippedCount = summary.Skipped,
+                        ErrorCount = summary.Errors,
+                        StatusMessage = batch.Count == 1
+                            ? $"Subiendo: {batch[0].FileName}..."
+                            : $"Subiendo lote de {batch.Count} archivos..."
+                    });
+
+                    await ProcessBatchAsync(batch, summary, currentRunErrors, token);
 
                     ReportProgress(progress, new SyncProgressReport
                     {
                         TotalFiles = summary.TotalScanned,
                         ProcessedFiles = processed,
-                        CurrentFileName = file.FileName,
+                        CurrentFileName = batch[^1].FileName,
                         UploadedCount = summary.Uploaded,
                         SkippedCount = summary.Skipped,
                         ErrorCount = summary.Errors,
-                        StatusMessage = $"Error al subir {file.FileName}: {friendlyMsg}"
+                        StatusMessage = $"Progreso: {summary.Uploaded} subidos, {summary.Errors} errores."
                     });
                 }
             }
@@ -405,74 +404,61 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
         try
         {
+            var pendingRetries = new List<UploadCandidate>();
+
             foreach (var item in filesToRetry)
             {
-                if (token.IsCancellationRequested)
-                {
-                    summary.Message = "Reintento cancelado por el usuario.";
-                    for (int i = processed; i < filesToRetry.Count; i++)
-                    {
-                        remainingErrors.Add(filesToRetry[i]);
-                    }
-                    break;
-                }
-
                 processed++;
 
-                try
-                {
-                    ReportProgress(progress, new SyncProgressReport
-                    {
-                        TotalFiles = summary.TotalScanned,
-                        ProcessedFiles = processed,
-                        CurrentFileName = item.FileName,
-                        UploadedCount = summary.Uploaded,
-                        SkippedCount = summary.Skipped,
-                        ErrorCount = summary.Errors,
-                        StatusMessage = $"Reintentando ({processed}/{summary.TotalScanned}): {item.FileName}..."
-                    });
-
-                    if (!File.Exists(item.FilePath))
-                    {
-                        throw new FileNotFoundException("El archivo local ya no existe.", item.FilePath);
-                    }
-
-                    var fileId = await UploadSingleFileAsync(item.FilePath, _settings.WebAppUrl, item.RelativePath);
-                    if (string.IsNullOrWhiteSpace(fileId))
-                    {
-                        throw new Exception("Google Apps Script no confirmó el identificador del archivo creado (fileId).");
-                    }
-
-                    if (!string.IsNullOrEmpty(item.HashKey) && !string.IsNullOrEmpty(item.Hash))
-                    {
-                        SaveKnownHash(item.HashKey, item.Hash);
-                    }
-
-                    summary.Uploaded++;
-
-                    await Task.Delay(300, token);
-                }
-                catch (Exception ex)
+                if (!File.Exists(item.FilePath))
                 {
                     summary.Errors++;
-                    var (category, friendlyMsg) = CategorizeError(ex, item.FilePath);
+                    var (category, friendlyMsg) = CategorizeError(
+                        new FileNotFoundException("El archivo local ya no existe.", item.FilePath), item.FilePath);
                     item.ErrorMessage = friendlyMsg;
                     item.ErrorCategory = category;
                     item.Timestamp = DateTime.Now;
                     remainingErrors.Add(item);
                     summary.FailedFiles.Add(item);
-
-                    ReportProgress(progress, new SyncProgressReport
-                    {
-                        TotalFiles = summary.TotalScanned,
-                        ProcessedFiles = processed,
-                        CurrentFileName = item.FileName,
-                        UploadedCount = summary.Uploaded,
-                        SkippedCount = summary.Skipped,
-                        ErrorCount = summary.Errors,
-                        StatusMessage = $"Error al reintentar {item.FileName}: {friendlyMsg}"
-                    });
+                    continue;
                 }
+
+                pendingRetries.Add(new UploadCandidate(
+                    item.FilePath, item.FileName, item.RelativePath, item.HashKey, item.Hash, new FileInfo(item.FilePath)));
+            }
+
+            var batches = BuildBatches(pendingRetries);
+            for (int bi = 0; bi < batches.Count; bi++)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    summary.Message = "Reintento cancelado por el usuario.";
+                    for (int rem = bi; rem < batches.Count; rem++)
+                    {
+                        foreach (var candidate in batches[rem])
+                        {
+                            remainingErrors.Add(BuildErrorItem(candidate, "Cancelado", "Reintento cancelado por el usuario."));
+                        }
+                    }
+                    break;
+                }
+
+                var batch = batches[bi];
+
+                ReportProgress(progress, new SyncProgressReport
+                {
+                    TotalFiles = summary.TotalScanned,
+                    ProcessedFiles = processed,
+                    CurrentFileName = batch.Count == 1 ? batch[0].FileName : $"{batch.Count} archivos",
+                    UploadedCount = summary.Uploaded,
+                    SkippedCount = summary.Skipped,
+                    ErrorCount = summary.Errors,
+                    StatusMessage = batch.Count == 1
+                        ? $"Reintentando: {batch[0].FileName}..."
+                        : $"Reintentando lote de {batch.Count} archivos..."
+                });
+
+                await ProcessBatchAsync(batch, summary, remainingErrors, token);
             }
 
             lock (_errorLock)
@@ -548,6 +534,109 @@ public class DriveSyncService : IDriveSyncService, IDisposable
         }
     }
 
+    /// <summary>One file queued for upload, with its local stat already resolved (avoids a repeat FileInfo read at upload time).</summary>
+    public sealed record UploadCandidate(string FilePath, string FileName, string RelativePath, string HashKey, string Hash, FileInfo Info);
+
+    /// <summary>Per-file outcome inside a batch response, matched back to its <see cref="UploadCandidate"/> by array position.</summary>
+    private sealed record BatchUploadResult(bool Success, string? FileId, string? ErrorMessage);
+
+    /// <summary>
+    /// Groups pending uploads into batches bounded by <see cref="MaxBatchFileCount"/> and
+    /// <see cref="MaxBatchRawBytes"/>. A single file already over the byte cap still gets its
+    /// own one-item batch instead of being dropped. Public (like <see cref="CombineDestination"/>
+    /// and <see cref="ResolveUploadName"/>) purely so the batching boundary logic is unit-testable.
+    /// </summary>
+    public static List<List<UploadCandidate>> BuildBatches(List<UploadCandidate> candidates)
+    {
+        var batches = new List<List<UploadCandidate>>();
+        var current = new List<UploadCandidate>();
+        long currentBytes = 0;
+
+        foreach (var candidate in candidates)
+        {
+            if (current.Count > 0 &&
+                (current.Count >= MaxBatchFileCount || currentBytes + candidate.Info.Length > MaxBatchRawBytes))
+            {
+                batches.Add(current);
+                current = new List<UploadCandidate>();
+                currentBytes = 0;
+            }
+
+            current.Add(candidate);
+            currentBytes += candidate.Info.Length;
+        }
+
+        if (current.Count > 0)
+            batches.Add(current);
+
+        return batches;
+    }
+
+    private static SyncErrorItem BuildErrorItem(UploadCandidate candidate, string category, string message) => new()
+    {
+        FileName = candidate.FileName,
+        FilePath = candidate.FilePath,
+        RelativePath = candidate.RelativePath,
+        HashKey = candidate.HashKey,
+        Hash = candidate.Hash,
+        ErrorMessage = message,
+        ErrorCategory = category,
+        Timestamp = DateTime.Now
+    };
+
+    /// <summary>
+    /// Uploads one batch, updates the hash cache and <paramref name="summary"/> counters for
+    /// every file it contains, and appends failures to <paramref name="errorSink"/>. A whole-batch
+    /// failure (auth rejected, lock timeout, retries exhausted) marks every file in the batch as
+    /// failed with the same cause, mirroring what a single-file failure did before batching.
+    /// </summary>
+    private async Task ProcessBatchAsync(
+        List<UploadCandidate> batch,
+        SyncResultSummary summary,
+        List<SyncErrorItem> errorSink,
+        CancellationToken token)
+    {
+        try
+        {
+            var results = await UploadBatchAsync(batch, _settings.WebAppUrl);
+            for (int i = 0; i < batch.Count; i++)
+            {
+                var candidate = batch[i];
+                var result = results[i];
+
+                if (result.Success)
+                {
+                    SaveKnownHash(candidate.HashKey, candidate.Hash, candidate.Info);
+                    summary.Uploaded++;
+                }
+                else
+                {
+                    summary.Errors++;
+                    var (category, friendlyMsg) = CategorizeError(new Exception(result.ErrorMessage ?? "Error desconocido"), candidate.FilePath);
+                    var errorItem = BuildErrorItem(candidate, category, friendlyMsg);
+                    errorSink.Add(errorItem);
+                    summary.FailedFiles.Add(errorItem);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            var (category, friendlyMsg) = CategorizeError(ex, batch.Count == 1 ? batch[0].FilePath : $"{batch.Count} archivos en lote");
+            foreach (var candidate in batch)
+            {
+                summary.Errors++;
+                var errorItem = BuildErrorItem(candidate, category, friendlyMsg);
+                errorSink.Add(errorItem);
+                summary.FailedFiles.Add(errorItem);
+            }
+        }
+
+        // Throttle between batches to avoid Google Apps Script burst rate-limits. Swallow
+        // cancellation here so it is handled by the caller's IsCancellationRequested check on
+        // the next loop iteration instead of surfacing as an exception after work already done.
+        try { await Task.Delay(300, token); } catch (OperationCanceledException) { }
+    }
+
     public async Task<string?> UploadSingleFileAsync(string filePath, string webAppUrl, string? relativePath = null)
     {
         if (string.IsNullOrWhiteSpace(webAppUrl))
@@ -563,18 +652,57 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             throw new InvalidOperationException($"El archivo ({fileInfo.Length / (1024.0 * 1024.0):F1} MB) supera el límite seguro de {_settings.MaxFileSizeMb} MB permitido para Google Apps Script.");
         }
 
+        string normalizedRelativePath = string.IsNullOrWhiteSpace(relativePath)
+            ? Path.GetFileName(filePath)
+            : relativePath.Replace('\\', '/').TrimStart('/');
+
+        var candidate = new UploadCandidate(filePath, Path.GetFileName(filePath), normalizedRelativePath, filePath, string.Empty, fileInfo);
+        var results = await UploadBatchAsync(new List<UploadCandidate> { candidate }, webAppUrl);
+        var result = results[0];
+
+        if (!result.Success)
+        {
+            throw new Exception(result.ErrorMessage ?? "Error desconocido al subir el archivo.");
+        }
+
+        return result.FileId;
+    }
+
+    /// <summary>
+    /// Uploads a whole batch of files in a single JSON POST. Multiple files per request amortize
+    /// the fixed per-call cost of Apps Script (cold start + LockService acquisition) across all of
+    /// them instead of paying it per file — the actual fix for uploads staying slow once the scan
+    /// and folder-resolution fast-paths are already in place. The request body is capped by
+    /// <see cref="MaxBatchRawBytes"/> well under Google's undocumented ~25-30 MB ceiling for Apps
+    /// Script Web App payloads (see drive-sync-adversarial-stress-test.md).
+    /// </summary>
+    private async Task<List<BatchUploadResult>> UploadBatchAsync(List<UploadCandidate> batch, string webAppUrl)
+    {
         await _uploadSemaphore.WaitAsync();
         try
         {
-            byte[] fileBytes = await File.ReadAllBytesAsync(filePath);
-            string base64Data = Convert.ToBase64String(fileBytes);
+            var fileEntries = new List<object>(batch.Count);
+            foreach (var candidate in batch)
+            {
+                byte[] fileBytes = await File.ReadAllBytesAsync(candidate.FilePath);
+                string fileName = ResolveUploadName(candidate.FilePath, candidate.RelativePath);
 
-            string normalizedRelativePath = string.IsNullOrWhiteSpace(relativePath)
-                ? Path.GetFileName(filePath)
-                : relativePath.Replace('\\', '/').TrimStart('/');
+                fileEntries.Add(new
+                {
+                    filename = fileName,
+                    relativePath = candidate.RelativePath,
+                    mimeType = GetMimeType(fileName),
+                    data = Convert.ToBase64String(fileBytes)
+                });
+            }
 
-            string fileName = ResolveUploadName(filePath, normalizedRelativePath);
-            string mimeType = GetMimeType(fileName);
+            var payload = new Dictionary<string, object?> { ["files"] = fileEntries };
+            if (!string.IsNullOrWhiteSpace(_settings.AuthToken))
+            {
+                payload["authToken"] = _settings.AuthToken.Trim();
+            }
+
+            string requestJson = JsonSerializer.Serialize(payload);
 
             int maxRetries = 2;
             int delayMs = 1500;
@@ -583,20 +711,7 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             {
                 try
                 {
-                    var postParams = new List<KeyValuePair<string, string>>
-                    {
-                        new("filename", fileName),
-                        new("relativePath", normalizedRelativePath),
-                        new("mimeType", mimeType),
-                        new("data", base64Data)
-                    };
-
-                    if (!string.IsNullOrWhiteSpace(_settings.AuthToken))
-                    {
-                        postParams.Add(new("authToken", _settings.AuthToken.Trim()));
-                    }
-
-                    var content = new FormUrlEncodedContent(postParams);
+                    var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
                     var response = await _httpClient.PostAsync(webAppUrl, content);
 
                     // If rate limited or server overloaded (429, 503, 500), retry with backoff
@@ -613,25 +728,10 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
                     var responseString = await response.Content.ReadAsStringAsync();
 
+                    JsonElement result;
                     try
                     {
-                        var result = JsonSerializer.Deserialize<JsonElement>(responseString);
-                        if (result.TryGetProperty("status", out var status) && status.GetString() == "error")
-                        {
-                            string msg = result.TryGetProperty("message", out var m) ? m.GetString() ?? "Error desconocido" : "Error desconocido";
-
-                            if ((msg.Contains("Service invoked too many times", StringComparison.OrdinalIgnoreCase) ||
-                                 msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase)) && attempt < maxRetries)
-                            {
-                                await Task.Delay(delayMs + Random.Shared.Next(100, 500));
-                                delayMs *= 2;
-                                continue;
-                            }
-
-                            throw new Exception($"Apps Script Error: {msg}");
-                        }
-
-                        return result.TryGetProperty("fileId", out var id) ? id.GetString() : null;
+                        result = JsonSerializer.Deserialize<JsonElement>(responseString);
                     }
                     catch (JsonException)
                     {
@@ -645,6 +745,41 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                         string rawPreview = responseString.Length > 200 ? responseString[..200] + "..." : responseString;
                         throw new Exception($"Respuesta inválida de Apps Script (no es JSON):\n{rawPreview}");
                     }
+
+                    if (result.TryGetProperty("status", out var status) && status.GetString() == "error")
+                    {
+                        string msg = result.TryGetProperty("message", out var m) ? m.GetString() ?? "Error desconocido" : "Error desconocido";
+
+                        if ((msg.Contains("Service invoked too many times", StringComparison.OrdinalIgnoreCase) ||
+                             msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase)) && attempt < maxRetries)
+                        {
+                            await Task.Delay(delayMs + Random.Shared.Next(100, 500));
+                            delayMs *= 2;
+                            continue;
+                        }
+
+                        // Whole batch rejected before per-file processing (auth failure, lock timeout, malformed request).
+                        throw new Exception($"Apps Script Error: {msg}");
+                    }
+
+                    var perFileResults = new List<BatchUploadResult>(batch.Count);
+                    if (result.TryGetProperty("results", out var resultsArray) && resultsArray.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in resultsArray.EnumerateArray())
+                        {
+                            bool itemSuccess = item.TryGetProperty("status", out var itemStatus) && itemStatus.GetString() == "success";
+                            string? fileId = item.TryGetProperty("fileId", out var fid) ? fid.GetString() : null;
+                            string? errMsg = item.TryGetProperty("message", out var im) ? im.GetString() : null;
+                            perFileResults.Add(new BatchUploadResult(itemSuccess, fileId, errMsg));
+                        }
+                    }
+
+                    if (perFileResults.Count != batch.Count)
+                    {
+                        throw new Exception("Apps Script devolvió una cantidad de resultados distinta a la cantidad de archivos enviados. Actualiza el Code.gs desplegado (ver docs/google-setup-guide.md).");
+                    }
+
+                    return perFileResults;
                 }
                 catch (Exception ex) when (attempt < maxRetries && (ex is TaskCanceledException || ex is HttpRequestException))
                 {

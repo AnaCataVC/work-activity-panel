@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Moq;
 using WorkActivityPanel.Helpers;
@@ -485,5 +487,54 @@ public class DriveSyncServiceTests : IDisposable
         Assert.Single(results);
         Assert.Empty(results[0].Hash);
         Assert.Equal(512L, results[0].FileSize);
+    }
+
+    // ── Batch upload grouping ────────────────────────────────────────────────
+
+    private DriveSyncService.UploadCandidate MakeCandidate(string fileName, long sizeInBytes)
+    {
+        var path = Path.Combine(_testDir, fileName);
+        using (var fs = new FileStream(path, FileMode.Create))
+        {
+            fs.SetLength(sizeInBytes);
+        }
+
+        return new DriveSyncService.UploadCandidate(path, fileName, fileName, path, "hash", new FileInfo(path));
+    }
+
+    [Fact]
+    public void BuildBatches_ShouldSplitWhenFileCountExceedsTheCap()
+    {
+        // 9 tiny files with the 8-file cap must split into batches of 8 and 1.
+        var candidates = Enumerable.Range(0, 9)
+            .Select(i => MakeCandidate($"tiny{i}.txt", 1024))
+            .ToList();
+
+        var batches = DriveSyncService.BuildBatches(candidates);
+
+        Assert.Equal(2, batches.Count);
+        Assert.Equal(8, batches[0].Count);
+        Assert.Single(batches[1]);
+    }
+
+    [Fact]
+    public void BuildBatches_ShouldSplitByByteCap_AndKeepAnOversizedFileInItsOwnBatch()
+    {
+        // Two 5 MB files would total 10 MB, over the 9 MB batch cap, so they land in separate
+        // batches. A lone 10 MB file is still over the cap by itself but must not be dropped.
+        var fileA = MakeCandidate("a.bin", 5L * 1024 * 1024);
+        var fileB = MakeCandidate("b.bin", 5L * 1024 * 1024);
+        var fileC = MakeCandidate("c.bin", 10L * 1024 * 1024);
+
+        var batches = DriveSyncService.BuildBatches(new List<DriveSyncService.UploadCandidate> { fileA, fileB, fileC });
+
+        Assert.Equal(3, batches.Count);
+        Assert.All(batches, b => Assert.Single(b));
+    }
+
+    [Fact]
+    public void BuildBatches_ShouldReturnEmpty_WhenNoCandidates()
+    {
+        Assert.Empty(DriveSyncService.BuildBatches(new List<DriveSyncService.UploadCandidate>()));
     }
 }

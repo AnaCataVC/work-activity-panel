@@ -67,77 +67,98 @@ function doPost(e) {
   try {
     // 2. Optional: Set a shared secret token to protect your endpoint (leave empty if not needed)
     var AUTH_TOKEN = ""; // e.g. "my-super-secret-token"
-    if (AUTH_TOKEN && e.parameter.authToken !== AUTH_TOKEN) {
+
+    // 3. Paste your Google Drive Folder ID here
+    var rootFolderId = "PASTE_YOUR_FOLDER_ID_HERE";
+
+    // 4. The request body is JSON: { authToken, files: [{ filename, relativePath, mimeType, data }, ...] }.
+    //    Sending several files per call (a batch) amortizes the fixed per-request cost of Apps
+    //    Script (cold start + this lock acquisition) across all of them instead of paying it once
+    //    per file, which is what keeps sync fast once many files change at once. Every call is a
+    //    batch, even a single-file one (an array with one entry), so there is only one wire format.
+    var body = JSON.parse(e.postData.contents);
+
+    if (AUTH_TOKEN && body.authToken !== AUTH_TOKEN) {
       return ContentService.createTextOutput(JSON.stringify({
         status: "error",
         message: "Unauthorized: Invalid or missing authentication token."
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 3. Paste your Google Drive Folder ID here
-    var rootFolderId = "PASTE_YOUR_FOLDER_ID_HERE"; 
-    var currentFolder = DriveApp.getFolderById(rootFolderId);
+    var files = body.files || [];
+    var folderCache = PropertiesService.getScriptProperties();
+    var results = [];
 
-    var fileName = e.parameter.filename;
-    var relativePath = e.parameter.relativePath || fileName;
-    var mimeType = e.parameter.mimeType || "application/octet-stream";
+    for (var f = 0; f < files.length; f++) {
+      var fileEntry = files[f];
+      var relativePath = fileEntry.relativePath || fileEntry.filename;
 
-    // 4. Recreate subfolder hierarchy in Google Drive. Resolved folder IDs are cached in
-    //    PropertiesService so a repeat upload into an already-seen folder skips the
-    //    getFoldersByName search (an O(children) Drive query) and goes straight to a
-    //    direct getFolderById lookup instead. Without this, every single file uploaded
-    //    into a deeply nested path re-walks and re-searches the whole chain from the
-    //    root on every sync, which is the main reason uploads stay slow even once most
-    //    of the tree is already mirrored in Drive.
-    var pathParts = relativePath.split("/");
-    if (pathParts.length > 1) {
-      var folderCache = PropertiesService.getScriptProperties();
-      var cacheKeyParts = [];
-      for (var i = 0; i < pathParts.length - 1; i++) {
-        var subfolderName = pathParts[i].trim();
-        if (subfolderName.length === 0) continue;
-        cacheKeyParts.push(subfolderName);
+      // Per-file try/catch: one bad file (locked, quota, odd name) fails only its own entry
+      // in the results array instead of aborting the rest of the batch.
+      try {
+        var currentFolder = DriveApp.getFolderById(rootFolderId);
+        var fileName = fileEntry.filename;
+        var mimeType = fileEntry.mimeType || "application/octet-stream";
 
-        var cacheKey = "folderId:" + cacheKeyParts.join("/");
-        var cachedId = folderCache.getProperty(cacheKey);
-        var resolvedFolder = null;
+        // 5. Recreate subfolder hierarchy in Google Drive. Resolved folder IDs are cached in
+        //    PropertiesService so a repeat upload into an already-seen folder skips the
+        //    getFoldersByName search (an O(children) Drive query) and goes straight to a
+        //    direct getFolderById lookup instead. Without this, every single file uploaded
+        //    into a deeply nested path re-walks and re-searches the whole chain from the
+        //    root on every sync, which used to be the main reason uploads stayed slow even
+        //    once most of the tree was already mirrored in Drive.
+        var pathParts = relativePath.split("/");
+        if (pathParts.length > 1) {
+          var cacheKeyParts = [];
+          for (var i = 0; i < pathParts.length - 1; i++) {
+            var subfolderName = pathParts[i].trim();
+            if (subfolderName.length === 0) continue;
+            cacheKeyParts.push(subfolderName);
 
-        if (cachedId) {
-          try {
-            resolvedFolder = DriveApp.getFolderById(cachedId);
-            if (resolvedFolder.isTrashed()) resolvedFolder = null; // getFolderById does not throw on trashed folders
-          } catch (staleIdErr) {
-            // Cached folder was deleted/moved out from under us; fall through and re-resolve.
-            resolvedFolder = null;
+            var cacheKey = "folderId:" + cacheKeyParts.join("/");
+            var cachedId = folderCache.getProperty(cacheKey);
+            var resolvedFolder = null;
+
+            if (cachedId) {
+              try {
+                resolvedFolder = DriveApp.getFolderById(cachedId);
+                if (resolvedFolder.isTrashed()) resolvedFolder = null; // getFolderById does not throw on trashed folders
+              } catch (staleIdErr) {
+                // Cached folder was deleted/moved out from under us; fall through and re-resolve.
+                resolvedFolder = null;
+              }
+            }
+
+            if (!resolvedFolder) {
+              var matchingFolders = currentFolder.getFoldersByName(subfolderName);
+              resolvedFolder = matchingFolders.hasNext() ? matchingFolders.next() : currentFolder.createFolder(subfolderName);
+              folderCache.setProperty(cacheKey, resolvedFolder.getId());
+            }
+
+            currentFolder = resolvedFolder;
           }
         }
 
-        if (!resolvedFolder) {
-          var matchingFolders = currentFolder.getFoldersByName(subfolderName);
-          resolvedFolder = matchingFolders.hasNext() ? matchingFolders.next() : currentFolder.createFolder(subfolderName);
-          folderCache.setProperty(cacheKey, resolvedFolder.getId());
+        // 6. Clean overwrite under lock: Trash previous versions of the same file in this folder
+        var existingFiles = currentFolder.getFilesByName(fileName);
+        while (existingFiles.hasNext()) {
+          existingFiles.next().setTrashed(true);
         }
 
-        currentFolder = resolvedFolder;
+        // 7. Decode Base64 and save the new file
+        var data = Utilities.base64Decode(fileEntry.data);
+        var blob = Utilities.newBlob(data, mimeType, fileName);
+        var file = currentFolder.createFile(blob);
+
+        results.push({ relativePath: relativePath, status: "success", fileId: file.getId(), url: file.getUrl() });
+      } catch (fileErr) {
+        results.push({ relativePath: relativePath, status: "error", message: fileErr.toString() });
       }
     }
 
-    // 5. Clean overwrite under lock: Trash previous versions of the same file in this folder
-    var existingFiles = currentFolder.getFilesByName(fileName);
-    while (existingFiles.hasNext()) {
-      var oldFile = existingFiles.next();
-      oldFile.setTrashed(true);
-    }
-
-    // 6. Decode Base64 and save the new file
-    var data = Utilities.base64Decode(e.parameter.data);
-    var blob = Utilities.newBlob(data, mimeType, fileName);
-    var file = currentFolder.createFile(blob);
-
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      fileId: file.getId(),
-      url: file.getUrl()
+      results: results
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -151,10 +172,10 @@ function doPost(e) {
 }
 ```
 
-5. Replace `"PASTE_YOUR_FOLDER_ID_HERE"` on line 4 with the Folder ID copied in **Step 1**.
+5. Replace `"PASTE_YOUR_FOLDER_ID_HERE"` with the Folder ID copied in **Step 1**.
 6. Save the project (`Ctrl+S` or click the save icon).
 
-> **Already have this deployed and syncing feels slow?** Update your `Code.gs` with the version above (it adds folder-ID caching) and follow [Updating the Script in the Future](#-updating-the-script-in-the-future) to redeploy — no changes needed on the Windows app side, and no re-upload of files already in Drive is triggered.
+> **Already have this deployed and syncing feels slow?** Update your `Code.gs` with the version above — it batches several files per request instead of one call per file, on top of the folder-ID cache — and follow [Updating the Script in the Future](#-updating-the-script-in-the-future) to redeploy. **This version changes the request format from form fields to a JSON body**, so the deployed script and the app version must be updated together; no re-upload of files already in Drive is triggered.
 
 ---
 
@@ -257,77 +278,99 @@ function doPost(e) {
   try {
     // 2. Opcional: Define un token secreto compartido para proteger tu Web App (déjalo vacío si no lo requieres)
     var AUTH_TOKEN = ""; // ej: "mi-token-super-secreto"
-    if (AUTH_TOKEN && e.parameter.authToken !== AUTH_TOKEN) {
+
+    // 3. Pega aquí el ID de tu carpeta destino de Google Drive
+    var rootFolderId = "PEGA_AQUI_EL_ID_DE_TU_CARPETA";
+
+    // 4. El cuerpo de la petición es JSON: { authToken, files: [{ filename, relativePath, mimeType, data }, ...] }.
+    //    Enviar varios archivos por llamada (un lote) reparte el costo fijo por petición de Apps
+    //    Script (arranque en frío + esta adquisición del lock) entre todos ellos en vez de pagarlo
+    //    una vez por archivo, que es lo que mantiene rápida la sincronización cuando cambian muchos
+    //    archivos a la vez. Toda llamada es un lote, incluso una de un solo archivo (un arreglo con
+    //    una sola entrada), así que hay un único formato de mensaje.
+    var body = JSON.parse(e.postData.contents);
+
+    if (AUTH_TOKEN && body.authToken !== AUTH_TOKEN) {
       return ContentService.createTextOutput(JSON.stringify({
         status: "error",
         message: "No autorizado: Token de autenticación inválido o ausente."
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 3. Pega aquí el ID de tu carpeta destino de Google Drive
-    var rootFolderId = "PEGA_AQUI_EL_ID_DE_TU_CARPETA"; 
-    var currentFolder = DriveApp.getFolderById(rootFolderId);
+    var files = body.files || [];
+    var folderCache = PropertiesService.getScriptProperties();
+    var results = [];
 
-    var fileName = e.parameter.filename;
-    var relativePath = e.parameter.relativePath || fileName;
-    var mimeType = e.parameter.mimeType || "application/octet-stream";
+    for (var f = 0; f < files.length; f++) {
+      var fileEntry = files[f];
+      var relativePath = fileEntry.relativePath || fileEntry.filename;
 
-    // 4. Recrear la jerarquía de subcarpetas en Google Drive. Los IDs de carpeta resueltos
-    //    se cachean en PropertiesService para que una subida repetida a una carpeta ya vista
-    //    se salte la búsqueda getFoldersByName (una consulta Drive con costo O(hijos)) y vaya
-    //    directo a un getFolderById por ID. Sin esto, cada archivo subido a una ruta anidada
-    //    recorre y vuelve a buscar toda la cadena desde la raíz en cada sincronización, que es
-    //    la razón principal por la que las subidas siguen lentas aunque la mayor parte del
-    //    árbol ya esté reflejada en Drive.
-    var pathParts = relativePath.split("/");
-    if (pathParts.length > 1) {
-      var folderCache = PropertiesService.getScriptProperties();
-      var cacheKeyParts = [];
-      for (var i = 0; i < pathParts.length - 1; i++) {
-        var subfolderName = pathParts[i].trim();
-        if (subfolderName.length === 0) continue;
-        cacheKeyParts.push(subfolderName);
+      // Try/catch por archivo: un archivo problemático (bloqueado, cuota, nombre raro) falla
+      // solo su propia entrada en el arreglo de resultados en vez de abortar todo el lote.
+      try {
+        var currentFolder = DriveApp.getFolderById(rootFolderId);
+        var fileName = fileEntry.filename;
+        var mimeType = fileEntry.mimeType || "application/octet-stream";
 
-        var cacheKey = "folderId:" + cacheKeyParts.join("/");
-        var cachedId = folderCache.getProperty(cacheKey);
-        var resolvedFolder = null;
+        // 5. Recrear la jerarquía de subcarpetas en Google Drive. Los IDs de carpeta resueltos
+        //    se cachean en PropertiesService para que una subida repetida a una carpeta ya vista
+        //    se salte la búsqueda getFoldersByName (una consulta Drive con costo O(hijos)) y vaya
+        //    directo a un getFolderById por ID. Sin esto, cada archivo subido a una ruta anidada
+        //    recorre y vuelve a buscar toda la cadena desde la raíz en cada sincronización, que
+        //    antes era la razón principal por la que las subidas seguían lentas aunque la mayor
+        //    parte del árbol ya estuviera reflejada en Drive.
+        var pathParts = relativePath.split("/");
+        if (pathParts.length > 1) {
+          var cacheKeyParts = [];
+          for (var i = 0; i < pathParts.length - 1; i++) {
+            var subfolderName = pathParts[i].trim();
+            if (subfolderName.length === 0) continue;
+            cacheKeyParts.push(subfolderName);
 
-        if (cachedId) {
-          try {
-            resolvedFolder = DriveApp.getFolderById(cachedId);
-            if (resolvedFolder.isTrashed()) resolvedFolder = null; // getFolderById no lanza error con carpetas en la papelera
-          } catch (staleIdErr) {
-            // La carpeta cacheada fue borrada o movida; sigue de largo y vuelve a resolverla.
-            resolvedFolder = null;
+            var cacheKey = "folderId:" + cacheKeyParts.join("/");
+            var cachedId = folderCache.getProperty(cacheKey);
+            var resolvedFolder = null;
+
+            if (cachedId) {
+              try {
+                resolvedFolder = DriveApp.getFolderById(cachedId);
+                if (resolvedFolder.isTrashed()) resolvedFolder = null; // getFolderById no lanza error con carpetas en la papelera
+              } catch (staleIdErr) {
+                // La carpeta cacheada fue borrada o movida; sigue de largo y vuelve a resolverla.
+                resolvedFolder = null;
+              }
+            }
+
+            if (!resolvedFolder) {
+              var matchingFolders = currentFolder.getFoldersByName(subfolderName);
+              resolvedFolder = matchingFolders.hasNext() ? matchingFolders.next() : currentFolder.createFolder(subfolderName);
+              folderCache.setProperty(cacheKey, resolvedFolder.getId());
+            }
+
+            currentFolder = resolvedFolder;
           }
         }
 
-        if (!resolvedFolder) {
-          var matchingFolders = currentFolder.getFoldersByName(subfolderName);
-          resolvedFolder = matchingFolders.hasNext() ? matchingFolders.next() : currentFolder.createFolder(subfolderName);
-          folderCache.setProperty(cacheKey, resolvedFolder.getId());
+        // 6. Sobrescritura limpia garantizada bajo lock: papelera a versiones anteriores
+        var existingFiles = currentFolder.getFilesByName(fileName);
+        while (existingFiles.hasNext()) {
+          existingFiles.next().setTrashed(true);
         }
 
-        currentFolder = resolvedFolder;
+        // 7. Decodificar Base64 y guardar el nuevo archivo
+        var data = Utilities.base64Decode(fileEntry.data);
+        var blob = Utilities.newBlob(data, mimeType, fileName);
+        var file = currentFolder.createFile(blob);
+
+        results.push({ relativePath: relativePath, status: "success", fileId: file.getId(), url: file.getUrl() });
+      } catch (fileErr) {
+        results.push({ relativePath: relativePath, status: "error", message: fileErr.toString() });
       }
     }
 
-    // 5. Sobrescritura limpia garantizada bajo lock: papelera a versiones anteriores
-    var existingFiles = currentFolder.getFilesByName(fileName);
-    while (existingFiles.hasNext()) {
-      var oldFile = existingFiles.next();
-      oldFile.setTrashed(true);
-    }
-
-    // 6. Decodificar Base64 y guardar el nuevo archivo
-    var data = Utilities.base64Decode(e.parameter.data);
-    var blob = Utilities.newBlob(data, mimeType, fileName);
-    var file = currentFolder.createFile(blob);
-
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      fileId: file.getId(),
-      url: file.getUrl()
+      results: results
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -341,10 +384,10 @@ function doPost(e) {
 }
 ```
 
-5. Reemplaza `"PEGA_AQUI_EL_ID_DE_TU_CARPETA"` en la línea 4 con el ID copiado en el **Paso 1**.
+5. Reemplaza `"PEGA_AQUI_EL_ID_DE_TU_CARPETA"` con el ID copiado en el **Paso 1**.
 6. Haz clic en el icono del disco para **Guardar** (o pulsa `Ctrl+S`).
 
-> **¿Ya tienes esto desplegado y la sincronización sigue lenta?** Actualiza tu `Código.gs` con la versión de arriba (agrega caché de IDs de carpeta) y sigue [Actualización del Script en el Futuro](#-actualización-del-script-en-el-futuro) para volver a desplegar — no se necesita ningún cambio en la app de Windows, y no se dispara una nueva subida de los archivos que ya están en Drive.
+> **¿Ya tienes esto desplegado y la sincronización sigue lenta?** Actualiza tu `Código.gs` con la versión de arriba — agrupa varios archivos por petición en vez de una llamada por archivo, además de la caché de IDs de carpeta — y sigue [Actualización del Script en el Futuro](#-actualización-del-script-en-el-futuro) para volver a desplegar. **Esta versión cambia el formato de la petición, de campos de formulario a un cuerpo JSON**, así que el script desplegado y la versión de la app deben actualizarse juntos; no se dispara una nueva subida de los archivos que ya están en Drive.
 
 ---
 
