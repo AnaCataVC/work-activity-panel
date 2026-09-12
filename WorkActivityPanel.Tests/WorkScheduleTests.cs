@@ -143,4 +143,62 @@ public class WorkScheduleTests
         var workingHour = new DateTime(2026, 8, 17, 12, 0, 0); // Monday at noon
         Assert.False(schedule.IsWorkTime(workingHour));
     }
+
+    [Fact]
+    public void IsVacationActive_WithDateRange_ReturnsTrueInsideRange()
+    {
+        var schedule = new WorkSchedule
+        {
+            IsVacationMode = true,
+            VacationStartDate = new DateTime(2026, 7, 10),
+            VacationEndDate = new DateTime(2026, 7, 20)
+        };
+
+        // Middle of vacation
+        Assert.True(schedule.IsVacationActive(new DateTime(2026, 7, 15, 14, 0, 0)));
+        // Inclusive bounds
+        Assert.True(schedule.IsVacationActive(new DateTime(2026, 7, 10, 0, 0, 0)));
+        Assert.True(schedule.IsVacationActive(new DateTime(2026, 7, 20, 23, 59, 59)));
+    }
+
+    [Fact]
+    public void IsVacationActive_WithDateRange_ReturnsFalseOutsideRange()
+    {
+        var schedule = new WorkSchedule
+        {
+            IsVacationMode = true,
+            VacationStartDate = new DateTime(2026, 7, 10),
+            VacationEndDate = new DateTime(2026, 7, 20)
+        };
+
+        // Before start
+        Assert.False(schedule.IsVacationActive(new DateTime(2026, 7, 9, 23, 59, 59)));
+        // After end
+        Assert.False(schedule.IsVacationActive(new DateTime(2026, 7, 21, 0, 0, 0)));
+    }
+
+    [Fact]
+    public void IsVacationActive_WithoutDates_ReturnsIsVacationModeFlagDirectly()
+    {
+        var activeVacation = new WorkSchedule { IsVacationMode = true };
+        Assert.True(activeVacation.IsVacationActive(DateTime.Now));
+
+        var inactiveVacation = new WorkSchedule { IsVacationMode = false };
+        Assert.False(inactiveVacation.IsVacationActive(DateTime.Now));
+    }
+
+    [Fact]
+    public void IsWorkTime_ReturnsFalse_WhenWithinVacationDateRange()
+    {
+        var schedule = CreateStandardWeekdaySchedule(isVacationMode: true);
+        schedule.VacationStartDate = new DateTime(2026, 8, 17);
+        schedule.VacationEndDate = new DateTime(2026, 8, 21);
+
+        var mondayTenAm = new DateTime(2026, 8, 17, 10, 30, 0); // Monday in range
+        Assert.False(schedule.IsWorkTime(mondayTenAm));
+
+        // Monday the week after (vacation finished)
+        var nextMondayTenAm = new DateTime(2026, 8, 24, 10, 30, 0);
+        Assert.True(schedule.IsWorkTime(nextMondayTenAm));
+    }
 }

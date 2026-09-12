@@ -38,6 +38,21 @@ public interface IScheduleService
     bool IsVacationMode { get; }
 
     /// <summary>
+    /// Gets or sets the optional start date of vacation.
+    /// </summary>
+    DateTime? VacationStartDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional end date of vacation.
+    /// </summary>
+    DateTime? VacationEndDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the app auto-closes on non-work days or during vacation when launched by autostart.
+    /// </summary>
+    bool AutoCloseOnNonWorkDays { get; set; }
+
+    /// <summary>
     /// Occurs when work hours begin.
     /// </summary>
     event EventHandler? WorkStarted;

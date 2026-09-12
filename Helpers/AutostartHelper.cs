@@ -26,6 +26,8 @@ public static class AutostartHelper
         }
     }
 
+    public const string AutostartArgument = "--autostart";
+
     /// <summary>
     /// Enables autostart by adding the application to the startup registry.
     /// </summary>
@@ -37,7 +39,7 @@ public static class AutostartHelper
             if (string.IsNullOrEmpty(processPath)) return;
 
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
-            key?.SetValue(AppName, $"\"{processPath}\"");
+            key?.SetValue(AppName, $"\"{processPath}\" {AutostartArgument}");
         }
         catch
         {

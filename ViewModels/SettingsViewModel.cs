@@ -75,7 +75,16 @@ public partial class SettingsViewModel : ObservableObject
     private bool _isAutostartEnabled;
 
     [ObservableProperty]
+    private bool _autoCloseOnNonWorkDays = true;
+
+    [ObservableProperty]
     private bool _isVacationMode;
+
+    [ObservableProperty]
+    private DateTimeOffset? _vacationStartDate;
+
+    [ObservableProperty]
+    private DateTimeOffset? _vacationEndDate;
 
     // GitHub CLI & Accounts Configuration
     [ObservableProperty]
@@ -189,6 +198,9 @@ public partial class SettingsViewModel : ObservableObject
         WorkStartTime = schedule.StartTime;
         WorkEndTime = schedule.EndTime;
         IsVacationMode = schedule.IsVacationMode;
+        VacationStartDate = schedule.VacationStartDate.HasValue ? new DateTimeOffset(schedule.VacationStartDate.Value) : null;
+        VacationEndDate = schedule.VacationEndDate.HasValue ? new DateTimeOffset(schedule.VacationEndDate.Value) : null;
+        AutoCloseOnNonWorkDays = schedule.AutoCloseOnNonWorkDays;
 
         var workDays = schedule.WorkDays ?? Enumerable.Empty<DayOfWeek>();
         IsMonday = workDays.Contains(DayOfWeek.Monday);
@@ -459,6 +471,9 @@ public partial class SettingsViewModel : ObservableObject
         schedule.EndTime = WorkEndTime;
         schedule.WorkDays = workDays;
         schedule.IsVacationMode = IsVacationMode;
+        schedule.VacationStartDate = VacationStartDate?.DateTime.Date;
+        schedule.VacationEndDate = VacationEndDate?.DateTime.Date;
+        schedule.AutoCloseOnNonWorkDays = AutoCloseOnNonWorkDays;
 
         _scheduleService.UpdateSchedule(schedule);
         _scheduleService.SetVacationMode(IsVacationMode);

@@ -38,7 +38,10 @@ public class LocalSettingsAndPersistenceTests
             StartTime = new TimeSpan(8, 30, 0),
             EndTime = new TimeSpan(17, 30, 0),
             WorkDays = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday },
-            IsVacationMode = true
+            IsVacationMode = true,
+            VacationStartDate = new DateTime(2026, 7, 1),
+            VacationEndDate = new DateTime(2026, 7, 15),
+            AutoCloseOnNonWorkDays = true
         };
 
         // Act
@@ -52,6 +55,9 @@ public class LocalSettingsAndPersistenceTests
         Assert.Equal(original.WorkDays.Count, restored.WorkDays.Count);
         Assert.Contains(DayOfWeek.Wednesday, restored.WorkDays);
         Assert.True(restored.IsVacationMode);
+        Assert.Equal(original.VacationStartDate, restored.VacationStartDate);
+        Assert.Equal(original.VacationEndDate, restored.VacationEndDate);
+        Assert.True(restored.AutoCloseOnNonWorkDays);
     }
 
     [Fact]

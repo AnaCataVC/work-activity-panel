@@ -112,6 +112,26 @@ public partial class App : Application
         LogTrace("OnLaunched() started");
         try
         {
+            var cmdArgs = Environment.GetCommandLineArgs();
+            bool isAutostart = cmdArgs.Any(a => string.Equals(a, Helpers.AutostartHelper.AutostartArgument, StringComparison.OrdinalIgnoreCase));
+            LogTrace($"Launch arguments evaluated. IsAutostart: {isAutostart}");
+
+            var scheduleService = GetService<IScheduleService>();
+
+            if (isAutostart && scheduleService.AutoCloseOnNonWorkDays)
+            {
+                var today = DateTime.Today;
+                bool isWorkDay = scheduleService.CurrentSchedule.WorkDays.Contains(today.DayOfWeek);
+                bool isVacation = scheduleService.CurrentSchedule.IsVacationActive(today);
+
+                if (!isWorkDay || isVacation)
+                {
+                    LogTrace($"Autostart ignored: today is non-work day (IsWorkDay={isWorkDay}, IsVacation={isVacation}). Exiting silently.");
+                    Exit();
+                    return;
+                }
+            }
+
             DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
             LogTrace("DispatcherQueue obtained");
 
@@ -119,7 +139,6 @@ public partial class App : Application
             LogTrace("MainWindow instantiated");
             
             // Start the schedule service
-            var scheduleService = GetService<IScheduleService>();
             scheduleService.Start();
             LogTrace("ScheduleService started");
             

@@ -80,13 +80,37 @@
 
                             <!-- Vacation Mode under Work Schedule -->
                             <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0" Margin="0,4,0,0">
-                                <StackPanel Spacing="4">
+                                <StackPanel Spacing="10">
                                     <ToggleSwitch Header="Modo Vacaciones" 
                                                   IsOn="{x:Bind ViewModel.IsVacationMode, Mode=TwoWay}" />
                                     <TextBlock Text="Pausa la apertura de aplicaciones y alertas mientras estés de vacaciones"
                                                Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                Margin="0,-8,0,0" />
+
+                                    <!-- Vacation Date Range Pickers -->
+                                    <StackPanel Visibility="{x:Bind ViewModel.IsVacationMode, Mode=OneWay}" Spacing="8" Margin="0,4,0,0">
+                                        <TextBlock Text="Período de Vacaciones (opcional)" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                        <TextBlock Text="Si defines fechas, el modo vacaciones se desactivará automáticamente al finalizar el período."
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <Grid ColumnSpacing="16">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <CalendarDatePicker Grid.Column="0"
+                                                                Header="Fecha de inicio"
+                                                                Date="{x:Bind ViewModel.VacationStartDate, Mode=TwoWay}"
+                                                                HorizontalAlignment="Stretch"
+                                                                PlaceholderText="Desde (opcional)" />
+                                            <CalendarDatePicker Grid.Column="1"
+                                                                Header="Fecha de finalización"
+                                                                Date="{x:Bind ViewModel.VacationEndDate, Mode=TwoWay}"
+                                                                HorizontalAlignment="Stretch"
+                                                                PlaceholderText="Hasta (inclusive)" />
+                                        </Grid>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -374,6 +398,17 @@
                         <StackPanel Spacing="16">
                             <ToggleSwitch Header="Iniciar con Windows" 
                                           IsOn="{x:Bind ViewModel.IsAutostartEnabled, Mode=TwoWay}" />
+
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                <StackPanel Spacing="4">
+                                    <ToggleSwitch Header="Auto-cerrar si arranca en día no laboral o vacaciones" 
+                                                  IsOn="{x:Bind ViewModel.AutoCloseOnNonWorkDays, Mode=TwoWay}" />
+                                    <TextBlock Text="Si Windows inicia la aplicación automáticamente en un día de descanso o durante tu período de vacaciones, la aplicación se cerrará en silencio sin abrir ventanas ni consumir memoria. Si la abres manualmente, siempre permanecerá abierta."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </StackPanel>

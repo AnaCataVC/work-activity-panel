@@ -79,6 +79,44 @@ public class ScheduleService : IScheduleService, IDisposable
     public bool IsVacationMode => _currentSchedule.IsVacationMode;
 
     /// <inheritdoc />
+    public DateTime? VacationStartDate
+    {
+        get => _currentSchedule.VacationStartDate;
+        set
+        {
+            _currentSchedule.VacationStartDate = value;
+            SaveSchedule(_currentSchedule);
+            Start();
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <inheritdoc />
+    public DateTime? VacationEndDate
+    {
+        get => _currentSchedule.VacationEndDate;
+        set
+        {
+            _currentSchedule.VacationEndDate = value;
+            SaveSchedule(_currentSchedule);
+            Start();
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <inheritdoc />
+    public bool AutoCloseOnNonWorkDays
+    {
+        get => _currentSchedule.AutoCloseOnNonWorkDays;
+        set
+        {
+            _currentSchedule.AutoCloseOnNonWorkDays = value;
+            SaveSchedule(_currentSchedule);
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <inheritdoc />
     public void UpdateSchedule(WorkSchedule schedule)
     {
         var vacationChanged = _currentSchedule.IsVacationMode != schedule.IsVacationMode;
@@ -121,7 +159,16 @@ public class ScheduleService : IScheduleService, IDisposable
     {
         Stop();
 
-        if (_currentSchedule.IsVacationMode) return;
+        // Check if vacation has expired
+        if (_currentSchedule.IsVacationMode && _currentSchedule.VacationEndDate.HasValue && DateTime.Today > _currentSchedule.VacationEndDate.Value.Date)
+        {
+            _currentSchedule.IsVacationMode = false;
+            SaveSchedule(_currentSchedule);
+            VacationModeChanged?.Invoke(this, false);
+            ScheduleChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (_currentSchedule.IsVacationActive()) return;
 
         if (IsWorkTime)
         {

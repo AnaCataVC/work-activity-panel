@@ -33,13 +33,53 @@ public class WorkSchedule
     public bool IsVacationMode { get; set; }
 
     /// <summary>
+    /// Gets or sets the optional start date of vacation (inclusive).
+    /// </summary>
+    public DateTime? VacationStartDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional end date of vacation (inclusive).
+    /// </summary>
+    public DateTime? VacationEndDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the application should automatically exit if launched via autostart on a non-work day or during vacation.
+    /// </summary>
+    public bool AutoCloseOnNonWorkDays { get; set; } = true;
+
+    /// <summary>
+    /// Determines whether vacation mode is currently active for the given date.
+    /// If specific dates are set, it checks whether the date falls within [VacationStartDate, VacationEndDate].
+    /// If no dates are set, it returns the raw <see cref="IsVacationMode"/> flag.
+    /// </summary>
+    public bool IsVacationActive(DateTime? currentTime = null)
+    {
+        if (!IsVacationMode) return false;
+
+        var time = currentTime ?? DateTime.Now;
+        var today = time.Date;
+
+        if (VacationStartDate.HasValue && today < VacationStartDate.Value.Date)
+        {
+            return false;
+        }
+
+        if (VacationEndDate.HasValue && today > VacationEndDate.Value.Date)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Checks if the given time (or current time) is within work hours, on a work day, and vacation mode is off.
     /// </summary>
     public bool IsWorkTime(DateTime? currentTime = null)
     {
-        if (IsVacationMode) return false;
-
         var time = currentTime ?? DateTime.Now;
+        if (IsVacationActive(time)) return false;
+
         if (!WorkDays.Contains(time.DayOfWeek)) return false;
 
         var timeOfDay = time.TimeOfDay;
