@@ -113,8 +113,11 @@ public partial class App : Application
         try
         {
             var cmdArgs = Environment.GetCommandLineArgs();
-            bool isAutostart = cmdArgs.Any(a => string.Equals(a, Helpers.AutostartHelper.AutostartArgument, StringComparison.OrdinalIgnoreCase));
+            bool isAutostart = Helpers.AutostartHelper.HasAutostartArgument(cmdArgs);
             LogTrace($"Launch arguments evaluated. IsAutostart: {isAutostart}");
+
+            // Ensure registry autostart entry is synchronized with proper arguments and current process path
+            Helpers.AutostartHelper.EnsureAutostartSynced();
 
             var scheduleService = GetService<IScheduleService>();
 

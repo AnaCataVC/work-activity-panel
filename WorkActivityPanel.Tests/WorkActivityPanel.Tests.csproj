@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <Compile Include="..\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
+    <Compile Include="..\Helpers\AutostartHelper.cs" Link="Helpers\AutostartHelper.cs" />
     <Compile Include="..\Helpers\ICalParser.cs" Link="Helpers\ICalParser.cs" />
     <Compile Include="..\Helpers\LocalSettingsHelper.cs" Link="Helpers\LocalSettingsHelper.cs" />
     <Compile Include="..\Helpers\PathHelpers.cs" Link="Helpers\PathHelpers.cs" />
