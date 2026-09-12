@@ -155,6 +155,13 @@ Compress-Archive -Path "releases\WorkActivityPanel-win-x64\*" -DestinationPath "
 - `Assets/AppIcon.ico` must include native uncompressed 32-bit DIB bitmaps (BITMAPINFOHEADER + BGRA) for resolutions <= 128x128 and PNG for 256x256 to ensure full compatibility with `AppWindow.SetIcon()`, `H.NotifyIcon`, and Inno Setup shortcut binding.
 - After updating icon assets or executable binaries locally, ensure any running instances are terminated before overwriting, and restart `explorer.exe` (`Stop-Process -Name explorer -Force`) if the taskbar icon cache does not flush immediately.
 
+### 4.10 Smart Autostart & Vacation Date Range Lifecycle
+- `AutostartHelper.cs` registers the Windows Run entry with the `--autostart` command line argument (`"{processPath}" --autostart`).
+- In `App.xaml.cs`'s `OnLaunched`, command-line arguments are inspected. If `--autostart` is present and `AutoCloseOnNonWorkDays` is enabled:
+  - If the current day is outside `WorkDays` (e.g. Saturday/Sunday) or within an active vacation period (`IsVacationActive`), the application immediately logs to `startup_diagnostic.log` and exits silently via `Exit()` without initializing window chrome or UI controls.
+  - Manual executions (without `--autostart`) always bypass this check and launch the full dashboard.
+- Vacation ranges (`VacationStartDate` and `VacationEndDate`) are inclusive (covering until 23:59:59 of the end date). When the end date has elapsed, `ScheduleService.Start()` automatically clears `IsVacationMode = false`, persists the change, and re-engages normal workday timers.
+
 ---
 
 ## 5. Agent Constraints & Guidelines
