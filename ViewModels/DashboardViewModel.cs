@@ -107,6 +107,7 @@ public partial class DashboardViewModel : ObservableObject
     public ObservableCollection<CalendarEvent> TodayMeetings { get; } = new();
     private readonly List<CalendarEvent> _allTodayEvents = new();
     private bool _isRefreshingCalendar;
+    private DateTime _lastCalendarRefreshTime = DateTime.MinValue;
 
     // Google Drive Backup / Sync Properties
     [ObservableProperty]
@@ -207,8 +208,6 @@ public partial class DashboardViewModel : ObservableObject
         _scheduleService.VacationModeChanged += OnVacationModeChanged;
         _scheduleService.ScheduleChanged += OnScheduleChanged;
         _googleCalendarService.UpcomingMeetingDetected += OnUpcomingMeetingDetected;
-        _googleCalendarService.MeetingStartingNow += OnMeetingStartingNow;
-        _googleCalendarService.MeetingAlertInvalidUrl += OnMeetingAlertInvalidUrl;
 
         _driveSyncService.SyncProgressChanged += OnDriveSyncProgressChanged;
         _driveSyncService.SyncCompleted += OnDriveSyncCompleted;
@@ -268,10 +267,17 @@ public partial class DashboardViewModel : ObservableObject
 
     private void UpdateTime()
     {
-        CurrentTime = DateTime.Now.ToString("HH:mm");
-        var rawDate = DateTime.Now.ToString("dddd, d 'de' MMMM", SpanishCulture);
+        var now = DateTime.Now;
+        CurrentTime = now.ToString("HH:mm");
+        var rawDate = now.ToString("dddd, d 'de' MMMM", SpanishCulture);
         CurrentDate = char.ToUpper(rawDate[0]) + rawDate[1..];
         UpdateTodayMeetingsDisplay();
+
+        // Periodically refresh calendar data every 30 minutes in background
+        if (_googleCalendarService.IsConfigured && (now - _lastCalendarRefreshTime) >= TimeSpan.FromMinutes(30))
+        {
+            _ = RefreshGoogleDataAsync();
+        }
     }
 
     private void UpdateWorkScheduleDisplay()
@@ -365,23 +371,6 @@ public partial class DashboardViewModel : ObservableObject
             UpcomingMeetingTitle = $"{meeting.Title} ({meeting.FormattedStartTime})";
             ShowUpcomingMeetingBanner = true;
         });
-    }
-
-    private void OnMeetingStartingNow(object? sender, CalendarEvent meeting)
-    {
-        if (IsVacationMode) return;
-
-        // App.ShowMeetingAlert dispatches to the UI thread and prevents duplicate popups internally
-        App.ShowMeetingAlert(meeting);
-    }
-
-    private void OnMeetingAlertInvalidUrl(object? sender, CalendarEvent meeting)
-    {
-        // Meeting has a non-empty link that is not a well-formed absolute URI.
-        // We intentionally do NOT open the popup to avoid crashing or launching a broken URL.
-        // Log the issue so it's visible during debugging without surfacing noise to the user.
-        System.Diagnostics.Debug.WriteLine(
-            $"[MeetingAlert] Skipped popup for '{meeting.Title}' – invalid conference URL: '{meeting.MeetingLink}'");
     }
 
     private void OnDriveSyncProgressChanged(object? sender, SyncProgressReport report)
@@ -789,6 +778,7 @@ public partial class DashboardViewModel : ObservableObject
         finally
         {
             _isRefreshingCalendar = false;
+            _lastCalendarRefreshTime = DateTime.Now;
         }
     }
 

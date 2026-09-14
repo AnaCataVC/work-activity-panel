@@ -117,14 +117,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _calendarRequireMeetingLink;
 
-    /// <summary>
-    /// How many minutes before a meeting the full-screen alert popup should appear.
-    /// 0 = exactly at the meeting start time.
-    /// </summary>
-    [ObservableProperty]
-    private int _meetingAlertOffsetMinutes = 0;
-
-
     [ObservableProperty]
     private bool _isCalendarConnected;
 
@@ -227,7 +219,6 @@ public partial class SettingsViewModel : ObservableObject
         CalendarExcludedKeywords = filterSettings.ExcludedKeywords;
         CalendarIgnoreAllDayEvents = filterSettings.IgnoreAllDayEvents;
         CalendarRequireMeetingLink = filterSettings.RequireMeetingLink;
-        MeetingAlertOffsetMinutes = filterSettings.MeetingAlertOffsetMinutes;
         UpdateCalendarStatus();
 
         // Load Drive Sync settings
@@ -315,8 +306,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             ExcludedKeywords = CalendarExcludedKeywords?.Trim() ?? CalendarFilterSettings.DefaultExcludedKeywords,
             IgnoreAllDayEvents = CalendarIgnoreAllDayEvents,
-            RequireMeetingLink = CalendarRequireMeetingLink,
-            MeetingAlertOffsetMinutes = Math.Max(0, Math.Min(60, MeetingAlertOffsetMinutes))
+            RequireMeetingLink = CalendarRequireMeetingLink
         };
         _calendarService.UpdateFilterSettings(filter);
 

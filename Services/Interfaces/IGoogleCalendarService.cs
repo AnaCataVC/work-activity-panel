@@ -30,17 +30,6 @@ public interface IGoogleCalendarService
     event EventHandler<CalendarEvent>? UpcomingMeetingDetected;
 
     /// <summary>
-    /// Event triggered when a meeting with a video conference link is starting (based on the configurable alert offset).
-    /// Intended to drive the full-screen alert popup window.
-    /// </summary>
-    event EventHandler<CalendarEvent>? MeetingStartingNow;
-
-    /// <summary>
-    /// Event triggered when a meeting alert has an invalid conference URL.
-    /// </summary>
-    event EventHandler<CalendarEvent>? MeetingAlertInvalidUrl;
-
-    /// <summary>
     /// Gets the current filter settings for Granola triggers.
     /// </summary>
     CalendarFilterSettings FilterSettings { get; }

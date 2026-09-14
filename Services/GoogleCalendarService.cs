@@ -24,9 +24,6 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
     private const string CalendarExcludedKeywordsKey = "CalendarExcludedKeywords";
     private const string CalendarIgnoreAllDayEventsKey = "CalendarIgnoreAllDayEvents";
     private const string CalendarRequireMeetingLinkKey = "CalendarRequireMeetingLink";
-
-    private const string CalendarAlertOffsetMinutesKey = "CalendarAlertOffsetMinutes";
-
     private readonly IAppLauncherService _appLauncherService;
     private readonly ILogger<GoogleCalendarService> _logger;
     private readonly ConcurrentBag<Timer> _activeTimers = new();
@@ -49,12 +46,6 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
     /// <inheritdoc />
     public event EventHandler<CalendarEvent>? UpcomingMeetingDetected;
-
-    /// <inheritdoc />
-    public event EventHandler<CalendarEvent>? MeetingStartingNow;
-
-    /// <inheritdoc />
-    public event EventHandler<CalendarEvent>? MeetingAlertInvalidUrl;
 
     public GoogleCalendarService(
         IAppLauncherService appLauncherService,
@@ -90,12 +81,6 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
             {
                 _filterSettings.RequireMeetingLink = requireLink;
             }
-
-            var alertOffsetStr = LocalSettingsHelper.Get(CalendarAlertOffsetMinutesKey);
-            if (int.TryParse(alertOffsetStr, out var alertOffset))
-            {
-                _filterSettings.MeetingAlertOffsetMinutes = Math.Max(0, Math.Min(60, alertOffset));
-            }
         }
         catch (Exception ex)
         {
@@ -110,7 +95,6 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
         LocalSettingsHelper.Set(CalendarExcludedKeywordsKey, _filterSettings.ExcludedKeywords);
         LocalSettingsHelper.Set(CalendarIgnoreAllDayEventsKey, _filterSettings.IgnoreAllDayEvents.ToString());
         LocalSettingsHelper.Set(CalendarRequireMeetingLinkKey, _filterSettings.RequireMeetingLink.ToString());
-        LocalSettingsHelper.Set(CalendarAlertOffsetMinutesKey, _filterSettings.MeetingAlertOffsetMinutes.ToString());
         _logger.LogInformation("Calendar filter settings updated.");
     }
 
@@ -252,7 +236,7 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
 
         foreach (var meeting in events)
         {
-            // ── Granola timer (unchanged): fires 5 min before qualifying meetings ──
+            // ── Granola timer: fires 5 min before qualifying meetings ──
             if (meeting.OpensGranola)
             {
                 var granolaAlertTime = meeting.StartTime.AddMinutes(-5);
@@ -284,54 +268,6 @@ public class GoogleCalendarService : IGoogleCalendarService, IDisposable
             else
             {
                 _logger.LogInformation("Skipping Granola auto-launch alert for excluded event: '{Title}'.", meeting.Title);
-            }
-
-            // ── Popup alert timer: fires at the user-configured offset before meetings with a link ──
-            if (string.IsNullOrEmpty(meeting.MeetingLink))
-            {
-                continue;
-            }
-
-            var offsetMinutes = _filterSettings.MeetingAlertOffsetMinutes;
-            var popupAlertTime = meeting.StartTime.AddMinutes(-offsetMinutes);
-            var popupDelay = popupAlertTime - now;
-
-            if (popupDelay > TimeSpan.Zero)
-            {
-                _logger.LogInformation(
-                    "Scheduling popup alert for '{Title}' at {AlertTime} (offset={Offset} min, in {DelayMinutes:F1} min).",
-                    meeting.Title, popupAlertTime, offsetMinutes, popupDelay.TotalMinutes);
-
-                var popupTimer = new Timer(_ =>
-                {
-                    _logger.LogInformation(
-                        "Popup meeting alert fired for '{Title}'.",
-                        meeting.Title);
-                    // Validate meeting link before raising popup event
-                    if (Uri.IsWellFormedUriString(meeting.MeetingLink, UriKind.Absolute))
-                    {
-                        MeetingStartingNow?.Invoke(this, meeting);
-                    }
-                    else
-                    {
-                        MeetingAlertInvalidUrl?.Invoke(this, meeting);
-                    }
-                }, null, popupDelay, Timeout.InfiniteTimeSpan);
-
-                _activeTimers.Add(popupTimer);
-            }
-            else if (now >= popupAlertTime && now < meeting.StartTime)
-            {
-                // Already inside the popup window right now — fire immediately
-                _logger.LogInformation("Meeting '{Title}' popup window active. Firing immediately.", meeting.Title);
-                if (Uri.IsWellFormedUriString(meeting.MeetingLink, UriKind.Absolute))
-                {
-                    MeetingStartingNow?.Invoke(this, meeting);
-                }
-                else
-                {
-                    MeetingAlertInvalidUrl?.Invoke(this, meeting);
-                }
             }
         }
     }
