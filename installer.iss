@@ -1,6 +1,6 @@
 ; Inno Setup Script for Work Activity Panel
 #define MyAppName "Work Activity Panel"
-#define MyAppVersion "2.5.0"
+#define MyAppVersion "2.6.0"
 #define MyAppPublisher "AnaCataVC"
 #define MyAppExeName "WorkActivityPanel.exe"
 
