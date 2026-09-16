@@ -81,6 +81,15 @@ public interface IDriveSyncService
     void ClearSyncErrors();
 
     /// <summary>
+    /// Reports which local files are new or modified since the last sync, without uploading
+    /// anything or writing to the hash cache.
+    /// </summary>
+    /// <param name="onlySource">When set, previews only this configured source instead of all of them.</param>
+    Task<IReadOnlyList<OutOfSyncFile>> PreviewOutOfSyncAsync(
+        CancellationToken cancellationToken = default,
+        SyncSource? onlySource = null);
+
+    /// <summary>
     /// Event triggered when sync settings are updated.
     /// </summary>
     event EventHandler? SettingsChanged;

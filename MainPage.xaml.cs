@@ -20,6 +20,7 @@ public sealed partial class MainPage : Page
             App.LogTrace("MainPage DashboardViewModel resolved");
             InitializeComponent();
             App.LogTrace("MainPage InitializeComponent completed");
+            ViewModel.OutOfSyncPreviewReady += (_, _) => _ = ShowOutOfSyncDialogAsync();
         }
         catch (System.Exception ex)
         {
@@ -189,6 +190,159 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             Debug.WriteLine($"[ShowSyncHistoryDialog] Error: {ex.Message}");
+        }
+        finally
+        {
+            if (_dialogLock.CurrentCount == 0)
+            {
+                _dialogLock.Release();
+            }
+        }
+    }
+
+    private async Task ShowOutOfSyncDialogAsync()
+    {
+        if (!await _dialogLock.WaitAsync(0))
+        {
+            return;
+        }
+
+        try
+        {
+            var xamlRoot = GetEffectiveXamlRoot();
+            if (xamlRoot == null) return;
+
+            var filesSnapshot = ViewModel.OutOfSyncFilesList.ToList();
+
+            var cardBg = GetThemeBrush("CardBackgroundFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Transparent));
+            var cardBorder = GetThemeBrush("CardStrokeColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Gray));
+            var accentBg = GetThemeBrush("AccentFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.SteelBlue));
+            var secText = GetThemeBrush("TextFillColorSecondaryBrush", new SolidColorBrush(Microsoft.UI.Colors.DimGray));
+            var tertText = GetThemeBrush("TextFillColorTertiaryBrush", new SolidColorBrush(Microsoft.UI.Colors.Gray));
+            var successBrush = GetThemeBrush("SystemFillColorSuccessBrush", new SolidColorBrush(Microsoft.UI.Colors.SeaGreen));
+
+            object dialogContent;
+
+            if (filesSnapshot.Count == 0)
+            {
+                var upToDateStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+                upToDateStack.Children.Add(new FontIcon { Glyph = "", FontSize = 18, Foreground = successBrush, VerticalAlignment = VerticalAlignment.Center });
+                upToDateStack.Children.Add(new TextBlock
+                {
+                    Text = "Todos los archivos locales coinciden con lo último subido a Drive.",
+                    FontSize = 13,
+                    TextWrapping = TextWrapping.Wrap,
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                dialogContent = upToDateStack;
+            }
+            else
+            {
+                var scrollViewer = new ScrollViewer
+                {
+                    MaxHeight = 380,
+                    HorizontalScrollMode = ScrollMode.Disabled,
+                    VerticalScrollMode = ScrollMode.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                };
+
+                var listStack = new StackPanel { Spacing = 8, Margin = new Thickness(0, 4, 0, 4) };
+
+                foreach (var file in filesSnapshot)
+                {
+                    var itemBorder = new Border
+                    {
+                        Background = cardBg,
+                        BorderBrush = cardBorder,
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(6),
+                        Padding = new Thickness(12, 8, 12, 8)
+                    };
+
+                    var itemGrid = new Grid();
+                    itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                    itemGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                    var topGrid = new Grid();
+                    topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                    var titleStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+                    titleStack.Children.Add(new FontIcon { Glyph = "", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+                    titleStack.Children.Add(new TextBlock
+                    {
+                        Text = file.FileName,
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                        MaxWidth = 260
+                    });
+                    Grid.SetColumn(titleStack, 0);
+                    topGrid.Children.Add(titleStack);
+
+                    var badgeBorder = new Border
+                    {
+                        Background = accentBg,
+                        CornerRadius = new CornerRadius(4),
+                        Padding = new Thickness(6, 1, 6, 1),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Child = new TextBlock
+                        {
+                            Text = file.Reason,
+                            FontSize = 10,
+                            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+                        }
+                    };
+                    Grid.SetColumn(badgeBorder, 1);
+                    topGrid.Children.Add(badgeBorder);
+
+                    Grid.SetRow(topGrid, 0);
+                    itemGrid.Children.Add(topGrid);
+
+                    var pathText = new TextBlock
+                    {
+                        Text = file.RelativePath,
+                        FontSize = 10,
+                        Foreground = tertText,
+                        Margin = new Thickness(19, 4, 0, 0),
+                        TextTrimming = TextTrimming.CharacterEllipsis
+                    };
+                    Grid.SetRow(pathText, 1);
+                    itemGrid.Children.Add(pathText);
+
+                    itemBorder.Child = itemGrid;
+                    listStack.Children.Add(itemBorder);
+                }
+
+                scrollViewer.Content = listStack;
+                dialogContent = scrollViewer;
+            }
+
+            var dialog = new ContentDialog
+            {
+                Title = filesSnapshot.Count == 0 ? "Archivos desincronizados" : $"Archivos desincronizados ({filesSnapshot.Count})",
+                Content = dialogContent,
+                CloseButtonText = "Cerrar",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = xamlRoot
+            };
+
+            if (filesSnapshot.Count > 0 && ViewModel.SyncDriveNowCommand.CanExecute(null))
+            {
+                dialog.PrimaryButtonText = "Sincronizar ahora";
+                dialog.DefaultButton = ContentDialogButton.Primary;
+            }
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary && ViewModel.SyncDriveNowCommand.CanExecute(null))
+            {
+                await ViewModel.SyncDriveNowCommand.ExecuteAsync(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ShowOutOfSyncDialog] Error: {ex.Message}");
         }
         finally
         {

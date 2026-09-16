@@ -28,6 +28,7 @@
   - SHA-256 hash incremental change detection (only uploads new or modified files).
   - Multi-criteria filtering (whitelist/blacklist extensions, folder exclusion, file size limits).
   - Configure any number of local folders as sync sources, each with its own Drive subfolder; sync all of them at once or just one at a time.
+  - Preview what's out of sync before uploading anything: "Ver qué está desincronizado" lists new/modified files without touching the hash cache, so a full-tree scan doesn't have to mean a full upload.
   - Step-by-step setup guide: [Google Drive Setup Guide](docs/google-setup-guide.md).
 - 💻 **Fluent Design & System Tray:** Native Windows 11 Mica backdrop, dark/light theme support, and minimize-to-system-tray capability.
 - ⚡ **Event-Driven Efficiency:** Zero continuous polling overhead; uses precision scheduled timers.
@@ -104,6 +105,7 @@ For detailed architecture specifications, setup guides, and engineering learning
   - Detección incremental de cambios por hash SHA-256 (solo sube archivos nuevos o modificados).
   - Filtrado multi-criterio (extensiones permitidas/ignoradas, exclusión de carpetas del sistema, límite de MB).
   - Configura cualquier cantidad de carpetas locales como origen, cada una con su propia subcarpeta en Drive; sincroniza todas a la vez o solo una puntual.
+  - Vista previa de archivos desincronizados antes de subir nada: "Ver qué está desincronizado" lista los archivos nuevos o modificados sin tocar la caché de hashes, para no tener que forzar una sincronización completa solo para ver qué cambió.
   - Guía paso a paso: [Guía de Configuración de Google Drive](docs/google-setup-guide.md).
 - 💻 **Diseño Fluent y Bandeja del Sistema:** Efecto Mica nativo de Windows 11, soporte para temas claro/oscuro y minimizado a la bandeja del sistema (System Tray).
 - ⚡ **Eficiencia Basada en Eventos:** Cero sobrecarga de sondeo (polling continuo); utiliza temporizadores programados precisos.

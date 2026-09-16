@@ -513,6 +513,14 @@
                                                         <FontIcon Glyph="&#xE81C;" />
                                                     </MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
+                                                <MenuFlyoutItem Text="Ver qué está desincronizado"
+                                                                Command="{x:Bind ViewModel.PreviewOutOfSyncCommand}"
+                                                                IsEnabled="{x:Bind ViewModel.IsDriveSyncing, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                                AutomationProperties.Name="Ver qué archivos están desincronizados con Google Drive">
+                                                    <MenuFlyoutItem.Icon>
+                                                        <FontIcon Glyph="&#xE71C;" />
+                                                    </MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
                                                 <MenuFlyoutSeparator />
                                                 <MenuFlyoutItem Text="Verificar y forzar sincronización total"
                                                                 Command="{x:Bind ViewModel.ForceSyncDriveCommand}"

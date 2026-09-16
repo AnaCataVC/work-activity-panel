@@ -169,6 +169,21 @@ public class SyncErrorItem
 }
 
 /// <summary>
+/// A local file found to differ from what was last uploaded (new or modified),
+/// returned by a preview pass that never uploads or writes to the hash cache.
+/// </summary>
+public class OutOfSyncFile
+{
+    public string FileName { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public string RelativePath { get; set; } = string.Empty;
+    public long FileSize { get; set; }
+
+    /// <summary>"Nuevo" (no cached hash) or "Modificado" (cached hash exists but no longer matches).</summary>
+    public string Reason { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// Final summary of a completed synchronization run.
 /// </summary>
 public class SyncResultSummary

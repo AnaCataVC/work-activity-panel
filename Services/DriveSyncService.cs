@@ -193,11 +193,8 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
             // 1. Classification pass: resolve each file's hash lazily with the fast-path cache
             //    (no network calls here) and split into "skip" vs. "needs upload".
-            //    IsMetadataConfirmed does the single FileInfo stat to check LastWriteTimeUtc + FileSize.
-            //    GetKnownHash is a pure cache lookup (no disk I/O). This avoids duplicate stat calls.
-            //    When metadata matches, the file is skipped with no disk read. When it does not
-            //    (new file, size/mtime changed, legacy entry with ticks=0, or file < 1 KB),
-            //    we fall through to ComputeSha256.
+            //    ClassifyFile does the single FileInfo stat / ComputeSha256 read per file; see its
+            //    doc comment for the fast-path rationale (this avoids duplicate stat calls).
             foreach (var file in localFiles)
             {
                 if (token.IsCancellationRequested)
@@ -208,45 +205,16 @@ public class DriveSyncService : IDriveSyncService, IDisposable
 
                 processed++;
 
-                bool skip = false;
-                FileInfo? statFileInfo = null;
+                var classification = ClassifyFile(file, forceFullSync);
 
-                if (!forceFullSync && _settings.OnlyModifiedOrNew)
+                if (classification.Outcome == FileClassificationOutcome.MetadataStale)
                 {
-                    string? cachedHash = GetKnownHash(file.HashKey);
-
-                    // IsMetadataConfirmed does the single authoritative FileInfo stat under _hashLock.
-                    bool metadataConfirmed = cachedHash != null && IsMetadataConfirmed(file.HashKey, file.FilePath, file.FileSize);
-
-                    if (metadataConfirmed)
-                    {
-                        // Fast-path: metadata identical, file unchanged, no disk read needed.
-                        skip = true;
-                    }
-                    else
-                    {
-                        // Metadata changed or unavailable — compute the real hash from disk.
-                        statFileInfo = new FileInfo(file.FilePath);
-                        file.Hash = ComputeSha256(file.FilePath);
-
-                        if (cachedHash != null &&
-                            string.Equals(cachedHash, file.Hash, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Hash matches even though metadata mismatched (e.g. git checkout restored mtime,
-                            // or xcopy preserved timestamp). Upgrade the cache entry with fresh metadata.
-                            SaveKnownHash(file.HashKey, file.Hash, statFileInfo);
-                            skip = true;
-                        }
-                    }
-                }
-                else
-                {
-                    // Full sync or incremental check disabled: compute hash for post-upload persistence.
-                    statFileInfo = new FileInfo(file.FilePath);
-                    file.Hash = ComputeSha256(file.FilePath);
+                    // Hash matches even though metadata mismatched (e.g. git checkout restored mtime,
+                    // or xcopy preserved timestamp). Upgrade the cache entry with fresh metadata.
+                    SaveKnownHash(file.HashKey, classification.Hash!, classification.StatFileInfo);
                 }
 
-                if (skip)
+                if (classification.Outcome != FileClassificationOutcome.NeedsUpload)
                 {
                     summary.Skipped++;
                     ReportProgress(progress, new SyncProgressReport
@@ -262,8 +230,9 @@ public class DriveSyncService : IDriveSyncService, IDisposable
                     continue;
                 }
 
+                file.Hash = classification.Hash!;
                 pendingUploads.Add(new UploadCandidate(
-                    file.FilePath, file.FileName, file.RelativePath, file.HashKey, file.Hash, statFileInfo!));
+                    file.FilePath, file.FileName, file.RelativePath, file.HashKey, file.Hash, classification.StatFileInfo!));
             }
 
             // 2. Upload pass: group pending files into batches so the fixed per-request cost of
@@ -982,6 +951,99 @@ public class DriveSyncService : IDriveSyncService, IDisposable
             return normalized;
 
         return $"{prefix.Replace('\\', '/').Trim('/')}/{normalized}";
+    }
+
+    private enum FileClassificationOutcome
+    {
+        /// <summary>Cached metadata (mtime + size) still matches — no disk read was needed.</summary>
+        Unchanged,
+        /// <summary>Metadata mismatched but the recomputed hash still matches the cached one.</summary>
+        MetadataStale,
+        /// <summary>New file, or hash genuinely differs from what was last uploaded.</summary>
+        NeedsUpload
+    }
+
+    private readonly record struct FileClassification(
+        FileClassificationOutcome Outcome, string? Hash, FileInfo? StatFileInfo, bool IsNew);
+
+    /// <summary>
+    /// Decides whether a scanned file needs uploading, using the same fast-path cache lookup
+    /// (<see cref="IsMetadataConfirmed"/>: a single FileInfo stat) that skips a full SHA-256 read
+    /// when mtime and size still match. Never writes to the hash cache itself — callers decide
+    /// whether to persist a <see cref="FileClassificationOutcome.MetadataStale"/> upgrade.
+    /// </summary>
+    private FileClassification ClassifyFile(LocalFileMetadata file, bool forceFullSync)
+    {
+        if (!forceFullSync && _settings.OnlyModifiedOrNew)
+        {
+            string? cachedHash = GetKnownHash(file.HashKey);
+
+            // IsMetadataConfirmed does the single authoritative FileInfo stat under _hashLock.
+            bool metadataConfirmed = cachedHash != null && IsMetadataConfirmed(file.HashKey, file.FilePath, file.FileSize);
+
+            if (metadataConfirmed)
+            {
+                // Fast-path: metadata identical, file unchanged, no disk read needed.
+                return new FileClassification(FileClassificationOutcome.Unchanged, cachedHash, null, IsNew: false);
+            }
+
+            // Metadata changed or unavailable — compute the real hash from disk.
+            var statFileInfo = new FileInfo(file.FilePath);
+            var hash = ComputeSha256(file.FilePath);
+
+            if (cachedHash != null && string.Equals(cachedHash, hash, StringComparison.OrdinalIgnoreCase))
+            {
+                return new FileClassification(FileClassificationOutcome.MetadataStale, hash, statFileInfo, IsNew: false);
+            }
+
+            return new FileClassification(FileClassificationOutcome.NeedsUpload, hash, statFileInfo, IsNew: cachedHash == null);
+        }
+        else
+        {
+            // Full sync or incremental check disabled: compute hash for post-upload persistence.
+            var statFileInfo = new FileInfo(file.FilePath);
+            var hash = ComputeSha256(file.FilePath);
+            return new FileClassification(FileClassificationOutcome.NeedsUpload, hash, statFileInfo, IsNew: GetKnownHash(file.HashKey) == null);
+        }
+    }
+
+    /// <summary>
+    /// Reports which local files are new or modified since the last sync, without uploading
+    /// anything or writing to the hash cache — a read-only preview of what "Sincronizar Ahora"
+    /// would upload. Always respects the incremental hash cache (forcing a full re-check would
+    /// defeat the point of a lightweight preview).
+    /// </summary>
+    public async Task<IReadOnlyList<OutOfSyncFile>> PreviewOutOfSyncAsync(
+        CancellationToken cancellationToken = default,
+        SyncSource? onlySource = null)
+    {
+        if (!IsConfigured)
+        {
+            return Array.Empty<OutOfSyncFile>();
+        }
+
+        var localFiles = await CollectFilesAsync(progress: null, cancellationToken, onlySource);
+        var result = new List<OutOfSyncFile>();
+
+        foreach (var file in localFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var classification = ClassifyFile(file, forceFullSync: false);
+            if (classification.Outcome != FileClassificationOutcome.NeedsUpload)
+                continue;
+
+            result.Add(new OutOfSyncFile
+            {
+                FileName = file.FileName,
+                FilePath = file.FilePath,
+                RelativePath = file.RelativePath,
+                FileSize = file.FileSize,
+                Reason = classification.IsNew ? "Nuevo" : "Modificado"
+            });
+        }
+
+        return result;
     }
 
     public string ComputeSha256(string filePath)

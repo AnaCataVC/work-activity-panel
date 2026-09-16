@@ -203,6 +203,7 @@ function doPost(e) {
    - Under **Folders to sync**, add each local folder you want to back up and name the Drive subfolder it should land in. All of them sit side by side in Drive — add as many as you need.
    - Save your configuration.
 3. Sync everything at once from the dashboard's **Sync Now** button, or sync just one folder from its own row in Settings (the ⟳ icon next to it) — handy for testing a single folder's config without waiting on the rest. You can also enable automatic end-of-workday syncing.
+4. Before running a full re-check, open the "**...**" menu on the dashboard's Drive card and pick **"Ver qué está desincronizado"** to preview which files are new or modified — it's read-only (no upload, no cache write), so you can see what a sync would do without waiting on it. **"Verificar y forzar sincronización total"**, right below it, is the one that actually ignores the cache and re-uploads everything.
 
 ---
 
@@ -418,6 +419,7 @@ function doPost(e) {
    - Opcionalmente pega la **URL de la carpeta de Google Drive** para que el botón **Abrir Drive** del panel principal la abra directamente.
    - Guarda los cambios.
 3. ¡Listo! Puedes sincronizar todo de una vez desde el botón **Sincronizar Ahora** del panel principal, o sincronizar solo una carpeta puntual desde su propia fila en Ajustes (ícono ⟳) — útil para probar la config de una sola carpeta sin esperar al resto. También puedes dejar que se sincronice automáticamente al terminar tu jornada laboral.
+4. Antes de forzar una verificación completa, abre el menú "**...**" de la tarjeta de Drive en el panel principal y elige **"Ver qué está desincronizado"** para previsualizar qué archivos están nuevos o modificados — es de solo lectura (no sube nada ni toca la caché), así ves qué haría una sincronización sin esperarla. **"Verificar y forzar sincronización total"**, justo debajo, es la opción que sí ignora la caché y resube todo.
 
 ---
 

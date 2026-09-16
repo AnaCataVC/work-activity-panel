@@ -145,6 +145,11 @@ public partial class DashboardViewModel : ObservableObject
 
     public ObservableCollection<SyncErrorItem> SyncErrorsList { get; } = new();
 
+    public ObservableCollection<OutOfSyncFile> OutOfSyncFilesList { get; } = new();
+
+    /// <summary>Raised after PreviewOutOfSyncCommand refreshes <see cref="OutOfSyncFilesList"/>, so the view can open its dialog.</summary>
+    public event EventHandler? OutOfSyncPreviewReady;
+
 
     // GitHub CLI & Account Switcher Properties
     [ObservableProperty]
@@ -563,6 +568,33 @@ public partial class DashboardViewModel : ObservableObject
         {
             IsDriveSyncing = _driveSyncService.IsSyncing;
             RefreshDriveSyncStatus();
+        }
+    }
+
+    [RelayCommand]
+    private async Task PreviewOutOfSync()
+    {
+        if (!_driveSyncService.IsConfigured)
+        {
+            DriveSyncDetailText = "Configura la URL y la carpeta en Ajustes antes de sincronizar.";
+            return;
+        }
+
+        try
+        {
+            var outOfSync = await Task.Run(() => _driveSyncService.PreviewOutOfSyncAsync());
+
+            OutOfSyncFilesList.Clear();
+            foreach (var file in outOfSync)
+            {
+                OutOfSyncFilesList.Add(file);
+            }
+
+            OutOfSyncPreviewReady?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            DriveSyncDetailText = $"Error al revisar archivos desincronizados: {ex.Message}";
         }
     }
 

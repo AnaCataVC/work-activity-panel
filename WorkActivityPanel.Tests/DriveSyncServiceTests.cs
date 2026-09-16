@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Moq;
 using WorkActivityPanel.Helpers;
@@ -536,5 +537,74 @@ public class DriveSyncServiceTests : IDisposable
     public void BuildBatches_ShouldReturnEmpty_WhenNoCandidates()
     {
         Assert.Empty(DriveSyncService.BuildBatches(new List<DriveSyncService.UploadCandidate>()));
+    }
+
+    // ── Out-of-sync preview ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task PreviewOutOfSyncAsync_ShouldListOnlyNewAndModifiedFiles_WithoutTouchingTheCache()
+    {
+        _service.ClearHashIndex();
+
+        // A dedicated subfolder, isolated from test_settings.json and any other file the
+        // test scope writes directly under _testDir.
+        var syncFolder = Path.Combine(_testDir, "sync-source");
+        Directory.CreateDirectory(syncFolder);
+
+        var unchangedPath = Path.Combine(syncFolder, "unchanged.txt");
+        var modifiedPath = Path.Combine(syncFolder, "modified.txt");
+        var newPath = Path.Combine(syncFolder, "new.txt");
+
+        File.WriteAllBytes(unchangedPath, new byte[2048]);
+        File.WriteAllBytes(modifiedPath, new byte[2048]);
+        File.WriteAllBytes(newPath, new byte[2048]);
+
+        var unchangedHash = _service.ComputeSha256(unchangedPath);
+        var modifiedOldHash = _service.ComputeSha256(modifiedPath);
+
+        var source = new SyncSource { LocalFolderPath = syncFolder };
+        var prefix = source.EffectiveDestinationPrefix;
+
+        // UpdateSettings clears the hash index when the WebAppUrl changes (target-invalidation
+        // guard), so it must run before priming the cache below, not after.
+        _service.UpdateSettings(new DriveSyncSettings
+        {
+            WebAppUrl = "https://script.google.com/test",
+            Sources = { source },
+            OnlyModifiedOrNew = true
+        });
+
+        // Prime the in-memory hash index directly (bypassing the real upload flow, which
+        // needs network) as if unchanged.txt and modified.txt were already synced.
+        var hashIndexField = typeof(DriveSyncService).GetField("_hashIndex", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var hashIndex = (Dictionary<string, HashCacheEntry>)hashIndexField.GetValue(_service)!;
+        hashIndex[$"{prefix}|{unchangedPath}"] = new HashCacheEntry
+        {
+            Hash = unchangedHash,
+            LastWriteTimeUtcTicks = new FileInfo(unchangedPath).LastWriteTimeUtc.Ticks,
+            FileSize = 2048
+        };
+        hashIndex[$"{prefix}|{modifiedPath}"] = new HashCacheEntry
+        {
+            Hash = modifiedOldHash,
+            LastWriteTimeUtcTicks = new FileInfo(modifiedPath).LastWriteTimeUtc.Ticks,
+            FileSize = 2048
+        };
+
+        // Change modified.txt's content and size after priming, so the fast-path metadata
+        // check can't short-circuit and the classifier must actually compare hashes.
+        File.WriteAllBytes(modifiedPath, new byte[4096]);
+
+        var indexCountBefore = hashIndex.Count;
+
+        var outOfSync = await _service.PreviewOutOfSyncAsync();
+
+        Assert.Equal(2, outOfSync.Count);
+        Assert.Contains(outOfSync, f => f.FileName == "new.txt" && f.Reason == "Nuevo");
+        Assert.Contains(outOfSync, f => f.FileName == "modified.txt" && f.Reason == "Modificado");
+        Assert.DoesNotContain(outOfSync, f => f.FileName == "unchanged.txt");
+
+        // A preview must never write to the hash cache — only a real sync does.
+        Assert.Equal(indexCountBefore, hashIndex.Count);
     }
 }
