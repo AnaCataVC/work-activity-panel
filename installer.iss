@@ -15,7 +15,7 @@ DefaultDirName={localappdata}\Programs\WorkActivityPanel
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=releases
-OutputBaseFilename=WorkActivityPanel-Setup-v2.5.0
+OutputBaseFilename=WorkActivityPanel-Setup-v{#MyAppVersion}
 
 SetupIconFile=Assets\AppIcon.ico
 Compression=lzma2/fast
